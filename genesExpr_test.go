@@ -14,7 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bioinf
+package gonetics
 
 /* -------------------------------------------------------------------------- */
 
@@ -26,7 +26,9 @@ import   "testing"
 
 func TestGenesExpr1(t *testing.T) {
 
-  genes := ReadUCSCGenes("../Data/hg19.ensGene.txt.gz")
+  genes := ImportGenesFromUCSC("hg19", "ensGene")
+
+//  genes := ReadUCSCGenes("../Data/hg19.ensGene.txt.gz")
   genes  = ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", genes, false)
 
   if len(genes.GetMetaFloat("expr")) != 204940 {

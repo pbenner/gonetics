@@ -407,19 +407,17 @@ func ReadUCSCGenes(filename string) Genes {
   return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
 }
 
-func (genes Genes) WriteTable(filename string, header bool) {
-  f, err := os.Create(filename); Check(err)
-  defer f.Close()
+func (genes Genes) WriteTable(filename string, header, compress bool) {
+  var buffer bytes.Buffer
 
-  w := bufio.NewWriter(f)
-  defer w.Flush()
+  w := bufio.NewWriter(&buffer)
 
   // print header
   if header {
     fmt.Fprintf(w, "%16s %10s %6s %10s %10s %10s %10s",
       "names", "seqnames", "strand", "txStart", "txEnd", "cdsStart", "cdsEnd")
     genes.Meta.WriteTableRow(w, -1)
-    w.WriteString("\n")
+    fmt.Fprintf(w, "\n")
   }
   // print data
   for i := 0; i < genes.Length(); i++ {
@@ -431,8 +429,10 @@ func (genes Genes) WriteTable(filename string, header bool) {
     fmt.Fprintf(w, " %10d", genes.Cds[i].From)
     fmt.Fprintf(w, " %10d", genes.Cds[i].To)
     genes.Meta.WriteTableRow(w, i)
-    w.WriteString("\n")
+    fmt.Fprintf(w, "\n")
   }
+  w.Flush()
+  writeFile(filename, &buffer, compress)
 }
 
 

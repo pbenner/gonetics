@@ -18,6 +18,14 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "bufio"
+import "bytes"
+import "compress/gzip"
+import "io"
+import "io/ioutil"
+
+/* -------------------------------------------------------------------------- */
+
 func RemoveDuplicatesInt(s []int) []int {
   m := map[int]bool{}
   r := []int{}
@@ -29,4 +37,21 @@ func RemoveDuplicatesInt(s []int) []int {
     }
   }
   return r
+}
+
+/* -------------------------------------------------------------------------- */
+
+func writeFile(filename string, r io.Reader, compress bool) {
+  var buffer bytes.Buffer
+
+  if compress {
+    w := gzip.NewWriter(&buffer)
+    io.Copy(w, r)
+    w.Close()
+  } else {
+    w := bufio.NewWriter(&buffer)
+    io.Copy(w, r)
+    w.Flush()
+  }
+  ioutil.WriteFile(filename, buffer.Bytes(), 0666)
 }

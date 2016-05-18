@@ -25,7 +25,7 @@ import   "testing"
 
 func TestTrack1(t *testing.T) {
 
-  genome := ReadGenome("../Data/hg19.genome")
+  genome := ReadGenome("Data/hg19.genome")
   track  := NewTrack("test", genome, 10)
 
   track.Set("chrX", 10, 13.0)
@@ -39,7 +39,7 @@ func TestTrack1(t *testing.T) {
 
 func TestTrack2(t *testing.T) {
 
-  genome := ReadGenome("../Data/hg19.genome")
+  genome := ReadGenome("Data/hg19.genome")
   track  := NewTrack("test", genome, 10)
 
   seqnames := []string{"chr1", "chr1"}

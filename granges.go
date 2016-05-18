@@ -432,19 +432,17 @@ func (granges GRanges) WriteGTF(filename string) {
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(filename string, header bool) {
-  f, err := os.Create(filename); Check(err)
-  defer f.Close()
+func (granges GRanges) WriteTable(filename string, header, compress bool) {
+  var buffer bytes.Buffer
 
-  w := bufio.NewWriter(f)
-  defer w.Flush()
+  w := bufio.NewWriter(&buffer)
 
   // print header
   if header {
     fmt.Fprintf(w, "%10s %10s %10s %6s",
       "seqnames", "from", "to", "strand")
     granges.Meta.WriteTableRow(w, -1)
-    w.WriteString("\n")
+    fmt.Fprintf(w, "\n")
   }
   // print data
   for i := 0; i < granges.Length(); i++ {
@@ -457,8 +455,10 @@ func (granges GRanges) WriteTable(filename string, header bool) {
       fmt.Fprintf(w, " %6c", '*')
     }
     granges.Meta.WriteTableRow(w, i)
-    w.WriteString("\n")
+    fmt.Fprintf(w, "\n")
   }
+  w.Flush()
+  writeFile(filename, &buffer, compress)
 }
 
 /* i/o

@@ -26,10 +26,10 @@ import   "testing"
 
 func TestGenesExpr1(t *testing.T) {
 
-  genes := ImportGenesFromUCSC("hg19", "ensGene")
-  genes.WriteTable("hg19.ensGene.txt", true)
+//  genes := ImportGenesFromUCSC("hg19", "ensGene")
+//  genes.WriteTable("Data/hg19.ensGene.txt.gz", false, true)
 
-//  genes := ReadUCSCGenes("../Data/hg19.ensGene.txt.gz")
+  genes := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
   genes  = ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", genes, false)
 
   if len(genes.GetMetaFloat("expr")) != 204940 {

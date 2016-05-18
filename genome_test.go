@@ -25,7 +25,7 @@ import   "testing"
 
 func TestGenome1(t *testing.T) {
 
-  genome := ReadGenome("../Data/hg19.genome")
+  genome := ReadGenome("Data/hg19.genome")
 
   //fmt.Println(genome)
 

@@ -55,6 +55,10 @@ func NewTrack(name string, genome Genome, binsize int) Track {
 /* access methods
  * -------------------------------------------------------------------------- */
 
+func (track Track) Index(position int) int {
+  return (position-1)/track.Binsize
+}
+
 func (track Track) Length(seqname string) (int, error) {
   seq, ok := track.Data[seqname]
   if !ok {
@@ -68,10 +72,7 @@ func (track Track) At(seqname string, position int) (float64, error) {
   if !ok {
     return 0, errors.New("Invalid seqname!")
   }
-  if position < 0 || len(seq) <= position/track.Binsize {
-    return 0, errors.New("Index out of range!")
-  }
-  return seq[position/track.Binsize], nil
+  return seq[track.Index(position)], nil
 }
 
 func (track Track) Set(seqname string, position int, value float64) error {
@@ -79,10 +80,7 @@ func (track Track) Set(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("Invalid seqname!")
   }
-  if position < 0 || len(seq) <= position/track.Binsize {
-    return errors.New("Index out of range!")
-  }
-  seq[position/track.Binsize] = value
+  seq[track.Index(position)] = value
 
   return nil
 }
@@ -92,10 +90,7 @@ func (track Track) Add(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("Invalid seqname!")
   }
-  if position < 0 || len(seq) <= position/track.Binsize {
-    return errors.New("Index out of range!")
-  }
-  seq[position/track.Binsize] += value
+  seq[track.Index(position)] += value
 
   return nil
 }
@@ -105,10 +100,7 @@ func (track Track) Sub(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("Invalid seqname!")
   }
-  if position < 0 || len(seq) <= position/track.Binsize {
-    return errors.New("Index out of range!")
-  }
-  seq[position/track.Binsize] -= value
+  seq[track.Index(position)] -= value
 
   return nil
 }

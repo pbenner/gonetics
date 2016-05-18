@@ -41,10 +41,10 @@ func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
     if genome.Lengths[j]-wsize < 0 {
       panic("window size is too large")
     }
-    position := rand.Intn(genome.Lengths[j]-wsize)
+    position := rand.Intn(genome.Lengths[j]-wsize+1)
     seqnames[i] = genome.Seqnames[j]
     from[i]     = position
-    to[i]       = position + wsize
+    to[i]       = position + wsize - 1
     if useStrand {
       k := rand.Intn(2)
       strand[i] = []byte{'+', '-'}[k]

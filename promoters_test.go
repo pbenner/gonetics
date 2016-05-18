@@ -26,7 +26,7 @@ import   "testing"
 func TestPromoters1(t *testing.T) {
 
   genes := ReadUCSCGenes("Data/hg19.knownGene.txt.gz")
-  promoters := Promoters(genes, 1000)
+  promoters := Promoters(genes, 1001)
 
   if promoters.Length() != 51381 {
     t.Error("TestGenes1 failed!")

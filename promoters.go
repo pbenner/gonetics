@@ -61,15 +61,17 @@ func mergeDuplicates(r GRanges) GRanges {
 func Promoters(genes Genes, wsize int) GRanges {
   result := GRanges{}
   names  := []string{}
+  offset1 := divIntUp  (wsize-1, 2)
+  offset2 := divIntDown(wsize-1, 2)
   // fill matrix
   for i := 0; i < genes.Length(); i++ {
     from, to := 0,0
     if genes.Strand[i] == '+' {
-      from = genes.Tx[i].From - wsize/2
-      to   = genes.Tx[i].From + wsize/2
+      from = genes.Tx[i].From - offset1
+      to   = genes.Tx[i].From + offset2
     } else if genes.Strand[i] == '-' {
-      from = genes.Tx[i].To - wsize/2
-      to   = genes.Tx[i].To + wsize/2
+      from = genes.Tx[i].To - offset2
+      to   = genes.Tx[i].To + offset1
     } else {
       panic("gene has no strand information!")
     }

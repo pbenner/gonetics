@@ -41,6 +41,18 @@ func RemoveDuplicatesInt(s []int) []int {
 
 /* -------------------------------------------------------------------------- */
 
+// Divide a by b, the result is rounded down.
+func divIntDown(a, b int) int {
+  return a/b
+}
+
+// Divide a by b, the result is rounded up.
+func divIntUp(a, b int) int {
+  return (a-1)/b+1
+}
+
+/* -------------------------------------------------------------------------- */
+
 func writeFile(filename string, r io.Reader, compress bool) {
   var buffer bytes.Buffer
 

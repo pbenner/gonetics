@@ -26,12 +26,12 @@ import   "testing"
 func TestTrack1(t *testing.T) {
 
   genome := ReadGenome("Data/hg19.genome")
-  track  := NewTrack("test", genome, 10)
+  track  := NewTrack("test", genome, 100)
 
-  track.Set("chrX", 10, 13.0)
-  track.Add("chrX", 10, 10.0)
+  track.Set("chrX", 100, 13.0)
+  track.Add("chrX", 100, 10.0)
 
-  if v, _ := track.At("chrX", 18); v != 23 {
+  if v, _ := track.At("chrX", 180); v != 23 {
     t.Error("TestTrack1 failed!")
   }
 
@@ -40,23 +40,23 @@ func TestTrack1(t *testing.T) {
 func TestTrack2(t *testing.T) {
 
   genome := ReadGenome("Data/hg19.genome")
-  track  := NewTrack("test", genome, 10)
+  track  := NewTrack("test", genome, 100)
 
   seqnames := []string{"chr1", "chr1"}
-  from     := []int { 6, 17}
-  to       := []int {23, 28}
+  from     := []int { 60, 170}
+  to       := []int {230, 280}
   strand   := []byte{'+', '+'}
   reads    := NewGRanges(seqnames, from, to, strand)
 
   track.AddReads(reads, 0)
 
-  if v, _ := track.At("chr1",  0); v != 0.5 {
+  if v, _ := track.At("chr1",   0); v != 0.41 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 10); v != 1.4 {
+  if v, _ := track.At("chr1", 100); v != 1.31 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 20); v != 1.1 {
+  if v, _ := track.At("chr1", 200); v != 1.1 {
     t.Error("TestTrack2 failed!")
   }
 

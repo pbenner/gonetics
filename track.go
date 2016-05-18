@@ -46,8 +46,8 @@ func NewTrack(name string, genome Genome, binsize int) Track {
 
   for i := 0; i < genome.Length(); i++ {
     data[genome.Seqnames[i]] = make([]float64,
-      // integer devision with ceiling
-      1 + ((genome.Lengths[i] - 1) / binsize))
+      // integer devision by rounding up
+      divIntUp(genome.Lengths[i], binsize))
   }
   return Track{name, data, binsize}
 }
@@ -160,7 +160,7 @@ func (track Track) AddReads(reads GRanges, d int) {
 // experiment is divided by the number of control reads. To avoid division by
 // zero, a pseudocount is added to both treatment and control. The parameter
 // d determines the extension of reads.
-func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d, binsize int, logScale bool) Track {
+func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d, binsize int, c1, c2 float64, logScale bool) Track {
   track1 := NewTrack(name, genome, binsize)
   track2 := NewTrack("",   genome, binsize)
   for _, r := range treatment {
@@ -177,9 +177,9 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
     }
     for i := 0; i < len(seq1); i++ {
       if logScale {
-        seq1[i] = math.Log((seq1[i]+1.0)/(seq2[i]+1.0))
+        seq1[i] = math.Log((seq1[i]+c1)/(seq2[i]+c2)*c2/c1)
       } else {
-        seq1[i] = (seq1[i]+1.0)/(seq2[i]+1.0)
+        seq1[i] = (seq1[i]+c1)/(seq2[i]+c2)*c2/c1
       }
     }
   }

@@ -56,13 +56,13 @@ func mergeDuplicates(r GRanges) GRanges {
 }
 
 // Generate a GRanges object where each range is a window around
-// the transcription start site of a gene. Genomic bounds are not
+// the transcription start site (TSS) of a gene. The arguments offset1,
+// and offset2 determine the size of the window starting from the TSS
+// in 5' and 3' direction respectively. Genomic bounds are not
 // checked. (This is required by the GRanges ImportTrack() method!)
-func Promoters(genes Genes, wsize int) GRanges {
+func Promoters(genes Genes, offset1, offset2 int) GRanges {
   result := GRanges{}
   names  := []string{}
-  offset1 := divIntUp  (wsize-1, 2)
-  offset2 := divIntDown(wsize-1, 2)
   // fill matrix
   for i := 0; i < genes.Length(); i++ {
     from, to := 0,0

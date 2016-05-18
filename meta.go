@@ -594,6 +594,47 @@ func (meta *Meta) String() string {
   return meta.PrettyPrint(10)
 }
 
+func (meta *Meta) WriteTableRow(w io.Writer, i int) {
+  if i == -1 {
+    // write header
+    for k := 0; k < meta.MetaLength(); k++ {
+      fmt.Fprintf(w, " %10s", meta.MetaName[k])
+    }
+  } else {
+    for k := 0; k < meta.MetaLength(); k++ {
+      switch v := meta.MetaData[k].(type) {
+      case []string : fmt.Fprintf(w, " %10s", v[i])
+      case []float64: fmt.Fprintf(w, " %10f", v[i])
+      case []int    : fmt.Fprintf(w, " %10d", v[i])
+      case [][]string:
+        for j := 0; j < len(v[i]); j++ {
+          if j == 0 {
+            fmt.Fprintf(w, " %s", v[i][j])
+          } else {
+            fmt.Fprintf(w, ",%s", v[i][j])
+          }
+        }
+      case [][]float64:
+        for j := 0; j < len(v[i]); j++ {
+          if j == 0 {
+            fmt.Fprintf(w, " %f", v[i][j])
+          } else {
+            fmt.Fprintf(w, ",%f", v[i][j])
+          }
+        }
+      case [][]int:
+        for j := 0; j < len(v[i]); j++ {
+          if j == 0 {
+            fmt.Fprintf(w, " %d", v[i][j])
+          } else {
+            fmt.Fprintf(w, ",%d", v[i][j])
+          }
+        }
+      }
+    }
+  }
+}
+
 func ImportMetaFromTable(filename string, names, types []string) (Meta, error) {
   if len(names) != len(types) {
     panic("invalid arguments")

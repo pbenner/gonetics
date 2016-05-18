@@ -407,6 +407,35 @@ func ReadUCSCGenes(filename string) Genes {
   return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
 }
 
+func (genes Genes) WriteTable(filename string, header bool) {
+  f, err := os.Create(filename); Check(err)
+  defer f.Close()
+
+  w := bufio.NewWriter(f)
+  defer w.Flush()
+
+  // print header
+  if header {
+    fmt.Fprintf(w, "%14s %10s %6s %10s %10s %10s %10s",
+      "names", "seqnames", "strand", "txStart", "txEnd", "cdsStart", "cdsEnd")
+    genes.Meta.WriteTableRow(w, -1)
+    w.WriteString("\n")
+  }
+  // print data
+  for i := 0; i < genes.Length(); i++ {
+    fmt.Fprintf(w,  "%14s", genes.Names[i])
+    fmt.Fprintf(w,  "%10s", genes.Seqnames[i])
+    fmt.Fprintf(w, " %6c",  genes.Strand[i])
+    fmt.Fprintf(w, " %10d", genes.Tx[i].From)
+    fmt.Fprintf(w, " %10d", genes.Tx[i].To)
+    fmt.Fprintf(w, " %10d", genes.Cds[i].From)
+    fmt.Fprintf(w, " %10d", genes.Cds[i].To)
+    genes.Meta.WriteTableRow(w, i)
+    w.WriteString("\n")
+  }
+}
+
+
 /* import genes from ucsc
  * -------------------------------------------------------------------------- */
 

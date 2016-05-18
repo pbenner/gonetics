@@ -432,7 +432,7 @@ func (granges GRanges) WriteGTF(filename string) {
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(filename string) {
+func (granges GRanges) WriteTable(filename string, header bool) {
   f, err := os.Create(filename); Check(err)
   defer f.Close()
 
@@ -440,13 +440,12 @@ func (granges GRanges) WriteTable(filename string) {
   defer w.Flush()
 
   // print header
-  fmt.Fprintf(w, "%10s %10s %10s %6s",
-    "seqnames", "from", "to", "strand")
-  for k := 0; k < granges.MetaLength(); k++ {
-    fmt.Fprintf(w, " %10s", granges.MetaName[k])
+  if header {
+    fmt.Fprintf(w, "%10s %10s %10s %6s",
+      "seqnames", "from", "to", "strand")
+    granges.Meta.WriteTableRow(w, -1)
+    w.WriteString("\n")
   }
-  w.WriteString("\n")
-
   // print data
   for i := 0; i < granges.Length(); i++ {
     fmt.Fprintf(w,  "%10s", granges.Seqnames[i])
@@ -457,39 +456,7 @@ func (granges GRanges) WriteTable(filename string) {
     } else {
       fmt.Fprintf(w, " %6c", '*')
     }
-
-    for k := 0; k < granges.MetaLength(); k++ {
-      // print data
-      switch v := granges.MetaData[k].(type) {
-      case []string : fmt.Fprintf(w, " %10s", v[i])
-      case []float64: fmt.Fprintf(w, " %10f", v[i])
-      case []int    : fmt.Fprintf(w, " %10d", v[i])
-      case [][]string:
-        for j := 0; j < len(v[i]); j++ {
-          if j == 0 {
-            fmt.Fprintf(w, " %s", v[i][j])
-          } else {
-            fmt.Fprintf(w, ",%s", v[i][j])
-          }
-        }
-      case [][]float64:
-        for j := 0; j < len(v[i]); j++ {
-          if j == 0 {
-            fmt.Fprintf(w, " %f", v[i][j])
-          } else {
-            fmt.Fprintf(w, ",%f", v[i][j])
-          }
-        }
-      case [][]int:
-        for j := 0; j < len(v[i]); j++ {
-          if j == 0 {
-            fmt.Fprintf(w, " %d", v[i][j])
-          } else {
-            fmt.Fprintf(w, ",%d", v[i][j])
-          }
-        }
-      }
-    }
+    granges.Meta.WriteTableRow(w, i)
     w.WriteString("\n")
   }
 }

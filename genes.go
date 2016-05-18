@@ -416,15 +416,15 @@ func (genes Genes) WriteTable(filename string, header bool) {
 
   // print header
   if header {
-    fmt.Fprintf(w, "%14s %10s %6s %10s %10s %10s %10s",
+    fmt.Fprintf(w, "%16s %10s %6s %10s %10s %10s %10s",
       "names", "seqnames", "strand", "txStart", "txEnd", "cdsStart", "cdsEnd")
     genes.Meta.WriteTableRow(w, -1)
     w.WriteString("\n")
   }
   // print data
   for i := 0; i < genes.Length(); i++ {
-    fmt.Fprintf(w,  "%14s", genes.Names[i])
-    fmt.Fprintf(w,  "%10s", genes.Seqnames[i])
+    fmt.Fprintf(w,  "%16s", genes.Names[i])
+    fmt.Fprintf(w, " %10s", genes.Seqnames[i])
     fmt.Fprintf(w, " %6c",  genes.Strand[i])
     fmt.Fprintf(w, " %10d", genes.Tx[i].From)
     fmt.Fprintf(w, " %10d", genes.Tx[i].To)

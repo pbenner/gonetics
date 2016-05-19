@@ -56,6 +56,9 @@ func NewTrack(name string, genome Genome, binsize int) Track {
  * -------------------------------------------------------------------------- */
 
 func (track Track) Index(position int) int {
+  if position <= 0 {
+    panic("invalid position")
+  }
   return (position-1)/track.Binsize
 }
 
@@ -130,14 +133,14 @@ func (track Track) AddReads(reads GRanges, d int) {
         panic("AddReads(): no strand information given!")
       }
     }
-    for j := (from-1)/track.Binsize; j <= to/track.Binsize; j++ {
-      jfrom := math.Max(float64(from-1), float64((j+0)*track.Binsize))
-      jto   := math.Min(float64(to  -0), float64((j+1)*track.Binsize))
+    for j := track.Index(from); j <= track.Index(to); j++ {
+      jfrom := iMax(from, (j+0)*track.Binsize+1)
+      jto   := iMin(to  , (j+1)*track.Binsize)
       if j >= len(seq) {
         sum_reads_outside++
         break
       } else {
-        seq[j] += float64(jto-jfrom)/float64(track.Binsize)
+        seq[j] += float64(jto-jfrom+1)/float64(track.Binsize)
       }
     }
   }

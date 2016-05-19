@@ -41,6 +41,22 @@ func RemoveDuplicatesInt(s []int) []int {
 
 /* -------------------------------------------------------------------------- */
 
+func iMin(a, b int) int {
+  if a < b {
+    return a
+  } else {
+    return b
+  }
+}
+
+func iMax(a, b int) int {
+  if a > b {
+    return a
+  } else {
+    return b
+  }
+}
+
 // Divide a by b, the result is rounded down.
 func divIntDown(a, b int) int {
   return a/b

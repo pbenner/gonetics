@@ -32,6 +32,7 @@ type TMapType map[string][]float64
 
 // A track is a container for experimental data mapped to genomic
 // locations. The data is binned in order to reduce memory usage.
+// The first position in a sequence is numbered 0.
 type Track struct {
   Name    string
   Data    TMapType
@@ -46,8 +47,7 @@ func NewTrack(name string, genome Genome, binsize int) Track {
 
   for i := 0; i < genome.Length(); i++ {
     data[genome.Seqnames[i]] = make([]float64,
-      // integer devision by rounding up
-      divIntUp(genome.Lengths[i], binsize))
+      divIntDown(genome.Lengths[i], binsize))
   }
   return Track{name, data, binsize}
 }
@@ -56,16 +56,16 @@ func NewTrack(name string, genome Genome, binsize int) Track {
  * -------------------------------------------------------------------------- */
 
 func (track Track) Index(position int) int {
-  if position <= 0 {
-    panic("invalid position")
+  if position < 0 {
+    panic("negative position")
   }
-  return (position-1)/track.Binsize
+  return position/track.Binsize
 }
 
 func (track Track) Length(seqname string) (int, error) {
   seq, ok := track.Data[seqname]
   if !ok {
-    return 0, errors.New("Invalid seqname!")
+    return 0, errors.New("invalid seqname")
   }
   return len(seq)*track.Binsize, nil
 }
@@ -73,7 +73,7 @@ func (track Track) Length(seqname string) (int, error) {
 func (track Track) At(seqname string, position int) (float64, error) {
   seq, ok := track.Data[seqname]
   if !ok {
-    return 0, errors.New("Invalid seqname!")
+    return 0, errors.New("invalid seqname")
   }
   return seq[track.Index(position)], nil
 }
@@ -81,7 +81,7 @@ func (track Track) At(seqname string, position int) (float64, error) {
 func (track Track) Set(seqname string, position int, value float64) error {
   seq, ok := track.Data[seqname]
   if !ok {
-    return errors.New("Invalid seqname!")
+    return errors.New("invalid seqname")
   }
   seq[track.Index(position)] = value
 
@@ -91,7 +91,7 @@ func (track Track) Set(seqname string, position int, value float64) error {
 func (track Track) Add(seqname string, position int, value float64) error {
   seq, ok := track.Data[seqname]
   if !ok {
-    return errors.New("Invalid seqname!")
+    return errors.New("invalid seqname")
   }
   seq[track.Index(position)] += value
 
@@ -101,7 +101,7 @@ func (track Track) Add(seqname string, position int, value float64) error {
 func (track Track) Sub(seqname string, position int, value float64) error {
   seq, ok := track.Data[seqname]
   if !ok {
-    return errors.New("Invalid seqname!")
+    return errors.New("invalid seqname")
   }
   seq[track.Index(position)] -= value
 
@@ -134,13 +134,13 @@ func (track Track) AddReads(reads GRanges, d int) {
       }
     }
     for j := track.Index(from); j <= track.Index(to); j++ {
-      jfrom := iMax(from, (j+0)*track.Binsize+1)
+      jfrom := iMax(from, (j+0)*track.Binsize)
       jto   := iMin(to  , (j+1)*track.Binsize)
       if j >= len(seq) {
         sum_reads_outside++
         break
       } else {
-        seq[j] += float64(jto-jfrom+1)/float64(track.Binsize)
+        seq[j] += float64(jto-jfrom)/float64(track.Binsize)
       }
     }
   }
@@ -200,7 +200,7 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
     for seqname, seq := range track.Data {
       fmt.Fprintf(w, "fixedStep chrom=%s start=1 step=%d\n", seqname, track.Binsize)
 
-      for i := 0; i < len(seq)-1; i++ {
+      for i := 0; i < len(seq); i++ {
         fmt.Fprintf(w, "%f\n", seq[i])
       }
     }
@@ -208,7 +208,7 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
     for seqname, seq := range track.Data {
       fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize)
 
-      for i := 0; i < len(seq)-1; i++ {
+      for i := 0; i < len(seq); i++ {
         if seq[i] != 0.0 {
           fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, seq[i])
         }

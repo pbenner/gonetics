@@ -324,7 +324,7 @@ func (genes Genes) PrettyPrint(n int) string {
   // determine column widths
   applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
   // generate format strings
-  formatRow    := fmt.Sprintf("%%%dd %%%ds %%%ds [%%%dd, %%%dd] [%%%dd, %%%dd] %%%dc",
+  formatRow    := fmt.Sprintf("%%%dd %%%ds %%%ds [%%%dd, %%%dd) [%%%dd, %%%dd) %%%dc",
     widths[0], widths[1], widths[2], widths[3], widths[4], widths[5], widths[6], widths[7])
   formatHeader := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds %%%ds",
     widths[0], widths[1], widths[2], widths[3]+widths[4]+4, widths[5]+widths[6]+4, widths[7])

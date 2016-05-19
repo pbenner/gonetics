@@ -297,7 +297,7 @@ func (granges GRanges) PrettyPrint(n int) string {
   // determine column widths
   applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
   // generate format strings
-  formatRow    := fmt.Sprintf("%%%dd %%%ds [%%%dd, %%%dd] %%%dc",
+  formatRow    := fmt.Sprintf("%%%dd %%%ds [%%%dd, %%%dd) %%%dc",
     widths[0], widths[1], widths[2], widths[3], widths[4])
   formatHeader := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds",
     widths[0], widths[1], widths[2]+widths[3]+4, widths[4])

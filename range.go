@@ -29,9 +29,12 @@ type Range struct {
 /* constructors
  * -------------------------------------------------------------------------- */
 
+// Range object used to identify a genomic subsequence. By convention the first
+// position in a sequence is numbered 0. The arguments from, to are interpreted
+// as the interval [from, to).
 func NewRange(from, to int) Range {
   if from > to {
-    panic("NewRange(): from > to!")
+    panic("NewRange(): from > to")
   }
   return Range{from, to}
 }
@@ -39,5 +42,5 @@ func NewRange(from, to int) Range {
 /* -------------------------------------------------------------------------- */
 
 func (r Range) String() string {
-  return fmt.Sprintf("[%d %d]", r.From, r.To)
+  return fmt.Sprintf("[%d %d)", r.From, r.To)
 }

@@ -44,7 +44,7 @@ func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
     position := rand.Intn(genome.Lengths[j]-wsize+1)
     seqnames[i] = genome.Seqnames[j]
     from[i]     = position
-    to[i]       = position + wsize - 1
+    to[i]       = position + wsize
     if useStrand {
       k := rand.Intn(2)
       strand[i] = []byte{'+', '-'}[k]

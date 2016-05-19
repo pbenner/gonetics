@@ -204,14 +204,14 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
     // loop over window
     data[i] = make([]float64, m)
     if r.Strand[i] == '+' || revNegStrand == false {
-      for j, k := 0, from; k <= to; k, j = k+track.Binsize, j+1 {
+      for j, k := 0, from; k < to; k, j = k+track.Binsize, j+1 {
         value, err := track.At(seq, k)
         if err == nil {
           data[i][j] = value
         }
       }
     } else if r.Strand[i] == '-' {
-      for j, k := 0, to; k >= from; k, j = k-track.Binsize, j+1 {
+      for j, k := 0, to-1; k >= from; k, j = k-track.Binsize, j+1 {
         value, err := track.At(seq, k)
         if err == nil {
           data[i][j] = value

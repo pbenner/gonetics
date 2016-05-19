@@ -68,10 +68,10 @@ func Promoters(genes Genes, offset1, offset2 int) GRanges {
     from, to := 0,0
     if genes.Strand[i] == '+' {
       from = genes.Tx[i].From - offset1
-      to   = genes.Tx[i].From + offset2
+      to   = genes.Tx[i].From + offset2 + 1
     } else if genes.Strand[i] == '-' {
-      from = genes.Tx[i].To - offset2
-      to   = genes.Tx[i].To + offset1
+      from = genes.Tx[i].To - 1 - offset2
+      to   = genes.Tx[i].To - 1 + offset1 + 1
     } else {
       panic("gene has no strand information!")
     }

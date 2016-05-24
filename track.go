@@ -55,6 +55,19 @@ func NewTrack(name string, genome Genome, binsize int) Track {
 /* access methods
  * -------------------------------------------------------------------------- */
 
+func (track Track) Clone() Track {
+  name    := track.Name
+  binsize := track.Binsize
+  data    := make(TMapType)
+
+  for name, sequence := range track.Data {
+    t := make([]float64, len(sequence))
+    copy(t, sequence)
+    data[name] = t
+  }
+  return Track{name, data, binsize}
+}
+
 func (track Track) Index(position int) int {
   if position < 0 {
     panic("negative position")

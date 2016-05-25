@@ -635,7 +635,7 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
   }
 }
 
-func ImportMetaFromTable(filename string, names, types []string) (Meta, error) {
+func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
   if len(names) != len(types) {
     panic("invalid arguments")
   }

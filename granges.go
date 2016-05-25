@@ -464,7 +464,7 @@ func (granges GRanges) WriteTable(filename string, header, compress bool) {
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ImportGRangesFromTable(filename string, names, types []string) (GRanges, error) {
+func ReadGRangesFromTable(filename string, names, types []string) (GRanges, error) {
   result   := GRanges{}
 
   var scanner *bufio.Scanner
@@ -519,7 +519,7 @@ func ImportGRangesFromTable(filename string, names, types []string) (GRanges, er
     result.Ranges   = append(result.Ranges,   NewRange(int(v1), int(v2)))
     result.Strand   = append(result.Strand,   fields[3][0])
   }
-  result.Meta, err = ImportMetaFromTable(filename, names, types)
+  result.Meta, err = ReadMetaFromTable(filename, names, types)
 
   return result, err
 }

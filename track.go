@@ -430,6 +430,11 @@ func (track *Track) ReadWiggle(filename string) error {
       } else {
         return errors.New("file contains more than one track definition line")
       }
+    } else if fields[0] == "browser" {
+      // skip any browser options
+      if !scanner.Scan() {
+        return nil
+      }
     } else if fields[0] == "fixedStep" {
       err := readWiggle_fixedStep(scanner, track)
       if err != nil {

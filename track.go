@@ -19,10 +19,13 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "bufio"
+import "compress/gzip"
 import "errors"
 import "fmt"
 import "math"
 import "os"
+import "strconv"
+import "strings"
 
 import . "github.com/pbenner/pshape/Utility"
 
@@ -42,7 +45,20 @@ type Track struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewTrack(name string, genome Genome, binsize int) Track {
+func NewTrack(name string, seqnames []string, sequences [][]float64, binsize int) Track {
+  if len(seqnames) != len(sequences) {
+    panic("invalid arguments")
+  }
+  data := make(TMapType)
+
+  for i := 0; i < len(seqnames); i++ {
+    data[seqnames[i]] = sequences[i]
+  }
+  return Track{name, data, binsize}
+}
+
+
+func AllocTrack(name string, genome Genome, binsize int) Track {
   data := make(TMapType)
 
   for i := 0; i < genome.Length(); i++ {
@@ -50,6 +66,11 @@ func NewTrack(name string, genome Genome, binsize int) Track {
       divIntDown(genome.Lengths[i], binsize))
   }
   return Track{name, data, binsize}
+}
+
+func EmptyTrack(name string) Track {
+  data := make(TMapType)
+  return Track{name, data, 0}
 }
 
 /* access methods
@@ -169,8 +190,8 @@ func (track Track) AddReads(reads GRanges, d int) {
 // zero, a pseudocount is added to both treatment and control. The parameter
 // d determines the extension of reads.
 func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d, binsize int, c1, c2 float64, logScale bool) Track {
-  track1 := NewTrack(name, genome, binsize)
-  track2 := NewTrack("",   genome, binsize)
+  track1 := AllocTrack(name, genome, binsize)
+  track2 := AllocTrack("",   genome, binsize)
   for _, r := range treatment {
     track1.AddReads(r, d)
   }
@@ -228,4 +249,137 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
       }
     }
   }
+}
+
+func readWiggle_header(fields []string, result *Track) error {
+
+  for i := 1; i < len(fields); i++ {
+    headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })
+    if len(headerFields) != 2 {
+      return errors.New("invalid declaration line")
+    }
+    switch headerFields[0] {
+    case "name": result.Name = headerFields[1]
+    case "type":
+      if headerFields[1] != "wiggle_0" {
+        return errors.New("unsupported wiggle format")
+      }
+    }
+  }
+  return nil
+}
+
+func readWiggle_fixedStep(fields []string, scanner *bufio.Scanner, result *Track) ([]string, error) {
+  seqname  := ""
+  sequence := []float64{}
+  start    := 1
+  // parse header
+  for i := 1; i < len(fields); i++ {
+    headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })
+    if len(headerFields) != 2 {
+      return fields, errors.New("invalid declaration line")
+    }
+    switch headerFields[0] {
+    case "chrom": seqname = headerFields[1]
+    case "start":
+      t, err := strconv.ParseInt(fields[1], 10, 64)
+      if err != nil {
+        return fields, err
+      }
+      start = int(t)
+    case "step":
+      t, err := strconv.ParseInt(fields[1], 10, 64)
+      if err != nil {
+        return fields, err
+      }
+      if result.Binsize == -1 {
+        result.Binsize = int(t)
+      } else if result.Binsize != int(t) {
+        return fields, errors.New("varying step sizes are not supported")
+      }
+    }
+  }
+  if seqname == "" {
+    return fields, errors.New("declaration line is missing the chromosome name")
+  }
+  // parse data
+  if start <= 0 {
+    return fields, errors.New("declaration line defines invalid start position")
+  }
+  if start != 1 {
+    sequence = make([]float64, start-1)
+  }
+  for scanner.Scan() {
+    fields = strings.Fields(scanner.Text())
+    if len(fields) != 1 {
+      break
+    }
+    t, err := strconv.ParseFloat(fields[0], 64)
+    if err != nil {
+      return fields, err
+    }
+    sequence = append(sequence, t)
+  }
+  result.Data[seqname] = sequence
+
+  return fields, nil
+}
+
+// Import data from wiggle files.
+func ReadWiggle(filename string) (Track, error) {
+
+  result := EmptyTrack("")
+  result.Binsize = -1
+
+  header := false
+  fields := []string{}
+
+  var scanner *bufio.Scanner
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return result, err
+  }
+  defer f.Close()
+
+  // check if file is gzipped
+  if IsGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return result, err
+    }
+    defer g.Close()
+    scanner = bufio.NewScanner(g)
+  } else {
+    scanner = bufio.NewScanner(f)
+  }
+
+  if !scanner.Scan() {
+    return result, nil
+  }
+  fields = strings.Fields(scanner.Text())
+  for {
+    // header?
+    if fields[0] == "track" {
+      if header == false {
+        header = true
+        err := readWiggle_header(fields, &result)
+        if err != nil {
+          return result, err
+        }
+      } else {
+        return result, errors.New("file contains more than one track definition line")
+      }
+    } else if fields[0] == "fixedStep" {
+      f, err := readWiggle_fixedStep(fields, scanner, &result)
+      if err != nil {
+        return result, err
+      }
+      fields = f
+    } else if fields[0] == "variableStep" {
+    } else {
+      return result, errors.New("unknown sequence type (i.e. not fixedStep or variableStep)")
+    }
+  }
+  return result, nil
 }

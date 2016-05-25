@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import   "fmt"
+import   "fmt"
 import   "math"
 import   "testing"
 
@@ -27,7 +27,7 @@ import   "testing"
 func TestTrack1(t *testing.T) {
 
   genome := ReadGenome("Data/hg19.genome")
-  track  := NewTrack("test", genome, 100)
+  track  := AllocTrack("test", genome, 100)
 
   track.Set("chrX", 100, 13.0)
   track.Add("chrX", 100, 10.0)
@@ -41,7 +41,7 @@ func TestTrack1(t *testing.T) {
 func TestTrack2(t *testing.T) {
 
   genome := ReadGenome("Data/hg19.genome")
-  track  := NewTrack("test", genome, 100)
+  track  := AllocTrack("test", genome, 100)
 
   // bin                                         bin                                         bin                                         bin
   // 00:   010 020 030 040 050 060 070 080 090   01:   110 120 130 140 150 160 170 180 190   02:   210 220 230 240 250 260 270 280 290   03:
@@ -79,4 +79,22 @@ func TestTrack2(t *testing.T) {
     t.Error("TestTrack2 failed!")
   }
 
+}
+
+func TestTrack3(t *testing.T) {
+
+  filename1 := "track_test.1.wig"
+  filename2 := "track_test.2.wig"
+
+  genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
+  track1 := AllocTrack("TestTrack", genome, 10)
+
+  track1.WriteWiggle(filename1, "test description", true)
+  track1.WriteWiggle(filename2, "test description", false)
+
+  track2, err := ReadWiggle(filename1)
+  if err != nil {
+    t.Error(err)
+  }
+  fmt.Println(track2.Data["test1"])
 }

@@ -251,7 +251,8 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
   }
 }
 
-func readWiggle_header(fields []string, result *Track) error {
+func readWiggle_header(scanner *bufio.Scanner, result *Track) error {
+  fields := fieldsQuoted(scanner.Text())
 
   for i := 1; i < len(fields); i++ {
     headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })
@@ -259,9 +260,10 @@ func readWiggle_header(fields []string, result *Track) error {
       return errors.New("invalid declaration line")
     }
     switch headerFields[0] {
-    case "name": result.Name = headerFields[1]
+    case "name":
+      result.Name = removeQuotes(headerFields[1])
     case "type":
-      if headerFields[1] != "wiggle_0" {
+      if removeQuotes(headerFields[1]) != "wiggle_0" {
         return errors.New("unsupported wiggle format")
       }
     }
@@ -269,45 +271,45 @@ func readWiggle_header(fields []string, result *Track) error {
   return nil
 }
 
-func readWiggle_fixedStep(fields []string, scanner *bufio.Scanner, result *Track) ([]string, error) {
+func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
+  fields   := fieldsQuoted(scanner.Text())
   seqname  := ""
   sequence := []float64{}
-  start    := 1
+  position := 0
   // parse header
   for i := 1; i < len(fields); i++ {
     headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })
     if len(headerFields) != 2 {
-      return fields, errors.New("invalid declaration line")
+      return errors.New("invalid declaration line")
     }
     switch headerFields[0] {
-    case "chrom": seqname = headerFields[1]
+    case "chrom": seqname = removeQuotes(headerFields[1])
     case "start":
-      t, err := strconv.ParseInt(fields[1], 10, 64)
+      t, err := strconv.ParseInt(headerFields[1], 10, 64)
       if err != nil {
-        return fields, err
+        return err
       }
-      start = int(t)
+      position = int(t)-1
     case "step":
-      t, err := strconv.ParseInt(fields[1], 10, 64)
+      t, err := strconv.ParseInt(headerFields[1], 10, 64)
       if err != nil {
-        return fields, err
+        return err
       }
-      if result.Binsize == -1 {
-        result.Binsize = int(t)
-      } else if result.Binsize != int(t) {
-        return fields, errors.New("varying step sizes are not supported")
+      if result.Binsize != int(t) {
+        return errors.New("step sizes does not match the binsize of the track")
       }
     }
   }
   if seqname == "" {
-    return fields, errors.New("declaration line is missing the chromosome name")
+    return errors.New("declaration line is missing the chromosome name")
   }
   // parse data
-  if start <= 0 {
-    return fields, errors.New("declaration line defines invalid start position")
+  if position < 0 {
+    return errors.New("declaration line defines invalid start position")
   }
-  if start != 1 {
-    sequence = make([]float64, start-1)
+  sequence, ok := result.Data[seqname]
+  if !ok {
+    return nil
   }
   for scanner.Scan() {
     fields = strings.Fields(scanner.Text())
@@ -316,20 +318,72 @@ func readWiggle_fixedStep(fields []string, scanner *bufio.Scanner, result *Track
     }
     t, err := strconv.ParseFloat(fields[0], 64)
     if err != nil {
-      return fields, err
+      return err
     }
-    sequence = append(sequence, t)
+    sequence[position] = t
+    position++
   }
   result.Data[seqname] = sequence
 
-  return fields, nil
+  return nil
+}
+
+func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
+  fields   := fieldsQuoted(scanner.Text())
+  seqname  := ""
+  sequence := []float64{}
+  // parse header
+  for i := 1; i < len(fields); i++ {
+    headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })
+    if len(headerFields) != 2 {
+      return errors.New("invalid declaration line")
+    }
+    switch headerFields[0] {
+    case "chrom": seqname = removeQuotes(headerFields[1])
+    case "span":
+      t, err := strconv.ParseInt(headerFields[1], 10, 64)
+      if err != nil {
+        return err
+      }
+      if result.Binsize != int(t) {
+        return errors.New("span does not match the binsize of the track")
+      }
+    }
+  }
+  if seqname == "" {
+    return errors.New("declaration line is missing the chromosome name")
+  }
+  // parse data
+  sequence, ok := result.Data[seqname]
+  if !ok {
+    return nil
+  }
+  for scanner.Scan() {
+    fields = strings.Fields(scanner.Text())
+    if len(fields) != 2 {
+      break
+    }
+    t1, err := strconv.ParseInt(fields[0], 10, 64)
+    if err != nil {
+      return err
+    }
+    t2, err := strconv.ParseFloat(fields[1], 64)
+    if err != nil {
+      return err
+    }
+    position := (int(t1)-1)/result.Binsize
+    if t1 <= 0 || position >= len(sequence) {
+      return errors.New("invalid chromosomal position")
+    }
+    sequence[position] = t2
+  }
+  result.Data[seqname] = sequence
+
+  return nil
 }
 
 // Import data from wiggle files.
-func ReadWiggle(filename string) (Track, error) {
-
-  result := EmptyTrack("")
-  result.Binsize = -1
+func (track *Track) ReadWiggle(filename string) error {
 
   header := false
   fields := []string{}
@@ -338,7 +392,7 @@ func ReadWiggle(filename string) (Track, error) {
   // open file
   f, err := os.Open(filename)
   if err != nil {
-    return result, err
+    return err
   }
   defer f.Close()
 
@@ -346,7 +400,7 @@ func ReadWiggle(filename string) (Track, error) {
   if IsGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
-      return result, err
+      return err
     }
     defer g.Close()
     scanner = bufio.NewScanner(g)
@@ -355,31 +409,40 @@ func ReadWiggle(filename string) (Track, error) {
   }
 
   if !scanner.Scan() {
-    return result, nil
+    return nil
   }
-  fields = strings.Fields(scanner.Text())
   for {
+    fields = strings.Fields(scanner.Text())
+    if len(fields) == 0 {
+      break
+    }
     // header?
     if fields[0] == "track" {
       if header == false {
         header = true
-        err := readWiggle_header(fields, &result)
+        err := readWiggle_header(scanner, track)
         if err != nil {
-          return result, err
+          return err
+        }
+        if !scanner.Scan() {
+          return nil
         }
       } else {
-        return result, errors.New("file contains more than one track definition line")
+        return errors.New("file contains more than one track definition line")
       }
     } else if fields[0] == "fixedStep" {
-      f, err := readWiggle_fixedStep(fields, scanner, &result)
+      err := readWiggle_fixedStep(scanner, track)
       if err != nil {
-        return result, err
+        return err
       }
-      fields = f
     } else if fields[0] == "variableStep" {
+      err := readWiggle_variableStep(scanner, track)
+      if err != nil {
+        return err
+      }
     } else {
-      return result, errors.New("unknown sequence type (i.e. not fixedStep or variableStep)")
+      return errors.New("unknown sequence type (i.e. not fixedStep or variableStep)")
     }
   }
-  return result, nil
+  return nil
 }

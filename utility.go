@@ -23,6 +23,9 @@ import "bytes"
 import "compress/gzip"
 import "io"
 import "io/ioutil"
+import "regexp"
+import "strings"
+import "unicode"
 
 /* -------------------------------------------------------------------------- */
 
@@ -82,4 +85,26 @@ func writeFile(filename string, r io.Reader, compress bool) {
     w.Flush()
   }
   ioutil.WriteFile(filename, buffer.Bytes(), 0666)
+}
+
+/* -------------------------------------------------------------------------- */
+
+func fieldsQuoted(line string) []string {
+  // if quoted
+  q := false
+  f := func(r rune) bool {
+    if r == '"' {
+      q = !q
+    }
+    return unicode.IsSpace(r) && q == false
+  }
+  return strings.FieldsFunc(line, f)
+}
+
+func removeQuotes(str string) string {
+  reg := regexp.MustCompile(`"([^"]*)"`)
+  if reg.MatchString(str) {
+    return reg.ReplaceAllString(str, "${1}")
+  }
+  return str
 }

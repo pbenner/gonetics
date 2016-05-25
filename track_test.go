@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
+//import   "fmt"
 import   "math"
 import   "testing"
 
@@ -87,14 +87,44 @@ func TestTrack3(t *testing.T) {
   filename2 := "track_test.2.wig"
 
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
-  track1 := AllocTrack("TestTrack", genome, 10)
+  track1 := AllocTrack("Test Track", genome, 10)
+  track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
 
   track1.WriteWiggle(filename1, "test description", true)
   track1.WriteWiggle(filename2, "test description", false)
 
-  track2, err := ReadWiggle(filename1)
-  if err != nil {
-    t.Error(err)
+  track2 := AllocTrack("", genome, 10)
+  track3 := AllocTrack("", genome, 10)
+  err1 := track2.ReadWiggle(filename1)
+  err2 := track3.ReadWiggle(filename2)
+  if err1 != nil {
+    t.Error(err1)
   }
-  fmt.Println(track2.Data["test1"])
+  if err2 != nil {
+    t.Error(err2)
+  }
+  if track1.Name != track2.Name {
+    t.Error("TestTrack3 failed")
+  }
+  if track1.Name != track3.Name {
+    t.Error("TestTrack3 failed")
+  }
+  for name, seq1 := range track1.Data {
+    seq2 := track2.Data[name]
+    seq3 := track3.Data[name]
+    if seq2 == nil {
+      t.Error("TestTrack3 failed")
+    }
+    if seq3 == nil {
+      t.Error("TestTrack3 failed")
+    }
+    for i := 0; i < len(seq1); i++ {
+      if seq1[i] != seq2[i] {
+        t.Error("TestTrack3 failed")
+      }
+      if seq1[i] != seq3[i] {
+        t.Error("TestTrack3 failed")
+      }
+    }
+  }
 }

@@ -4,7 +4,7 @@ Documentation is available [here](https://godoc.org/github.com/pbenner/gonetics)
 
 ### GRanges
 
-```
+```go
   seqnames := []string{"chr1", "chr1", "chr1"}
   from     := []int{100000266, 100000271, 100000383}
   to       := []int{100000291, 100000296, 100000408}

@@ -18,9 +18,8 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+//import "fmt"
 import "bufio"
-import "bytes"
-import "fmt"
 import "os"
 import "strconv"
 import "strings"
@@ -39,70 +38,18 @@ type GPeaks struct {
 /* constructors
  * -------------------------------------------------------------------------- */
 
-func NewGPeaks(seqnames []string, from, to, absSummit []int, pvalue, foldEnrichment []float64) GPeaks {
+func NewGPeaks(seqnames []string, from, to, absSummit []int, pvalue, foldEnrichment []float64) GRanges {
   r := NewGRanges(seqnames, from, to, []byte{})
-  n := r.Length()
-  if len(absSummit) != n || len(pvalue) != n || len(foldEnrichment) != n {
-    panic("NewGPeaks(): invalid arguments!")
-  }
-  return GPeaks{r, absSummit, pvalue, foldEnrichment}
-}
-
-/* convert to string
- * -------------------------------------------------------------------------- */
-
-func (gpeaks GPeaks) String() string {
-  var buffer bytes.Buffer
-  // number of lines to print
-  const n int = 10
-
-  printRow := func(i int) {
-    if i != 0 {
-      buffer.WriteString("\n")
-    }
-    buffer.WriteString(
-      fmt.Sprintf("%10d %10s [%10d, %10d] | %10d %14f %15f",
-        i+1,
-        gpeaks.Seqnames[i],
-        gpeaks.Ranges[i].From,
-        gpeaks.Ranges[i].To,
-        gpeaks.AbsSummit[i],
-        gpeaks.Pvalue[i],
-        gpeaks.FoldEnrichment[i]))
-  }
-
-  // pring header
-  buffer.WriteString(
-    fmt.Sprintf("%10s %10s %24s | %10s %14s %15s\n",
-      "", "seqnames", "ranges",
-      "abs_summit", "-log10(pvalue)", "fold_enrichment"))
-
-  // select rows to print
-  if gpeaks.Length() <= n+1 {
-    // print all entries
-    for i := 0; i < gpeaks.Length(); i++ {
-      printRow(i)
-    }
-  } else {
-    // print first n/2 rows
-    for i := 0; i < n/2; i++ {
-      printRow(i)
-    }
-    buffer.WriteString(
-      fmt.Sprintf("\n%10s %10s %24s | %10s", "", "...", "...", "..."))
-    // print last n/2 rows
-    for i := gpeaks.Length() - n/2; i < gpeaks.Length(); i++ {
-      printRow(i)
-    }
-  }
-
-  return buffer.String()
+  r.AddMeta("abs_summit",      absSummit)
+  r.AddMeta("-log10(pvalue)",  pvalue)
+  r.AddMeta("fold_enrichment", foldEnrichment)
+  return r
 }
 
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ReadXlsPeaks(filename string) GPeaks {
+func ReadXlsPeaks(filename string) GRanges {
 
   f, err := os.Open(filename)
   Check(err)

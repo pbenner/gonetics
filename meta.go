@@ -24,6 +24,7 @@ import "bufio"
 import "compress/gzip"
 import "errors"
 import "io"
+import "io/ioutil"
 import "os"
 import "sort"
 import "strconv"
@@ -507,87 +508,126 @@ func (meta *Meta) Sort(name string, reverse bool) (Meta, error) {
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func (meta *Meta) PrettyPrint(n int) string {
+func (meta Meta) PrettyPrint(n int) string {
   var buffer bytes.Buffer
-  var bufferHeader bytes.Buffer
-  writer       := bufio.NewWriter(&buffer)
-  writerHeader := bufio.NewWriter(&bufferHeader)
-  m := meta.MetaLength()
-  maxLengths := make([]int, m)
+  writer := bufio.NewWriter(&buffer)
 
-  printRow := func(writer io.Writer, i int) {
+  printCell := func(writer io.Writer, widths []int, i, j int) int {
+    length := 0
+    switch v := meta.MetaData[j].(type) {
+    case []string :
+      format := fmt.Sprintf(" %%%ds", widths[j]-1)
+      length, _ = fmt.Fprintf(writer, format, v[i])
+    case []float64:
+      format := fmt.Sprintf(" %%%df", widths[j]-1)
+      length, _ = fmt.Fprintf(writer, format, v[i])
+    case []int    :
+      format := fmt.Sprintf(" %%%dd", widths[j]-1)
+      length, _ = fmt.Fprintf(writer, format, v[i])
+    case [][]string:
+      maxLength := widths[j]/len(v[i])
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%ds", maxLength-1)
+        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
+        if maxLength < l {
+          maxLength = l
+        }
+      }
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%ds", maxLength-1)
+        l, _ := fmt.Fprintf(writer, format, v[i][k])
+        length += l
+      }
+    case [][]float64:
+      maxLength := widths[j]/len(v[i])
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%df", maxLength-1)
+        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
+        if maxLength < l {
+          maxLength = l
+        }
+      }
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%df", maxLength-1)
+        l, _ := fmt.Fprintf(writer, format, v[i][k])
+        length += l
+      }
+    case [][]int:
+      maxLength := widths[j]/len(v[i])
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%dd", maxLength-1)
+        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
+        if maxLength < l {
+          maxLength = l
+        }
+      }
+      for k := 0; k < len(v[i]); k++ {
+        format := fmt.Sprintf(" %%%dd", maxLength-1)
+        l, _ := fmt.Fprintf(writer, format, v[i][k])
+        length += l
+      }
+    }
+    return length
+  }
+  printRow := func(writer io.Writer, widths []int, i int) {
     if i != 0 {
       fmt.Fprintf(writer, "\n")
     }
-    for j := 0; j < m; j++ {
-      length := 0
-      switch v := meta.MetaData[j].(type) {
-      case []string :
-        length, _ = fmt.Fprintf(writer, " %12s", v[i])
-      case []float64:
-        length, _ = fmt.Fprintf(writer, " %12f", v[i])
-      case []int    :
-        length, _ = fmt.Fprintf(writer, " %12d", v[i])
-      case [][]string:
-        for k := 0; k < len(v[i]); k++ {
-          l, _ := fmt.Fprintf(writer, " %12s", v[i][k])
-          length += l
-        }
-      case [][]float64:
-        for k := 0; k < len(v[i]); k++ {
-          l, _ := fmt.Fprintf(writer, " %12f", v[i][k])
-          length += l
-        }
-      case [][]int:
-        for k := 0; j < len(v[i]); k++ {
-          l, _ := fmt.Fprintf(writer, " %12d", v[i][k])
-          length += l
-        }
-      }
-      if maxLengths[j] > length {
-        format := fmt.Sprintf("%%%ds", maxLengths[j]-length)
-        fmt.Fprintf(writer, format, "")
-      }
-      if maxLengths[j] < length {
-        maxLengths[j] = length
+    for j := 0; j < meta.MetaLength(); j++ {
+      printCell(writer, widths, i, j)
+    }
+  }
+  // compute widths of all cells in row i
+  updateMaxWidths := func(i int, widths []int) {
+    for j := 0; j < meta.MetaLength(); j++ {
+      width := printCell(ioutil.Discard, widths, i, j)
+      if width > widths[j] {
+        widths[j] = width
       }
     }
   }
-  // select rows to print
-  printData := func(writer io.Writer, ) {
-    if meta.Length() <= n+1 {
-      // print all entries
-      for i := 0; i < meta.Length(); i++ {
-        printRow(writer, i)
-      }
-    } else {
-      // print first n/2 rows
-      for i := 0; i < n/2; i++ {
-        printRow(writer, i)
-      }
-      fmt.Fprintf(writer, "\n %12s", "...")
-      // print last n/2 rows
-      for i := meta.Length() - n/2; i < meta.Length(); i++ {
-        printRow(writer, i)
-      }
+  printHeader := func(writer io.Writer, widths []int) {
+    for j := 0; j < meta.MetaLength(); j++ {
+      format := fmt.Sprintf(" %%%ds", widths[j]-1)
+      fmt.Fprintf(writer, format, meta.MetaName[j])
     }
+    fmt.Fprintf(writer, "\n")
+  }
+  applyRows := func(f1 func(i int), f2 func()) {
+    if meta.Length() <= n+1 {
+      // apply to all entries
+      for i := 0; i < meta.Length(); i++ { f1(i) }
+    } else {
+      // apply to first n/2 rows
+      for i := 0; i < n/2; i++ { f1(i) }
+      // between first and last n/2 rows
+      f2()
+      // apply to last n/2 rows
+      for i := meta.Length() - n/2; i < meta.Length(); i++ { f1(i) }
+    }
+  }
+  // maximum column widths
+  widths := make([]int, meta.MetaLength())
+  for j := 0; j < meta.MetaLength(); j++ {
+    widths[j], _ = fmt.Fprintf(ioutil.Discard, " %s", meta.MetaName[j])
   }
   // determine column widths
-  printData(writer)
+  applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
+  // pring header
+  printHeader(writer, widths)
+  // print rows
+  applyRows(
+    func(i int) { printRow(writer, widths, i) },
+    func() {
+      fmt.Fprintf(writer, "\n")
+        for j := 0; j < meta.MetaLength(); j++ {
+          format := fmt.Sprintf(" %%%ds", widths[j]-1)
+          fmt.Fprintf(writer, format, "...")
+        }
+    })
   writer.Flush()
-  buffer.Reset()
-  // actually print data
-  printData(writer)
-  writer.Flush()
-  // print header
-  for j := 0; j < m; j++ {
-    format := fmt.Sprintf("%%%ds", maxLengths[j])
-    fmt.Fprintf(writerHeader, format, meta.MetaName[j])
-  }
-  writerHeader.WriteString("\n")
-  writerHeader.Flush()
 
-  return bufferHeader.String() + buffer.String()
+  return buffer.String()
 }
 
 func (meta *Meta) String() string {

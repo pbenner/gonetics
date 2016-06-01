@@ -32,5 +32,4 @@ func TestGPeaks1(t *testing.T) {
   if peaks.Length() != 16 {
     t.Error("TestGPeaks1 failed!")
   }
-
 }

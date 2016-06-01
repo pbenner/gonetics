@@ -131,3 +131,8 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
     []GRanges{treatment1, treatment2}, []GRanges{control1, control2},
     genome, d, binsize, pcounts, pcounts, false)
 ```
+
+Export track:
+```go
+  result.WriteWiggle("track.wig", "track description", true)
+```

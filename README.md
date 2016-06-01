@@ -105,6 +105,7 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
   control1   := ReadBedReads("SRR094215.bed")
   control2   := ReadBedReads("SRR094216.bed")
 
+  genome  := ReadGenome("Data/hg19.genome")
   d       := 200 // d=200 (see *_peaks.xls)
   binsize := 100 // binsize of the track
   pcounts := 1   // pseudocounts

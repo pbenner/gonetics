@@ -82,7 +82,7 @@ func readGTFParseLine(line string) []string {
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func ReadGTF(filename, geneIdName, exprIdName string, genes Genes, verbose bool) Genes {
+func (genes *Genes) ReadGTF(filename, geneIdName, exprIdName string, verbose bool) {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
@@ -142,13 +142,11 @@ func ReadGTF(filename, geneIdName, exprIdName string, genes Genes, verbose bool)
     }
   }
   genes.AddMeta("expr", expr)
-
-  return genes
 }
 
 // Import expression data from cufflinks. The data is added to the gene
 // list as a meta column named "expr".
-func ReadCufflinksFPKMTracking(filename string, genes Genes, verbose bool) Genes {
+func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
@@ -198,6 +196,4 @@ func ReadCufflinksFPKMTracking(filename string, genes Genes, verbose bool) Genes
     }
   }
   genes.AddMeta("expr", expr)
-
-  return genes
 }

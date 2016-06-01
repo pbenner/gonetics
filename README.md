@@ -106,7 +106,7 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
   control2   := ReadBedReads("SRR094216.bed")
 
   d       := 200 // d=200 (see *_peaks.xls)
-  binzise := 100 // binsize of the track
+  binsize := 100 // binsize of the track
   pcounts := 1   // pseudocounts
   track := NormalizedTrack("H3K4me3",
     []GRanges{treatment1, treatment2}, []GRanges{control1, control2},

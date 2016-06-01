@@ -60,6 +60,19 @@ func TestGRanges2(t *testing.T) {
   }
 }
 
+func TestGRanges3(t *testing.T) {
+  seqnames := []string{"chr1", "chr1", "chr1"}
+  from     := []int{100000266, 100000271, 100000383}
+  to       := []int{100000291, 100000296, 100000408}
+  strand   := []byte{'+', '+', '-'}
+
+  granges  := NewGRanges(seqnames, from, to, strand)
+
+  if granges.Length() != 3 {
+    t.Error("TestGRanges3 failed!")
+  }
+}
+
 func TestGRangesRandom(t *testing.T) {
   genome  := ReadGenome("Data/hg19.genome")
   granges := RandomGRanges(1000, 10000, genome, true)

@@ -92,3 +92,23 @@ Import peaks from a MACS xls file:
 	14       2R [3668231, 3668440)      * |     3668363  22.000000       9.943110        4.476950       7.976070
 	15       2R [3670063, 3670392)      * |     3670180  38.000000      19.474590        5.901360      17.393440
 	16       2R [3670470, 3670926)      * |     3670719 227.000000     305.243350       45.831180     301.974760
+
+### Track
+
+Import ChIP-seq reads from bed files and create a track with the normalized signal:
+
+```go
+  fmt.Fprintf(os.Stderr, "Parsing reads (treatment) ...\n")
+  treatment1 := ReadBedReads("SRR094207.bed")
+  treatment2 := ReadBedReads("SRR094208.bed")
+  fmt.Fprintf(os.Stderr, "Parsing reads (control)   ...\n")
+  control1   := ReadBedReads("SRR094215.bed")
+  control2   := ReadBedReads("SRR094216.bed")
+
+  d       := 200 // d=200 (see *_peaks.xls)
+  binzise := 100 // binsize of the track
+  pcounts := 1   // pseudocounts
+  track := NormalizedTrack("H3K4me3",
+    []GRanges{treatment1, treatment2}, []GRanges{control1, control2},
+    genome, d, binsize, pcounts, pcounts, false)
+```

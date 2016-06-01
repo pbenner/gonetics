@@ -30,6 +30,24 @@ Add some meta data to the GRanges object:
 	2     chr1 [100000271, 100000296)      + |      2.000000
 	3     chr1 [100000383, 100000408)      - |      3.000000
 
+Find overlaps of two GRanges objects:
+
+```go
+  rSubjects := NewGRanges(
+    []string{"chr4", "chr4", "chr4", "chr4"},
+    []int{100, 200, 300, 400},
+    []int{150, 250, 350, 450},
+    []byte{})
+  rQuery := NewGRanges(
+    []string{"chr1", "chr4", "chr4", "chr4", "chr4", "chr4"},
+    []int{100, 110, 190, 340, 390, 450},
+    []int{150, 120, 220, 360, 400, 500},
+    []byte{})
+
+  queryHits, subjectHits := FindOverlaps(rQuery, rSubjects)
+```
+	  queryHits: [1 2 3 4 5]
+	subjectHits: [0 1 2 3 3]
 
 ### Genes
 

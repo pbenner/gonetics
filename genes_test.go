@@ -39,6 +39,7 @@ func TestGenes1(t *testing.T) {
 // func TestGenes2(t *testing.T) {
 
 //   genes := ImportGenesFromUCSC("hg19", "ensGene")
+//   genes.WriteTable("hg19.knownGene.txt", true, false)
 //   fmt.Println(genes)
 
 // }

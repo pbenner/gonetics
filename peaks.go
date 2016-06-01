@@ -101,7 +101,7 @@ func ReadXlsPeaks(filename string) GRanges {
 
     seqnames       = append(seqnames,       fields[0])
     from           = append(from,           int(t1))
-    to             = append(to,             int(t2))
+    to             = append(to,             int(t2)+1)
     absSummit      = append(absSummit,      int(t3))
     pileup         = append(pileup,         float64(t4))
     pvalue         = append(pvalue,         float64(t5))

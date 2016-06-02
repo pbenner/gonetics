@@ -195,8 +195,8 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
     to   := r.Ranges[i].To
     seq  := r.Seqnames[i]
     if m == -1 {
-      m = (to - from)/track.Binsize + 1
-    } else if m != (to - from)/track.Binsize + 1 {
+      m = DivIntUp(to - from, track.Binsize)
+    } else if m != DivIntUp(to - from, track.Binsize) {
       panic("varying window sizes are not allowed")
     }
     // all rows are using the same binsize

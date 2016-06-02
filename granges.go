@@ -265,12 +265,9 @@ func (granges GRanges) PrettyPrint(n int) string {
     fmt.Fprintf(writer, format,
       "", "seqnames", "ranges", "strand")
     printMetaRow(writer)
-    fmt.Fprintf(writer, "\n")
   }
   printRow := func(writer io.Writer, format string, i int) {
-    if i != 0 {
-      fmt.Fprintf(writer, "\n")
-    }
+    fmt.Fprintf(writer, "\n")
     fmt.Fprintf(writer, format,
       i+1,
       granges.Seqnames[i],

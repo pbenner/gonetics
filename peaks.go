@@ -18,9 +18,8 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+//import "fmt"
 import "bufio"
-import "bytes"
-import "fmt"
 import "os"
 import "strconv"
 import "strings"
@@ -39,70 +38,20 @@ type GPeaks struct {
 /* constructors
  * -------------------------------------------------------------------------- */
 
-func NewGPeaks(seqnames []string, from, to, absSummit []int, pvalue, foldEnrichment []float64) GPeaks {
+func NewGPeaks(seqnames []string, from, to, absSummit []int, pileup, pvalue, foldEnrichment, qvalue []float64) GRanges {
   r := NewGRanges(seqnames, from, to, []byte{})
-  n := r.Length()
-  if len(absSummit) != n || len(pvalue) != n || len(foldEnrichment) != n {
-    panic("NewGPeaks(): invalid arguments!")
-  }
-  return GPeaks{r, absSummit, pvalue, foldEnrichment}
-}
-
-/* convert to string
- * -------------------------------------------------------------------------- */
-
-func (gpeaks GPeaks) String() string {
-  var buffer bytes.Buffer
-  // number of lines to print
-  const n int = 10
-
-  printRow := func(i int) {
-    if i != 0 {
-      buffer.WriteString("\n")
-    }
-    buffer.WriteString(
-      fmt.Sprintf("%10d %10s [%10d, %10d] | %10d %14f %15f",
-        i+1,
-        gpeaks.Seqnames[i],
-        gpeaks.Ranges[i].From,
-        gpeaks.Ranges[i].To,
-        gpeaks.AbsSummit[i],
-        gpeaks.Pvalue[i],
-        gpeaks.FoldEnrichment[i]))
-  }
-
-  // pring header
-  buffer.WriteString(
-    fmt.Sprintf("%10s %10s %24s | %10s %14s %15s\n",
-      "", "seqnames", "ranges",
-      "abs_summit", "-log10(pvalue)", "fold_enrichment"))
-
-  // select rows to print
-  if gpeaks.Length() <= n+1 {
-    // print all entries
-    for i := 0; i < gpeaks.Length(); i++ {
-      printRow(i)
-    }
-  } else {
-    // print first n/2 rows
-    for i := 0; i < n/2; i++ {
-      printRow(i)
-    }
-    buffer.WriteString(
-      fmt.Sprintf("\n%10s %10s %24s | %10s", "", "...", "...", "..."))
-    // print last n/2 rows
-    for i := gpeaks.Length() - n/2; i < gpeaks.Length(); i++ {
-      printRow(i)
-    }
-  }
-
-  return buffer.String()
+  r.AddMeta("abs_summit",      absSummit)
+  r.AddMeta("pileup",          pileup)
+  r.AddMeta("-log10(pvalue)",  pvalue)
+  r.AddMeta("fold_enrichment", foldEnrichment)
+  r.AddMeta("-log10(qvalue)",  qvalue)
+  return r
 }
 
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ReadXlsPeaks(filename string) GPeaks {
+func ReadXlsPeaks(filename string) GRanges {
 
   f, err := os.Open(filename)
   Check(err)
@@ -114,8 +63,10 @@ func ReadXlsPeaks(filename string) GPeaks {
   from           := []int{}
   to             := []int{}
   absSummit      := []int{}
+  pileup         := []float64{}
   pvalue         := []float64{}
   foldEnrichment := []float64{}
+  qvalue         := []float64{}
 
   scanner := bufio.NewScanner(f)
   for scanner.Scan() {
@@ -131,8 +82,9 @@ func ReadXlsPeaks(filename string) GPeaks {
     }
     if header == false {
       // first line is the header
-      if fields[0] != "chr"        || fields[1] != "start"          || fields[2] != "end" ||
-        (fields[4] != "abs_summit" || fields[6] != "-log10(pvalue)" || fields[7] != "fold_enrichment") {
+      if fields[0] != "chr"             || fields[1] != "start"  || fields[2] != "end" ||
+        (fields[4] != "abs_summit"      || fields[5] != "pileup" || fields[6] != "-log10(pvalue)") ||
+        (fields[7] != "fold_enrichment" || fields[8] != "-log10(qvalue)") {
         panic("Invalid Xls header!")
       }
       header = true
@@ -141,16 +93,20 @@ func ReadXlsPeaks(filename string) GPeaks {
     t1, e1 := strconv.ParseInt(fields[1], 10, 64) // from
     t2, e2 := strconv.ParseInt(fields[2], 10, 64) // to
     t3, e3 := strconv.ParseInt(fields[4], 10, 64) // abs_summit
-    t4, e4 := strconv.ParseFloat(fields[6], 64)   // pvalue
-    t5, e5 := strconv.ParseFloat(fields[7], 64)   // fold_enrichment
-    Check(e1); Check(e2); Check(e3); Check(e4); Check(e5)
+    t4, e4 := strconv.ParseFloat(fields[5], 64)   // pileup
+    t5, e5 := strconv.ParseFloat(fields[6], 64)   // pvalue
+    t6, e6 := strconv.ParseFloat(fields[7], 64)   // fold_enrichment
+    t7, e7 := strconv.ParseFloat(fields[8], 64)   // qvalue
+    Check(e1); Check(e2); Check(e3); Check(e4); Check(e5); Check(e6); Check(e7)
 
     seqnames       = append(seqnames,       fields[0])
     from           = append(from,           int(t1))
-    to             = append(to,             int(t2))
+    to             = append(to,             int(t2)+1)
     absSummit      = append(absSummit,      int(t3))
-    pvalue         = append(pvalue,         float64(t4))
-    foldEnrichment = append(foldEnrichment, float64(t5))
+    pileup         = append(pileup,         float64(t4))
+    pvalue         = append(pvalue,         float64(t5))
+    foldEnrichment = append(foldEnrichment, float64(t6))
+    qvalue         = append(qvalue,         float64(t7))
   }
-  return NewGPeaks(seqnames, from, to, absSummit, pvalue, foldEnrichment)
+  return NewGPeaks(seqnames, from, to, absSummit, pileup, pvalue, foldEnrichment, qvalue)
 }

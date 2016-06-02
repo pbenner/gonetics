@@ -30,7 +30,7 @@ func TestGenesExpr1(t *testing.T) {
 //  genes.WriteTable("Data/hg19.ensGene.txt.gz", false, true)
 
   genes := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
-  genes  = ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", genes, false)
+  genes.ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", false)
 
   if len(genes.GetMetaFloat("expr")) != 204940 {
     t.Error("TestGenesExpr1 failed!")

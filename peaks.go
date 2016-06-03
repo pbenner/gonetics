@@ -26,23 +26,51 @@ import "strings"
 
 import . "github.com/pbenner/pshape/Utility"
 
+/* -------------------------------------------------------------------------- */
+
+type GPeaks struct {
+  GRanges
+}
+
 /* constructors
  * -------------------------------------------------------------------------- */
 
-func NewGPeaks(seqnames []string, from, to, absSummit []int, pileup, pvalue, foldEnrichment, qvalue []float64) GRanges {
+func NewGPeaks(seqnames []string, from, to, absSummit []int, pileup, pvalue, foldEnrichment, qvalue []float64) GPeaks {
   r := NewGRanges(seqnames, from, to, []byte{})
   r.AddMeta("abs_summit",      absSummit)
   r.AddMeta("pileup",          pileup)
   r.AddMeta("-log10(pvalue)",  pvalue)
   r.AddMeta("fold_enrichment", foldEnrichment)
   r.AddMeta("-log10(qvalue)",  qvalue)
-  return r
+  return GPeaks{r}
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (p GPeaks) AbsSummit() []int {
+  return p.GetMetaInt("abs_summit")
+}
+
+func (p GPeaks) Pileup() []float64 {
+  return p.GetMetaFloat("pileup")
+}
+
+func (p GPeaks) Pvalue() []float64 {
+  return p.GetMetaFloat("-log10(pvalue)")
+}
+
+func (p GPeaks) FoldEnrichment() []float64 {
+  return p.GetMetaFloat("fold_enrichment")
+}
+
+func (p GPeaks) Qvalue() []float64 {
+  return p.GetMetaFloat("-log10(qvalue)")
 }
 
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ReadXlsPeaks(filename string) GRanges {
+func ReadXlsPeaks(filename string) GPeaks {
 
   f, err := os.Open(filename)
   Check(err)

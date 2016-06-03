@@ -26,15 +26,6 @@ import "strings"
 
 import . "github.com/pbenner/pshape/Utility"
 
-/* -------------------------------------------------------------------------- */
-
-type GPeaks struct {
-  GRanges
-  AbsSummit      []int
-  Pvalue         []float64
-  FoldEnrichment []float64
-}
-
 /* constructors
  * -------------------------------------------------------------------------- */
 

@@ -57,7 +57,6 @@ func NewTrack(name string, seqnames []string, sequences [][]float64, binsize int
   return Track{name, data, binsize}
 }
 
-
 func AllocTrack(name string, genome Genome, binsize int) Track {
   data := make(TMapType)
 
@@ -213,6 +212,34 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
     }
   }
   return track1
+}
+
+/* map/reduce
+ * -------------------------------------------------------------------------- */
+
+func (track *Track) Map(f func(float64) float64) {
+  for _, sequence := range track.Data {
+    for i := 0; i < len(sequence); i++ {
+      sequence[i] = f(sequence[i])
+    }
+  }
+}
+
+func (track *Track) Reduce(f func(float64, float64) float64, x0 float64) map[string]float64 {
+  result := make(map[string]float64)
+
+  for name, sequence := range track.Data {
+    if len(sequence) == 0 {
+      continue
+    }
+    tmp := f(x0, sequence[0])
+
+    for i := 1; i < len(sequence); i++ {
+      tmp = f(tmp, sequence[i])
+    }
+    result[name] = tmp
+  }
+  return result
 }
 
 /* i/o

@@ -512,6 +512,30 @@ func (meta Meta) PrettyPrint(n int) string {
   var buffer bytes.Buffer
   writer := bufio.NewWriter(&buffer)
 
+  printCellSlice := func(writer io.Writer, widths []int, i, j int, data interface{}) int {
+    var tmpBuffer bytes.Buffer
+    tmpWriter := bufio.NewWriter(&tmpBuffer)
+    switch v := data.(type) {
+    case [][]string:
+      for k := 0; k < len(v[i]); k++ {
+        fmt.Fprintf(tmpWriter, " %s", v[i][k])
+      }
+    case [][]float64:
+      for k := 0; k < len(v[i]); k++ {
+        fmt.Fprintf(tmpWriter, " %f", v[i][k])
+      }
+    case [][]int:
+      for k := 0; k < len(v[i]); k++ {
+        fmt.Fprintf(tmpWriter, " %d", v[i][k])
+      }
+    default:
+      panic("invalid meta data")
+    }
+    tmpWriter.Flush()
+    format := fmt.Sprintf(" %%%ds", widths[j]-1)
+    l, _ := fmt.Fprintf(writer, format, tmpBuffer.String())
+    return l
+  }
   printCell := func(writer io.Writer, widths []int, i, j int) int {
     length := 0
     switch v := meta.MetaData[j].(type) {
@@ -524,48 +548,8 @@ func (meta Meta) PrettyPrint(n int) string {
     case []int    :
       format := fmt.Sprintf(" %%%dd", widths[j]-1)
       length, _ = fmt.Fprintf(writer, format, v[i])
-    case [][]string:
-      maxLength := widths[j]/len(v[i])
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%ds", maxLength-1)
-        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
-        if maxLength < l {
-          maxLength = l
-        }
-      }
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%ds", maxLength-1)
-        l, _ := fmt.Fprintf(writer, format, v[i][k])
-        length += l
-      }
-    case [][]float64:
-      maxLength := widths[j]/len(v[i])
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%df", maxLength-1)
-        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
-        if maxLength < l {
-          maxLength = l
-        }
-      }
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%df", maxLength-1)
-        l, _ := fmt.Fprintf(writer, format, v[i][k])
-        length += l
-      }
-    case [][]int:
-      maxLength := widths[j]/len(v[i])
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%dd", maxLength-1)
-        l, _ := fmt.Fprintf(ioutil.Discard, format, v[i][k])
-        if maxLength < l {
-          maxLength = l
-        }
-      }
-      for k := 0; k < len(v[i]); k++ {
-        format := fmt.Sprintf(" %%%dd", maxLength-1)
-        l, _ := fmt.Fprintf(writer, format, v[i][k])
-        length += l
-      }
+    default:
+      length += printCellSlice(writer, widths, i, j, v)
     }
     return length
   }

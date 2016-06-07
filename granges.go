@@ -319,6 +319,9 @@ func (granges GRanges) String() string {
   return granges.PrettyPrint(10)
 }
 
+/* i/o
+ * -------------------------------------------------------------------------- */
+
 // Export GRanges as GTF file. Required GTF fields should be provided
 // as meta columns named sources, features, scores, and frames. All other
 // meta columns are exported as optional fields.
@@ -429,15 +432,18 @@ func (granges GRanges) WriteGTF(filename string) {
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(filename string, header, compress bool) {
+func (granges GRanges) WriteTable(filename string, header, strand, compress bool) {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
 
   // print header
   if header {
-    fmt.Fprintf(w, "%10s %10s %10s %6s",
-      "seqnames", "from", "to", "strand")
+    if strand {
+      fmt.Fprintf(w, "%10s %10s %10s %6s", "seqnames", "from", "to", "strand")
+    } else {
+      fmt.Fprintf(w, "%10s %10s %10s", "seqnames", "from", "to")
+    }
     granges.Meta.WriteTableRow(w, -1)
     fmt.Fprintf(w, "\n")
   }
@@ -446,10 +452,12 @@ func (granges GRanges) WriteTable(filename string, header, compress bool) {
     fmt.Fprintf(w,  "%10s", granges.Seqnames[i])
     fmt.Fprintf(w, " %10d", granges.Ranges[i].From)
     fmt.Fprintf(w, " %10d", granges.Ranges[i].To)
-    if len(granges.Strand) > 0 {
-      fmt.Fprintf(w, " %6c", granges.Strand[i])
-    } else {
-      fmt.Fprintf(w, " %6c", '*')
+    if strand {
+      if len(granges.Strand) > 0 {
+        fmt.Fprintf(w, " %6c", granges.Strand[i])
+      } else {
+        fmt.Fprintf(w, " %6c", '*')
+      }
     }
     granges.Meta.WriteTableRow(w, i)
     fmt.Fprintf(w, "\n")
@@ -458,8 +466,55 @@ func (granges GRanges) WriteTable(filename string, header, compress bool) {
   writeFile(filename, &buffer, compress)
 }
 
-/* i/o
- * -------------------------------------------------------------------------- */
+// Export GRanges object as bed file with three columns.
+func (granges GRanges) WriteBed3(filename string, compress bool) {
+  var buffer bytes.Buffer
+
+  w := bufio.NewWriter(&buffer)
+
+  // print data
+  for i := 0; i < granges.Length(); i++ {
+    fmt.Fprintf(w,   "%s", granges.Seqnames[i])
+    fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
+    fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
+    fmt.Fprintf(w, "\n")
+  }
+  w.Flush()
+  writeFile(filename, &buffer, compress)
+}
+
+func (granges GRanges) WriteBed6(filename string, compress bool) {
+  var buffer bytes.Buffer
+
+  w := bufio.NewWriter(&buffer)
+
+  name  := granges.GetMetaStr  ("name")
+  score := granges.GetMetaFloat("score")
+
+  for i := 0; i < granges.Length(); i++ {
+    fmt.Fprintf(w,   "%s", granges.Seqnames[i])
+    fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
+    fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
+    if len(name) > 0 {
+      fmt.Fprintf(w, "\t%s", name[i])
+    } else {
+      fmt.Fprintf(w, "\t%s", ".")
+    }
+    if len(score) > 0 {
+      fmt.Fprintf(w, "\t%f", score[i])
+    } else {
+      fmt.Fprintf(w, "\t%s", ".")
+    }
+    if len(granges.Strand) > 0 {
+      fmt.Fprintf(w, "\t%c", granges.Strand[i])
+    } else {
+      fmt.Fprintf(w, "\t%c", '*')
+    }
+    fmt.Fprintf(w, "\n")
+  }
+  w.Flush()
+  writeFile(filename, &buffer, compress)
+}
 
 func ReadGRangesFromTable(filename string, names, types []string) (GRanges, error) {
   result   := GRanges{}

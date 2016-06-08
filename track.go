@@ -335,9 +335,8 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
     return errors.New("declaration line defines invalid start position")
   }
   sequence, ok := result.Data[seqname]
-  if !ok {
-    return nil
-  }
+  // if the sequence is not available in the track, continue parsing
+  // the file
   for scanner.Scan() {
     fields = strings.Fields(scanner.Text())
     if len(fields) != 1 {
@@ -347,13 +346,14 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
     if err != nil {
       return err
     }
-    if position < len(sequence) {
+    if ok && position < len(sequence) {
       sequence[position] = t
       position++
     }
   }
-  result.Data[seqname] = sequence
-
+  if ok {
+    result.Data[seqname] = sequence
+  }
   return nil
 }
 
@@ -384,9 +384,6 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
   }
   // parse data
   sequence, ok := result.Data[seqname]
-  if !ok {
-    return nil
-  }
   for scanner.Scan() {
     fields = strings.Fields(scanner.Text())
     if len(fields) != 2 {
@@ -400,16 +397,17 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
     if err != nil {
       return err
     }
-    position := (int(t1)-1)/result.Binsize
     if t1 <= 0 {
       return errors.New("invalid chromosomal position")
     }
-    if position < len(sequence) {
+    position := (int(t1)-1)/result.Binsize
+    if ok && position < len(sequence) {
       sequence[position] = t2
     }
   }
-  result.Data[seqname] = sequence
-
+  if ok {
+    result.Data[seqname] = sequence
+  }
   return nil
 }
 

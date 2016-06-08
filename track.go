@@ -347,8 +347,10 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
     if err != nil {
       return err
     }
-    sequence[position] = t
-    position++
+    if position < len(sequence) {
+      sequence[position] = t
+      position++
+    }
   }
   result.Data[seqname] = sequence
 
@@ -399,10 +401,12 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
       return err
     }
     position := (int(t1)-1)/result.Binsize
-    if t1 <= 0 || position >= len(sequence) {
+    if t1 <= 0 {
       return errors.New("invalid chromosomal position")
     }
-    sequence[position] = t2
+    if position < len(sequence) {
+      sequence[position] = t2
+    }
   }
   result.Data[seqname] = sequence
 

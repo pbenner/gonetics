@@ -181,6 +181,23 @@ func (r *GRanges) Sort(name string, reverse bool) (GRanges, error) {
   return r.Subset(j), nil
 }
 
+// Remove all entries that are not in the given genome.
+func (r *GRanges) FilterGenome(genome Genome) GRanges {
+  idx      := []int{}
+  seqnames := make(map[string]int)
+  for i := 0; i < genome.Length(); i++ {
+    seqnames[genome.Seqnames[i]] = genome.Lengths[i]
+  }
+  for i := 0; i < r.Length(); i++ {
+    length, ok := seqnames[r.Seqnames[i]]
+    if ok && r.Ranges[i].To <= length {
+      continue
+    }
+    idx = append(idx, i)
+  }
+  return r.Remove(idx)
+}
+
 // Add data from a track to the GRanges object. The data will be
 // contained in a meta-data column with the same name as the track.
 // It is required that each range has the same length.

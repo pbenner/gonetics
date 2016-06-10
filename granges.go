@@ -96,11 +96,11 @@ func (r *GRanges) Clone() GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func (r *GRanges) Length() int {
+func (r GRanges) Length() int {
   return len(r.Ranges)
 }
 
-func (r1 *GRanges) Append(r2 GRanges) GRanges {
+func (r1 GRanges) Append(r2 GRanges) GRanges {
   result := GRanges{}
 
   result.Seqnames = append(r1.Seqnames, r2.Seqnames...)
@@ -112,7 +112,7 @@ func (r1 *GRanges) Append(r2 GRanges) GRanges {
   return result
 }
 
-func (r *GRanges) Remove(indices []int) GRanges {
+func (r GRanges) Remove(indices []int) GRanges {
   if len(indices) == 0 {
     return r.Clone()
   }
@@ -138,7 +138,12 @@ func (r *GRanges) Remove(indices []int) GRanges {
   return result
 }
 
-func (r *GRanges) Subset(indices []int) GRanges {
+func (r GRanges) RemoveOverlapsWith(subject GRanges) GRanges {
+  queryHits, _ := FindOverlaps(r, subject)
+  return r.Remove(queryHits)
+}
+
+func (r GRanges) Subset(indices []int) GRanges {
   n := len(indices)
   seqnames := make([]string, n)
   from     := make([]int, n)
@@ -157,7 +162,7 @@ func (r *GRanges) Subset(indices []int) GRanges {
   return result
 }
 
-func (r *GRanges) Slice(ifrom, ito int) GRanges {
+func (r GRanges) Slice(ifrom, ito int) GRanges {
   n := ito-ifrom
   seqnames := make([]string, n)
   from     := make([]int, n)
@@ -176,7 +181,7 @@ func (r *GRanges) Slice(ifrom, ito int) GRanges {
   return result
 }
 
-func (r *GRanges) Sort(name string, reverse bool) (GRanges, error) {
+func (r GRanges) Sort(name string, reverse bool) (GRanges, error) {
   j, err := r.sortedIndices(name, reverse)
   if err != nil {
     return GRanges{}, err
@@ -185,7 +190,7 @@ func (r *GRanges) Sort(name string, reverse bool) (GRanges, error) {
 }
 
 // Remove all entries that are not in the given genome.
-func (r *GRanges) FilterGenome(genome Genome) GRanges {
+func (r GRanges) FilterGenome(genome Genome) GRanges {
   idx      := []int{}
   seqnames := make(map[string]int)
   for i := 0; i < genome.Length(); i++ {

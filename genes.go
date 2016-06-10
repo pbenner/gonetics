@@ -115,7 +115,7 @@ func (g Genes) FindGene(name string) (int, bool) {
   return i, ok
 }
 
-func (g1 *Genes) Append(g2 Genes) Genes {
+func (g1 Genes) Append(g2 Genes) Genes {
   names    := append(g1.Names,    g2.Names...)
   seqnames := append(g1.Seqnames, g2.Seqnames...)
   cds      := append(g1.Cds,      g2.Cds...)
@@ -128,7 +128,7 @@ func (g1 *Genes) Append(g2 Genes) Genes {
   return result
 }
 
-func (g *Genes) Remove(indices []int) Genes {
+func (g Genes) Remove(indices []int) Genes {
   if len(indices) == 0 {
     return g.Clone()
   }
@@ -156,7 +156,7 @@ func (g *Genes) Remove(indices []int) Genes {
 
 // Returns a subset of the genes given by indices. This function may
 // also be used to alter the order of genes.
-func (g *Genes) Subset(indices []int) Genes {
+func (g Genes) Subset(indices []int) Genes {
   n := len(indices)
   names    := make([]string, n)
   seqnames := make([]string, n)
@@ -183,7 +183,7 @@ func (g *Genes) Subset(indices []int) Genes {
 
 // Returns the set of genes starting from row ifrom till ito (row ito
 // is not included).
-func (g *Genes) Slice(ifrom, ito int) Genes {
+func (g Genes) Slice(ifrom, ito int) Genes {
   n := ito-ifrom
   names    := make([]string, n)
   seqnames := make([]string, n)
@@ -211,7 +211,7 @@ func (g *Genes) Slice(ifrom, ito int) Genes {
 // Sort rows using data from a meta column. The parameter name gives
 // the name of the columns. If reverse is true, rows are sorted in
 // descending order.
-func (g *Genes) Sort(name string, reverse bool) (Genes, error) {
+func (g Genes) Sort(name string, reverse bool) (Genes, error) {
   j, err := g.sortedIndices(name, reverse)
   if err != nil {
     return Genes{}, err

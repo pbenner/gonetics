@@ -32,7 +32,6 @@ import "strconv"
 import "strings"
 
 import _ "github.com/go-sql-driver/mysql"
-import . "github.com/pbenner/pshape/Utility"
 
 /* -------------------------------------------------------------------------- */
 
@@ -132,7 +131,7 @@ func (g Genes) Remove(indices []int) Genes {
   if len(indices) == 0 {
     return g.Clone()
   }
-  indices = RemoveDuplicatesInt(indices)
+  indices = removeDuplicatesInt(indices)
   sort.Ints(indices)
 
   n := g.Length()
@@ -359,12 +358,12 @@ func ReadUCSCGenes(filename string) Genes {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  Check(err)
+  check(err)
   defer f.Close()
   // check if file is gzipped
-  if IsGzip(filename) {
+  if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    Check(err)
+    check(err)
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -392,10 +391,10 @@ func ReadUCSCGenes(filename string) Genes {
     if len(fields) != 7 {
       panic("File must have seven columns!")
     }
-    t1, e := strconv.ParseInt(fields[3], 10, 64); Check(e)
-    t2, e := strconv.ParseInt(fields[4], 10, 64); Check(e)
-    t3, e := strconv.ParseInt(fields[5], 10, 64); Check(e)
-    t4, e := strconv.ParseInt(fields[6], 10, 64); Check(e)
+    t1, e := strconv.ParseInt(fields[3], 10, 64); check(e)
+    t2, e := strconv.ParseInt(fields[4], 10, 64); check(e)
+    t3, e := strconv.ParseInt(fields[5], 10, 64); check(e)
+    t4, e := strconv.ParseInt(fields[6], 10, 64); check(e)
     names    = append(names,    fields[0])
     seqnames = append(seqnames, fields[1])
     txFrom   = append(txFrom,   int(t1))

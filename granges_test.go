@@ -25,7 +25,7 @@ import   "testing"
 
 func TestGRanges1(t *testing.T) {
 
-  granges := ReadBedReads("granges_test.bed")
+  granges := ReadBed6("granges_test.bed")
   granges.AddMeta("TestMeta",
     []int{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20})
 
@@ -42,7 +42,7 @@ func TestGRanges1(t *testing.T) {
 
 func TestGRanges2(t *testing.T) {
 
-  granges := ReadBedReads("granges_test.bed")
+  granges := ReadBed6("granges_test.bed")
   granges.AddMeta("TestMeta1",
     [][]int{
       { 1, 2},{ 2, 3},{ 3, 4},{ 4, 5},{ 5, 6},{ 6, 7},{ 7, 8},{ 8, 9},{ 9,10},{10,11},

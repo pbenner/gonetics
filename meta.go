@@ -30,8 +30,6 @@ import "sort"
 import "strconv"
 import "strings"
 
-import . "github.com/pbenner/pshape/Utility"
-
 /* -------------------------------------------------------------------------- */
 
 type Meta struct {
@@ -225,7 +223,7 @@ func (meta *Meta) Remove(indices []int) Meta {
   if len(indices) == 0 {
     return meta.Clone()
   }
-  indices = RemoveDuplicatesInt(indices)
+  indices = removeDuplicatesInt(indices)
   sort.Ints(indices)
 
   n := meta.Length()
@@ -689,7 +687,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
   defer f.Close()
 
   // check if file is gzipped
-  if IsGzip(filename) {
+  if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
       return result, err

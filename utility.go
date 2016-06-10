@@ -25,11 +25,20 @@ import "io"
 import "io/ioutil"
 import "regexp"
 import "strings"
+import "os"
 import "unicode"
 
 /* -------------------------------------------------------------------------- */
 
-func RemoveDuplicatesInt(s []int) []int {
+func check(e error) {
+  if e != nil {
+    panic(e)
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
+func removeDuplicatesInt(s []int) []int {
   m := map[int]bool{}
   r := []int{}
 
@@ -85,6 +94,22 @@ func writeFile(filename string, r io.Reader, compress bool) {
     w.Flush()
   }
   ioutil.WriteFile(filename, buffer.Bytes(), 0666)
+}
+
+func isGzip(filename string) bool {
+
+  f, err := os.Open(filename)
+  check(err)
+  defer f.Close()
+
+  b := make([]byte, 2)
+  n, err := f.Read(b)
+  check(err)
+
+  if n == 2 && b[0] == 31 && b[1] == 139 {
+    return true
+  }
+  return false
 }
 
 /* -------------------------------------------------------------------------- */

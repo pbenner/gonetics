@@ -73,7 +73,7 @@ func (p GPeaks) Qvalue() []float64 {
 func ReadXlsPeaks(filename string) GPeaks {
 
   f, err := os.Open(filename)
-  Check(err)
+  check(err)
   defer f.Close()
   // check if we already saw the header
   header := false
@@ -116,7 +116,7 @@ func ReadXlsPeaks(filename string) GPeaks {
     t5, e5 := strconv.ParseFloat(fields[6], 64)   // pvalue
     t6, e6 := strconv.ParseFloat(fields[7], 64)   // fold_enrichment
     t7, e7 := strconv.ParseFloat(fields[8], 64)   // qvalue
-    Check(e1); Check(e2); Check(e3); Check(e4); Check(e5); Check(e6); Check(e7)
+    check(e1); Check(e2); Check(e3); Check(e4); Check(e5); Check(e6); Check(e7)
 
     seqnames       = append(seqnames,       fields[0])
     from           = append(from,           int(t1))

@@ -27,8 +27,6 @@ import "os"
 import "strconv"
 import "strings"
 
-import . "github.com/pbenner/pshape/Utility"
-
 /* -------------------------------------------------------------------------- */
 
 type TMapType map[string][]float64
@@ -249,7 +247,7 @@ func (track *Track) Reduce(f func(float64, float64) float64, x0 float64) map[str
 // printed only if it is not zero. For sparse data this will significantly
 // reduce the size of the file.
 func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
-  f, err := os.Create(filename); Check(err)
+  f, err := os.Create(filename); check(err)
   defer f.Close()
 
   w := bufio.NewWriter(f)
@@ -426,7 +424,7 @@ func (track *Track) ReadWiggle(filename string) error {
   defer f.Close()
 
   // check if file is gzipped
-  if IsGzip(filename) {
+  if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
       return err

@@ -26,8 +26,6 @@ import "strconv"
 import "strings"
 import "unicode"
 
-import . "github.com/pbenner/pshape/Utility"
-
 /* i/o
  * -------------------------------------------------------------------------- */
 
@@ -52,11 +50,11 @@ func readGTFParseOptional(fields []string) gtfOptional {
       gtfOpt.TranscriptId = fields[i+1]
     }
     if fields[i] == "FPKM" {
-      t, err := strconv.ParseFloat(fields[i+1], 64); Check(err)
+      t, err := strconv.ParseFloat(fields[i+1], 64); check(err)
       gtfOpt.FPKM = t
     }
     if fields[i] == "RPKM" {
-      t, err := strconv.ParseFloat(fields[i+1], 64); Check(err)
+      t, err := strconv.ParseFloat(fields[i+1], 64); check(err)
       gtfOpt.RPKM = t
     }
   }
@@ -86,12 +84,12 @@ func (genes *Genes) ReadGTF(filename, geneIdName, exprIdName string, verbose boo
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  Check(err)
+  check(err)
   defer f.Close()
   // check if file is gzipped
-  if IsGzip(filename) {
+  if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    Check(err)
+    check(err)
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -102,7 +100,7 @@ func (genes *Genes) ReadGTF(filename, geneIdName, exprIdName string, verbose boo
   expr := make([]float64, genes.Length())
 
   for scanner.Scan() {
-    Check(scanner.Err())
+    check(scanner.Err())
     geneTmp := ""
     exprTmp := 0.0
     fields := readGTFParseLine(scanner.Text())
@@ -150,12 +148,12 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  Check(err)
+  check(err)
   defer f.Close()
   // check if file is gzipped
-  if IsGzip(filename) {
+  if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    Check(err)
+    check(err)
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -165,7 +163,7 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
 
   // parse header
   scanner.Scan();
-  Check(scanner.Err())
+  check(scanner.Err())
   header := strings.Fields(scanner.Text())
   if len(header) != 13 || header[0] != "tracking_id" ||
     (header[9] != "FPKM" && header[9] != "RPKM") {
@@ -173,7 +171,7 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
   }
   // parse data
   for scanner.Scan() {
-    Check(scanner.Err())
+    check(scanner.Err())
 
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
@@ -186,7 +184,7 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
       geneStr := fields[0]
       exprStr := fields[9]
       if i, ok := genes.FindGene(geneStr); ok {
-        t, err := strconv.ParseFloat(exprStr, 64); Check(err)
+        t, err := strconv.ParseFloat(exprStr, 64); check(err)
         expr[i] += t
       } else {
         if verbose {

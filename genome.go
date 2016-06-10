@@ -26,8 +26,6 @@ import "os"
 import "strconv"
 import "strings"
 
-import . "github.com/pbenner/pshape/Utility"
-
 /* -------------------------------------------------------------------------- */
 
 // Structure containing chromosome sizes.
@@ -99,7 +97,7 @@ func (genome Genome) String() string {
 func ReadGenome(filename string) Genome {
 
   f, err := os.Open(filename)
-  Check(err)
+  check(err)
 
   // it seems that buffering the data does not increase
   // performance
@@ -116,7 +114,7 @@ func ReadGenome(filename string) Genome {
       panic("Invalid genome file!")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
-    Check(e1)
+    check(e1)
     seqnames = append(seqnames, fields[0])
     lengths  = append(lengths,  int(t1))
   }

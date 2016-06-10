@@ -80,6 +80,4 @@ func TestGRangesRandom(t *testing.T) {
   if granges.Length() != 1000 {
     t.Error("TestGRangesRandom failed!")
   }
-
-  //fmt.Println(granges)
 }

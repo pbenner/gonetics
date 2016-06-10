@@ -22,7 +22,9 @@ import "bufio"
 import "bytes"
 import "errors"
 import "fmt"
+import "log"
 import "compress/gzip"
+import "database/sql"
 import "io"
 import "io/ioutil"
 import "os"
@@ -30,6 +32,7 @@ import "sort"
 import "strconv"
 import "strings"
 
+import _ "github.com/go-sql-driver/mysql"
 import . "github.com/pbenner/pshape/Utility"
 
 /* -------------------------------------------------------------------------- */
@@ -534,7 +537,8 @@ func (granges GRanges) WriteBed6(filename string, compress bool) {
 }
 
 func ReadGRangesFromTable(filename string, names, types []string) (GRanges, error) {
-  result   := GRanges{}
+  result    := GRanges{}
+  hasStrand := false
 
   var scanner *bufio.Scanner
   // open file
@@ -563,9 +567,11 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
     if len(fields) < 4 {
       return result, errors.New("invalid table")
     }
-    if fields[0] != "seqnames" || fields[1] != "from" ||
-      (fields[2] != "to"       || fields[3] != "strand") {
+    if fields[0] != "seqnames" || fields[1] != "from" || fields[2] != "to" {
       return result, errors.New("invalid table")
+    }
+    if fields[3] == "strand" {
+      hasStrand = true
     }
   }
   for scanner.Scan() {
@@ -586,7 +592,11 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
     }
     result.Seqnames = append(result.Seqnames, fields[0])
     result.Ranges   = append(result.Ranges,   NewRange(int(v1), int(v2)))
-    result.Strand   = append(result.Strand,   fields[3][0])
+    if hasStrand {
+      result.Strand = append(result.Strand,   fields[3][0])
+    } else {
+      result.Strand = append(result.Strand,   '*')
+    }
   }
   result.Meta, err = ReadMetaFromTable(filename, names, types)
 
@@ -635,4 +645,76 @@ func ReadBedReads(filename string) GRanges {
     strand   = append(strand,   fields[5][0])
   }
   return NewGRanges(seqnames, from, to, strand)
+}
+
+/* import data from ucsc
+ * -------------------------------------------------------------------------- */
+
+func ImportCpGIslandsFromUCSC(genome string) GRanges {
+  /* variables for storing a single database row */
+  var i_seqname string
+  var i_from, i_to, i_length, i_cpgNum, i_gcNum int
+  var i_perCpg, i_perGc, i_obsExp float64
+
+  seqnames := []string{}
+  from     := []int{}
+  to       := []int{}
+  length   := []int{}
+  cpgNum   := []int{}
+  gcNum    := []int{}
+  perCpg   := []float64{}
+  perGc    := []float64{}
+  obsExp   := []float64{}
+
+  /* open connection */
+  db, err := sql.Open("mysql",
+		fmt.Sprintf("genome@tcp(genome-mysql.cse.ucsc.edu:3306)/%s", genome))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+  err = db.Ping()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  /* receive data */
+  rows, err := db.Query(
+    fmt.Sprintf("SELECT chrom, chromStart, chromEnd, length, cpgNum, gcNum, perCpg, perGc, obsExp FROM %s", "cpgIslandExt"))
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer rows.Close()
+  for rows.Next() {
+    err := rows.Scan(&i_seqname, &i_from, &i_to, &i_length, &i_cpgNum, &i_gcNum, &i_perCpg, &i_perGc, &i_obsExp)
+    if err != nil {
+      log.Fatal(err)
+    }
+    seqnames = append(seqnames, i_seqname)
+    from     = append(from,     i_from)
+    to       = append(to,       i_to)
+    length   = append(length,   i_length)
+    cpgNum   = append(cpgNum,   i_cpgNum)
+    gcNum    = append(gcNum,    i_gcNum)
+    perCpg   = append(perCpg,   i_perCpg)
+    perGc    = append(perGc,    i_perGc)
+    obsExp   = append(obsExp,   i_obsExp)
+  }
+  r := NewGRanges(seqnames, from, to, []byte{})
+  r.AddMeta("length", length)
+  r.AddMeta("cpgNum", cpgNum)
+  r.AddMeta("gcNum",  gcNum)
+  r.AddMeta("perCpg", perCpg)
+  r.AddMeta("perGc",  perGc)
+  r.AddMeta("obsExp", obsExp)
+
+  return r
+}
+
+func ReadCpGIslandsFromTable(filename string) GRanges {
+  cpg, _ := ReadGRangesFromTable(filename,
+    []string{"length", "cpgNum", "gcNum", "perCpg", "perGc", "obsExp"},
+    []string{"[]int", "[]int", "[]int", "[]float64", "[]float64", "[]float64"})
+  return cpg
 }

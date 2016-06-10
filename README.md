@@ -117,11 +117,11 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
 
 ```go
   fmt.Fprintf(os.Stderr, "Parsing reads (treatment) ...\n")
-  treatment1 := ReadBedReads("SRR094207.bed")
-  treatment2 := ReadBedReads("SRR094208.bed")
+  treatment1 := ReadBed6("SRR094207.bed")
+  treatment2 := ReadBed6("SRR094208.bed")
   fmt.Fprintf(os.Stderr, "Parsing reads (control)   ...\n")
-  control1   := ReadBedReads("SRR094215.bed")
-  control2   := ReadBedReads("SRR094216.bed")
+  control1   := ReadBed6("SRR094215.bed")
+  control2   := ReadBed6("SRR094216.bed")
 
   genome  := ReadGenome("Data/hg19.genome")
   d       := 200 // d=200 (see *_peaks.xls)

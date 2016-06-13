@@ -206,15 +206,17 @@ func (meta1 *Meta) Append(meta2 Meta) Meta {
     dat1 := m1.MetaData[j]
     dat2 := m2.GetMeta(name)
 
-    switch v := dat1.(type) {
-    case [][]string:  t = append(v, dat2.([][]string)...)
-    case [][]int:     t = append(v, dat2.([][]int)...)
-    case [][]float64: t = append(v, dat2.([][]float64)...)
-    case   []string:  t = append(v, dat2.(  []string)...)
-    case   []int:     t = append(v, dat2.(  []int)...)
-    case   []float64: t = append(v, dat2.(  []float64)...)
+    if dat2 != nil {
+      switch v := dat1.(type) {
+      case [][]string:  t = append(v, dat2.([][]string)...)
+      case [][]int:     t = append(v, dat2.([][]int)...)
+      case [][]float64: t = append(v, dat2.([][]float64)...)
+      case   []string:  t = append(v, dat2.(  []string)...)
+      case   []int:     t = append(v, dat2.(  []int)...)
+      case   []float64: t = append(v, dat2.(  []float64)...)
+      }
+      result.AddMeta(name, t)
     }
-    result.AddMeta(name, t)
   }
   return result
 }

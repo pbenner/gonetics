@@ -622,14 +622,14 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
   if i == -1 {
     // write header
     for k := 0; k < meta.MetaLength(); k++ {
-      fmt.Fprintf(w, " %10s", meta.MetaName[k])
+      fmt.Fprintf(w, " %s", meta.MetaName[k])
     }
   } else {
     for k := 0; k < meta.MetaLength(); k++ {
       switch v := meta.MetaData[k].(type) {
-      case []string : fmt.Fprintf(w, " %10s", v[i])
-      case []float64: fmt.Fprintf(w, " %10f", v[i])
-      case []int    : fmt.Fprintf(w, " %10d", v[i])
+      case []string : fmt.Fprintf(w, " %s", v[i])
+      case []float64: fmt.Fprintf(w, " %f", v[i])
+      case []int    : fmt.Fprintf(w, " %d", v[i])
       case [][]string:
         for j := 0; j < len(v[i]); j++ {
           if j == 0 {

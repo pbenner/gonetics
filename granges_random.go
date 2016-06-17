@@ -18,15 +18,58 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+//import "fmt"
 import "math/rand"
 
 /* -------------------------------------------------------------------------- */
 
-// Generate a GRanges object where each genomic range is generated at random.
-// Genomic bounds are not checked. (This is required by the GRanges
-// ImportTrack() method!)
-func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
+type GenomeRng struct {
+  Weights []float64
+  Genome  Genome
+}
 
+func NewGenomeRng(genome Genome) GenomeRng {
+  // each chromosome is weighted by its length
+  weights := make([]float64, genome.Length())
+  sum     := 0.0
+  for i := 0; i < genome.Length(); i++ {
+    weights[i] = float64(genome.Lengths[i])
+    sum       += weights[i]
+  }
+  // compute cumulative probabilities
+  weights[0] /= sum
+  for i := 1; i < genome.Length(); i++ {
+    weights[i] = weights[i-1] + weights[i]/sum
+  }
+  return GenomeRng{weights, genome}
+}
+
+func (rng GenomeRng) Draw(wsize int) (int, int) {
+  p := rand.Float64()
+  k := 0
+  // draw a chromosome
+  t := 0.0
+  for i := 0; i < len(rng.Weights); i++ {
+    if t <= p && p < rng.Weights[i] {
+      k = i; break
+    }
+    t = rng.Weights[i]
+  }
+  if rng.Genome.Lengths[k] - wsize < 0 {
+    panic("window size is too large")
+  }
+  i := rand.Intn(rng.Genome.Lengths[k] - wsize + 1)
+
+  return k, i
+}
+
+/* -------------------------------------------------------------------------- */
+
+// Generate a GRanges object where each genomic range is generated at random.
+// Each chromosome is weighted by its length.
+func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
+  rng := NewGenomeRng(genome)
+  // allocate data for the granges object
   seqnames := make([]string, n)
   from     := make([]int, n)
   to       := make([]int, n)
@@ -34,17 +77,11 @@ func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
   if useStrand {
     strand = make([]byte, n)
   }
-  n_seq := len(genome.Seqnames)
-
   for i := 0; i < n; i++ {
-    j := rand.Intn(n_seq)
-    if genome.Lengths[j]-wsize < 0 {
-      panic("window size is too large")
-    }
-    position := rand.Intn(genome.Lengths[j]-wsize+1)
+    j, position := rng.Draw(wsize)
     seqnames[i] = genome.Seqnames[j]
-    from[i]     = position
-    to[i]       = position + wsize
+    from    [i] = position
+    to      [i] = position + wsize
     if useStrand {
       k := rand.Intn(2)
       strand[i] = []byte{'+', '-'}[k]

@@ -228,7 +228,6 @@ func (track Track) Smoothen(minCounts float64, windowSizes []int) {
   }
   offset1 := divIntUp  (windowSizes[0]-1, 2)
   offset2 := divIntDown(windowSizes[0]-1, 2)
-  fmt.Println("offset1:",windowSizes[0]-1)
   // sort window sizes so that the smalles window size comes first
   sort.Ints(windowSizes)
   // number of window sizes
@@ -237,17 +236,15 @@ func (track Track) Smoothen(minCounts float64, windowSizes []int) {
   for _, seq := range track.Data {
     // loop over sequence
     for i := offset1; i < len(seq)-offset2; i++ {
-      fmt.Println(i)
       counts := math.Inf(-1)
       wsize  := -1
       for k := 0; counts < minCounts && k < nw; k++ {
         from := i - divIntUp  (windowSizes[k]-1, 2)
         to   := i + divIntDown(windowSizes[k]-1, 2)
-        fmt.Println("from:", from)
-        fmt.Println("to  :", to)
-        counts = sumSlice(seq[from:to+1])
-        fmt.Println("sum :", counts)
-        wsize  = windowSizes[k]
+        if from > 0 && to < len(seq) {
+          counts = sumSlice(seq[from:to+1])
+          wsize  = windowSizes[k]
+        }
       }
       if wsize != -1 {
         seq[i] = counts/float64(wsize)

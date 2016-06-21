@@ -24,6 +24,7 @@ import "errors"
 import "fmt"
 import "math"
 import "os"
+import "sort"
 import "strconv"
 import "strings"
 
@@ -210,6 +211,60 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
     }
   }
   return track1
+}
+
+// Smoothen track data with an adaptive window method. For each region the smallest window
+// size among windowSizes is selected which contains at least minCounts counts. If if the
+// minimum number of counts is not reached, the larges window size is selected.
+func (track Track) Smoothen(minCounts float64, windowSizes []int) {
+  if len(windowSizes) == 0 {
+    return
+  }
+  sumSlice := func(s []float64) float64 {
+    sum := 0.0
+    for i := 0; i < len(s); i++ {
+      sum += s[i]
+    }
+    return sum
+  }
+  // sort window sizes so that the smalles window size comes first
+  sort.Ints(windowSizes)
+  // number of window sizes
+  nw := len(windowSizes)
+  // loop over sequences
+  for _, seq := range track.Data {
+    // loop over sequence
+    for i := 0; i < len(seq); i++ {
+      counts := math.Inf(-1)
+      wsize  := -1
+      for k := 0; counts < minCounts && k < nw; k++ {
+        wsize = windowSizes[k]
+        from := i - divIntUp  (wsize-1, 2)
+        to   := i + divIntDown(wsize-1, 2)
+        if from < 0 || to >= len(seq) {
+          continue
+        }
+        counts = sumSlice(seq[from:to+1])
+      }
+      if wsize != -1 {
+        seq[i] = counts/float64(wsize)
+      }
+    }
+    // fill begining and end of track where the smallest window
+    // does not fit
+    offset1 := divIntUp  (windowSizes[0]-1, 2)
+    offset2 := divIntDown(windowSizes[0]-1, 2)
+    if len(seq) > offset1 {
+      for i := 0; i < offset1 && i < len(seq); i++ {
+        seq[i] = seq[offset1]
+      }
+    }
+    if len(seq)-1-offset1 > 0 {
+      for i := len(seq)-offset2;  i < len(seq); i++ {
+        seq[i] = seq[len(seq)-1-offset1]
+      }
+    }
+  }
 }
 
 /* map/reduce

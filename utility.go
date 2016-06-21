@@ -76,7 +76,7 @@ func divIntDown(a, b int) int {
 
 // Divide a by b, the result is rounded up.
 func divIntUp(a, b int) int {
-  return (a-1)/b+1
+  return (a+b-1)/b
 }
 
 /* -------------------------------------------------------------------------- */

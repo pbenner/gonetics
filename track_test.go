@@ -141,3 +141,16 @@ func TestTrack4(t *testing.T) {
   fmt.Println(track.Data["chr1"])
 
 }
+
+func TestTrack5(t *testing.T) {
+
+  track := NewTrack("",
+    []string{"chr1"},
+    [][]float64{{10, 10, 10, 2, 2, 1, 5, 5, 2}},
+    100)
+
+  fmt.Println(track.Data["chr1"])
+  track.Smoothen(20, []int{1,2,3,4})
+  fmt.Println(track.Data["chr1"])
+
+}

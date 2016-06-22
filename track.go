@@ -241,25 +241,19 @@ func (track Track) Smoothen(minCounts float64, windowSizes []int) {
       for k := 0; counts < minCounts && k < nw; k++ {
         from := i - divIntUp  (windowSizes[k]-1, 2)
         to   := i + divIntDown(windowSizes[k]-1, 2)
-        if from > 0 && to < len(seq) {
-          counts = sumSlice(seq[from:to+1])
-          wsize  = windowSizes[k]
+        if from < 0 {
+          to   = iMin(len(seq)-1, to-from)
+          from = 0
         }
+        if to >= len(seq) {
+          from = iMax(0, from-(to-len(seq)+1))
+          to   = len(seq)-1
+        }
+        counts = sumSlice(seq[from:to+1])
+        wsize  = to-from+1
       }
       if wsize != -1 {
         seq[i] = counts/float64(wsize)
-      }
-    }
-    // fill begining and end of track where the smallest window
-    // does not fit
-    if len(seq) > offset1 {
-      for i := 0; i < offset1 && i < len(seq); i++ {
-        seq[i] = seq[offset1]
-      }
-    }
-    if len(seq)-1-offset1 > 0 {
-      for i := len(seq)-offset2;  i < len(seq); i++ {
-        seq[i] = seq[len(seq)-1-offset1]
       }
     }
   }

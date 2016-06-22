@@ -213,7 +213,7 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
 }
 
 // Smoothen track data with an adaptive window method. For each region the smallest window
-// size among windowSizes is selected which contains at least minCounts counts. If if the
+// size among windowSizes is selected which contains at least minCounts counts. If the
 // minimum number of counts is not reached, the larges window size is selected.
 func (track Track) Smoothen(minCounts float64, windowSizes []int) {
   if len(windowSizes) == 0 {

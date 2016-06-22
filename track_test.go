@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
+//import   "fmt"
 import   "math"
 import   "testing"
 
@@ -135,22 +135,53 @@ func TestTrack4(t *testing.T) {
     []string{"chr1"},
     [][]float64{{10, 10, 10, 20, 20, 10, 5, 5, 2}},
     100)
+  result := []float64{10.0, 10.0, 10.0, 20.0, 20.0, 15.0, 20.0/3.0, 5.5, 5.5}
 
-  fmt.Println(track.Data["chr1"])
   track.Smoothen(20, []int{1,2,3,4})
-  fmt.Println(track.Data["chr1"])
 
+  seq := track.Data["chr1"]
+
+  for i := 0; i < len(seq); i++ {
+    if math.Abs(seq[i] - result[i]) > 1e-8 {
+      t.Error("TestTrack4 failed")
+    }
+  }
 }
 
 func TestTrack5(t *testing.T) {
 
   track := NewTrack("",
     []string{"chr1"},
-    [][]float64{{10, 10, 10, 2, 2, 1, 5, 5, 2}},
+    [][]float64{{10, 2, 5, 2, 2, 1, 5, 5, 2}},
     100)
+  result := []float64{4.2, 4.2, 4.2, 2.4, 3.0, 3.0, 3.0, 3.0, 3.0}
 
-  fmt.Println(track.Data["chr1"])
-  track.Smoothen(20, []int{1,2,3,4})
-  fmt.Println(track.Data["chr1"])
+  track.Smoothen(20, []int{1,2,3,4,5})
 
+  seq := track.Data["chr1"]
+
+  for i := 0; i < len(seq); i++ {
+    if math.Abs(seq[i] - result[i]) > 1e-8 {
+      t.Error("TestTrack5 failed")
+    }
+  }
+}
+
+func TestTrack6(t *testing.T) {
+
+  track := NewTrack("",
+    []string{"chr1"},
+    [][]float64{{1, 2, 5, 2, 2, 1, 1, 1, 2}},
+    100)
+  result := []float64{17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0}
+
+  track.Smoothen(20, []int{1,2,3,4,5,6,7,8,9,10})
+
+  seq := track.Data["chr1"]
+
+  for i := 0; i < len(seq); i++ {
+    if math.Abs(seq[i] - result[i]) > 1e-8 {
+      t.Error("TestTrack6 failed")
+    }
+  }
 }

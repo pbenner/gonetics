@@ -195,9 +195,15 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
   for _, r := range control {
     track2.AddReads(r, d)
   }
-  for seqname, _ := range track1.Data {
-    seq1     := track1.Data[seqname]
-    seq2, ok := track2.Data[seqname]
+  track1.Normalize(track2, c1, c2, logScale)
+
+  return track1
+}
+
+func (treatment Track) Normalize(control Track, c1, c2 float64, logScale bool) {
+  for seqname, _ := range treatment.Data {
+    seq1     := treatment.Data[seqname]
+    seq2, ok := control  .Data[seqname]
     if !ok {
       panic(fmt.Sprintf("Control has no reads on sequence `%s'!", seqname))
     }
@@ -209,7 +215,6 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
       }
     }
   }
-  return track1
 }
 
 // Smoothen track data with an adaptive window method. For each region the smallest window

@@ -234,6 +234,7 @@ func (track Track) Smoothen(minCounts float64, windowSizes []int) {
   nw := len(windowSizes)
   // loop over sequences
   for _, seq := range track.Data {
+    rst := make([]float64, len(seq))
     // loop over sequence
     for i := offset1; i < len(seq)-offset2; i++ {
       counts := math.Inf(-1)
@@ -253,9 +254,10 @@ func (track Track) Smoothen(minCounts float64, windowSizes []int) {
         wsize  = to-from+1
       }
       if wsize != -1 {
-        seq[i] = counts/float64(wsize)
+        rst[i] = counts/float64(wsize)
       }
     }
+    copy(seq, rst)
   }
 }
 

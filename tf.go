@@ -27,7 +27,9 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-type TFMatrix [][]float64
+type TFMatrix struct {
+  Values [][]float64
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -37,20 +39,27 @@ func EmptyTFMatrix() TFMatrix {
 
 /* -------------------------------------------------------------------------- */
 
+func (t TFMatrix) Length() int {
+  if len(t.Values) == 0 {
+    return -1
+  }
+  return len(t.Values[0])
+}
+
 func (t TFMatrix) Get(c byte, i int) float64 {
   switch c {
   case 'A': fallthrough
   case 'a':
-    return t[0][i]
+    return t.Values[0][i]
   case 'C': fallthrough
   case 'c':
-    return t[1][i]
+    return t.Values[1][i]
   case 'G': fallthrough
   case 'g':
-    return t[2][i]
+    return t.Values[2][i]
   case 'T': fallthrough
   case 't':
-    return t[3][i]
+    return t.Values[3][i]
   default:
     panic("Get(): invalid parameters")
   }
@@ -60,16 +69,16 @@ func (t TFMatrix) GetRow(c byte) []float64 {
   switch c {
   case 'A': fallthrough
   case 'a':
-    return t[0]
+    return t.Values[0]
   case 'C': fallthrough
   case 'c':
-    return t[1]
+    return t.Values[1]
   case 'G': fallthrough
   case 'g':
-    return t[2]
+    return t.Values[2]
   case 'T': fallthrough
   case 't':
-    return t[3]
+    return t.Values[3]
   default:
     panic("GetRow(): invalid parameters")
   }
@@ -77,13 +86,11 @@ func (t TFMatrix) GetRow(c byte) []float64 {
 
 /* -------------------------------------------------------------------------- */
 
-func (tp *TFMatrix) ReadMatrix(filename string) error {
+func (t *TFMatrix) ReadMatrix(filename string) error {
 
   ncols := -1
   // allocate memory
-  *tp = make([][]float64, 4)
-  // dereference pointer to slice
-  t := *tp
+  t.Values = make([][]float64, 4)
 
   var scanner *bufio.Scanner
   // open file
@@ -133,19 +140,45 @@ func (tp *TFMatrix) ReadMatrix(filename string) error {
     switch fields[0][0] {
     case 'A': fallthrough
     case 'a':
-      t[0] = data
+      t.Values[0] = data
     case 'C': fallthrough
     case 'c':
-      t[1] = data
+      t.Values[1] = data
     case 'G': fallthrough
     case 'g':
-      t[2] = data
+      t.Values[2] = data
     case 'T': fallthrough
     case 't':
-      t[3] = data
+      t.Values[3] = data
     default:
       return fmt.Errorf("ReadMatrix(): invalid tf matrix")
     }
   }
   return nil
+}
+
+/* scanning
+ * -------------------------------------------------------------------------- */
+
+type PWM struct {
+  TFMatrix
+}
+
+func NewPWM(t TFMatrix) PWM {
+  return PWM{t}
+}
+
+func (t PWM) Scan(sequence []byte) []float64 {
+  // number of positions where the pwm could fit
+  n := len(sequence)-t.Length()+1
+  // allocate memory
+  result := make([]float64, n)
+  // loop over sequence
+  for i := 0; i < n; i++ {
+    // loop over pwm
+    for j := 0; j < t.Length(); j++ {
+      result[i] += t.Get(sequence[i+j], j)
+    }
+  }
+  return result
 }

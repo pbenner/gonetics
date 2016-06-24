@@ -36,3 +36,22 @@ func TestTF1(t *testing.T) {
     t.Error("TestTF1 failed")
   }
 }
+
+func TestTF2(t *testing.T) {
+
+  tf  := EmptyTFMatrix()
+  err := tf.ReadMatrix("tf_test.table")
+
+  if err != nil {
+    t.Error("TestTF2 failed")
+  }
+
+  pwm := NewPWM(tf)
+  seq := []byte("cacgtgaaaccctttgg")
+
+  scores := pwm.Scan(seq)
+
+  if len(scores) != 12 {
+    t.Error("TestTF2 failed")
+  }
+}

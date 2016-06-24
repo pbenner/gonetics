@@ -46,10 +46,9 @@ func TestTF2(t *testing.T) {
     t.Error("TestTF2 failed")
   }
 
-  pwm := NewPWM(tf)
   seq := []byte("cacgtgaaaccctttgg")
 
-  scores := pwm.Scan(seq)
+  scores := PWM{tf}.Scan(seq)
 
   if len(scores) != 12 {
     t.Error("TestTF2 failed")

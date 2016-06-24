@@ -164,10 +164,6 @@ type PWM struct {
   TFMatrix
 }
 
-func NewPWM(t TFMatrix) PWM {
-  return PWM{t}
-}
-
 func (t PWM) Scan(sequence []byte) []float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1

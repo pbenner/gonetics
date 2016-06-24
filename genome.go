@@ -39,7 +39,7 @@ type Genome struct {
 
 func NewGenome(seqnames []string, lengths []int) Genome {
   if len(seqnames) != len(lengths) {
-    panic("NewGenome(): Invalid parameters!")
+    panic("NewGenome(): invalid parameters")
   }
   return Genome{seqnames, lengths}
 }

@@ -21,6 +21,7 @@ package gonetics
 import "bufio"
 import "compress/gzip"
 import "fmt"
+import "math"
 import "os"
 import "strconv"
 import "strings"
@@ -147,17 +148,56 @@ func (t PWM) Scan(sequence []byte, revcomp bool) []float64 {
   n := len(sequence)-t.Length()+1
   // allocate memory
   result := make([]float64, n)
-  // loop over sequence
-  for i := 0; i < n; i++ {
-    // loop over pwm
-    if revcomp {
+  if revcomp {
+    // loop over sequence
+    for i := 0; i < n; i++ {
+      // loop over pwm
       for j := 0; j < t.Length(); j++ {
         c, _ := alphabet.Complement(sequence[i+t.Length()-j-1])
         result[i] += t.Get(c, j)
       }
-    } else {
+    }
+  } else {
+    // loop over sequence
+    for i := 0; i < n; i++ {
+      // loop over pwm
       for j := 0; j < t.Length(); j++ {
         result[i] += t.Get(sequence[i+j], j)
+      }
+    }
+  }
+  return result
+}
+
+func (t PWM) ScanMax(sequence []byte, revcomp bool) float64 {
+  alphabet := NucleotideAlphabet{}
+  // number of positions where the pwm could fit
+  n := len(sequence)-t.Length()+1
+  // allocate memory
+  result := math.Inf(-1)
+  if revcomp {
+    // loop over sequence
+    for i := 0; i < n; i++ {
+      sum := 0.0
+      // loop over pwm
+      for j := 0; j < t.Length(); j++ {
+        c, _ := alphabet.Complement(sequence[i+t.Length()-j-1])
+        sum += t.Get(c, j)
+      }
+      if sum > result {
+        result = sum
+      }
+    }
+  } else {
+    // loop over sequence
+    for i := 0; i < n; i++ {
+      sum := 0.0
+      // loop over pwm
+      for j := 0; j < t.Length(); j++ {
+        sum += t.Get(sequence[i+j], j)
+      }
+      if sum > result {
+        result = sum
       }
     }
   }

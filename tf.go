@@ -73,6 +73,32 @@ func (t TFMatrix) RevComp() TFMatrix {
   return TFMatrix{s}
 }
 
+func (t TFMatrix) Scan(sequence []byte, x0 float64, revcomp bool, f func(float64, float64) float64) float64 {
+  if len(sequence) != t.Length() {
+    panic("Scan(): sequence has invalid length")
+  }
+  alphabet := NucleotideAlphabet{}
+  // number of positions where the pwm could fit
+  x := x0
+  if revcomp {
+    // loop over pwm
+    for j := 0; j < t.Length(); j++ {
+      if a := sequence[t.Length()-j-1]; a != 'N' && a != 'n' {
+        c, _ := alphabet.Complement(a)
+        x = f(x, t.Get(c, j))
+      }
+    }
+  } else {
+    // loop over pwm
+    for j := 0; j < t.Length(); j++ {
+      if a := sequence[j]; a != 'N' && a != 'n' {
+        x = f(x, t.Get(a, j))
+      }
+    }
+  }
+  return x
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (t *TFMatrix) ReadMatrix(filename string) error {
@@ -142,67 +168,17 @@ type PWM struct {
   TFMatrix
 }
 
-func (t PWM) Scan(sequence []byte, revcomp bool) []float64 {
-  alphabet := NucleotideAlphabet{}
+func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1
-  // allocate memory
-  result := make([]float64, n)
-  if revcomp {
-    // loop over sequence
-    for i := 0; i < n; i++ {
-      // loop over pwm
-      for j := 0; j < t.Length(); j++ {
-        c, _ := alphabet.Complement(sequence[i+t.Length()-j-1])
-        result[i] += t.Get(c, j)
-      }
-    }
-  } else {
-    // loop over sequence
-    for i := 0; i < n; i++ {
-      // loop over pwm
-      for j := 0; j < t.Length(); j++ {
-        result[i] += t.Get(sequence[i+j], j)
-      }
-    }
-  }
-  return result
-}
-
-func (t PWM) ScanMax(sequence []byte, revcomp bool) float64 {
-  alphabet := NucleotideAlphabet{}
-  // number of positions where the pwm could fit
-  n := len(sequence)-t.Length()+1
-  // allocate memory
+  // function for adding scanning results
+  f := func(a, b float64) float64 { return a+b }
+  // maximum score
   result := math.Inf(-1)
-  if revcomp {
-    // loop over sequence
-    for i := 0; i < n; i++ {
-      sum := 0.0
-      // loop over pwm
-      for j := 0; j < t.Length(); j++ {
-        if a := sequence[i+t.Length()-j-1]; a != 'N' {
-          c, _ := alphabet.Complement(a)
-          sum += t.Get(c, j)
-        }
-      }
-      if sum > result {
-        result = sum
-      }
-    }
-  } else {
-    // loop over sequence
-    for i := 0; i < n; i++ {
-      sum := 0.0
-      // loop over pwm
-      for j := 0; j < t.Length(); j++ {
-        if a := sequence[i+j]; a != 'N' {
-          sum += t.Get(a, j)
-        }
-      }
-      if sum > result {
-        result = sum
-      }
+  // loop over sequence
+  for i := 0; i < n; i++ {
+    if tmp := t.Scan(sequence[i:i+t.Length()], 0.0, revcomp, f); tmp > result {
+      result = tmp
     }
   }
   return result

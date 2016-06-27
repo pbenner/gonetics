@@ -55,7 +55,13 @@ func (s StringSet) GetSlice(name string, r Range) ([]byte, error) {
   if !ok {
     return nil, fmt.Errorf("GetSlice(): invalid sequence name")
   }
-  return result[r.From:r.To], nil
+  from := iMax(          0, r.From)
+  to   := iMin(len(result), r.To)
+  if from != r.From || to != r.To {
+    return result[from:to], fmt.Errorf("GetSlice(): range `(%d,%d)' out of bounds for sequence `%s'", r.From, r.To, name)
+  } else {
+    return result[from:to], nil
+  }
 }
 
 /* -------------------------------------------------------------------------- */

@@ -46,15 +46,31 @@ func TestTF2(t *testing.T) {
     t.Error("TestTF2 failed")
   }
 
-  seq := []byte("cacgtgaaaccctttgg")
+  seq := []byte("cacgtg")
 
-  scores1 := PWM{tf}.Scan(seq, false)
-  scores2 := PWM{tf}.Scan(seq, true)
+  score1 := PWM{tf}.Scan(seq, 0.0, false, func(a, b float64) float64 { return a+b })
+  score2 := PWM{tf}.Scan(seq, 0.0, true , func(a, b float64) float64 { return a+b })
 
-  if len(scores1) != 12 {
+  if score1 != score2 {
     t.Error("TestTF2 failed")
   }
-  if scores1[0] != scores2[0] {
-    t.Error("TestTF2 failed")
+}
+
+func TestTF3(t *testing.T) {
+
+  tf  := EmptyTFMatrix()
+  err := tf.ReadMatrix("tf_test.table")
+
+  if err != nil {
+    t.Error("TestTF3 failed")
+  }
+
+  seq := []byte("cacgtgaaaccctttgg")
+
+  score1 := PWM{tf}.MaxScore(seq, false)
+  score2 := PWM{tf}.MaxScore(seq, true )
+
+  if score1 != score2 {
+    t.Error("TestTF3 failed")
   }
 }

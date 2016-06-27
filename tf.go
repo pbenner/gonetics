@@ -46,42 +46,30 @@ func (t TFMatrix) Length() int {
   return len(t.Values[0])
 }
 
-func (t TFMatrix) Get(c byte, i int) float64 {
-  switch c {
-  case 'A': fallthrough
-  case 'a':
-    return t.Values[0][i]
-  case 'C': fallthrough
-  case 'c':
-    return t.Values[1][i]
-  case 'G': fallthrough
-  case 'g':
-    return t.Values[2][i]
-  case 'T': fallthrough
-  case 't':
-    return t.Values[3][i]
-  default:
-    panic("Get(): invalid parameters")
+func (t TFMatrix) Get(c byte, j int) float64 {
+  i, err := NucleotideAlphabet{}.Code(c)
+  if err != nil {
+    panic(err)
   }
+  return t.Values[i][j]
 }
 
 func (t TFMatrix) GetRow(c byte) []float64 {
-  switch c {
-  case 'A': fallthrough
-  case 'a':
-    return t.Values[0]
-  case 'C': fallthrough
-  case 'c':
-    return t.Values[1]
-  case 'G': fallthrough
-  case 'g':
-    return t.Values[2]
-  case 'T': fallthrough
-  case 't':
-    return t.Values[3]
-  default:
-    panic("GetRow(): invalid parameters")
+  i, err := NucleotideAlphabet{}.Code(c)
+  if err != nil {
+    panic(err)
   }
+  return t.Values[i]
+}
+
+func (t TFMatrix) RevComp() TFMatrix {
+  alphabet := NucleotideAlphabet{}
+  s := make([][]float64, alphabet.Length())
+  for i := 0; i < alphabet.Length(); i++ {
+    j, _ := alphabet.ComplementCoded(byte(i))
+    s[j] = reverseFloat64(t.Values[i])
+  }
+  return TFMatrix{s}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -90,7 +78,7 @@ func (t *TFMatrix) ReadMatrix(filename string) error {
 
   ncols := -1
   // allocate memory
-  t.Values = make([][]float64, 4)
+  t.Values = make([][]float64, NucleotideAlphabet{}.Length())
 
   var scanner *bufio.Scanner
   // open file
@@ -137,22 +125,11 @@ func (t *TFMatrix) ReadMatrix(filename string) error {
       }
       data = append(data, v)
     }
-    switch fields[0][0] {
-    case 'A': fallthrough
-    case 'a':
-      t.Values[0] = data
-    case 'C': fallthrough
-    case 'c':
-      t.Values[1] = data
-    case 'G': fallthrough
-    case 'g':
-      t.Values[2] = data
-    case 'T': fallthrough
-    case 't':
-      t.Values[3] = data
-    default:
-      return fmt.Errorf("ReadMatrix(): invalid tf matrix")
+    i, err := NucleotideAlphabet{}.Code(fields[0][0])
+    if err != nil {
+      return err
     }
+    t.Values[i] = data
   }
   return nil
 }
@@ -164,7 +141,8 @@ type PWM struct {
   TFMatrix
 }
 
-func (t PWM) Scan(sequence []byte) []float64 {
+func (t PWM) Scan(sequence []byte, revcomp bool) []float64 {
+  alphabet := NucleotideAlphabet{}
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1
   // allocate memory
@@ -172,8 +150,15 @@ func (t PWM) Scan(sequence []byte) []float64 {
   // loop over sequence
   for i := 0; i < n; i++ {
     // loop over pwm
-    for j := 0; j < t.Length(); j++ {
-      result[i] += t.Get(sequence[i+j], j)
+    if revcomp {
+      for j := 0; j < t.Length(); j++ {
+        c, _ := alphabet.Complement(sequence[i+t.Length()-j-1])
+        result[i] += t.Get(c, j)
+      }
+    } else {
+      for j := 0; j < t.Length(); j++ {
+        result[i] += t.Get(sequence[i+j], j)
+      }
     }
   }
   return result

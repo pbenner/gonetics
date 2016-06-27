@@ -133,3 +133,11 @@ func removeQuotes(str string) string {
   }
   return str
 }
+
+func reverseFloat64(x []float64) []float64 {
+  y := make([]float64, len(x))
+  for i := 0; i < len(x); i++ {
+    y[len(x)-i-1] = x[i]
+  }
+  return y
+}

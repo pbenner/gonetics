@@ -181,8 +181,10 @@ func (t PWM) ScanMax(sequence []byte, revcomp bool) float64 {
       sum := 0.0
       // loop over pwm
       for j := 0; j < t.Length(); j++ {
-        c, _ := alphabet.Complement(sequence[i+t.Length()-j-1])
-        sum += t.Get(c, j)
+        if a := sequence[i+t.Length()-j-1]; a != 'N' {
+          c, _ := alphabet.Complement(a)
+          sum += t.Get(c, j)
+        }
       }
       if sum > result {
         result = sum
@@ -194,7 +196,9 @@ func (t PWM) ScanMax(sequence []byte, revcomp bool) float64 {
       sum := 0.0
       // loop over pwm
       for j := 0; j < t.Length(); j++ {
-        sum += t.Get(sequence[i+j], j)
+        if a := sequence[i+j]; a != 'N' {
+          sum += t.Get(a, j)
+        }
       }
       if sum > result {
         result = sum

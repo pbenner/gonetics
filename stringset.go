@@ -50,6 +50,16 @@ func EmptyStringSet() StringSet {
 
 /* -------------------------------------------------------------------------- */
 
+func (s StringSet) GetSlice(name string, r Range) ([]byte, error) {
+  result, ok := s[name]
+  if !ok {
+    return nil, fmt.Errorf("GetSlice(): invalid sequence name")
+  }
+  return result[r.From:r.To], nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (s StringSet) ReadFasta(filename string) error {
 
   var scanner *bufio.Scanner

@@ -41,6 +41,18 @@ func NewRange(from, to int) Range {
 
 /* -------------------------------------------------------------------------- */
 
+func (r Range) Intersection(s Range) Range {
+  from := iMax(r.From, s.From)
+  to   := iMin(r.To,   s.To)
+  // this shouldn't happen if r and s overlap
+  if to < from {
+    to = from
+  }
+  return NewRange(from, to)
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (r Range) String() string {
   return fmt.Sprintf("[%d %d)", r.From, r.To)
 }

@@ -167,6 +167,29 @@ func (r GRanges) Slice(ifrom, ito int) GRanges {
   return result
 }
 
+func (r GRanges) Intersection(s GRanges) GRanges {
+  queryHits, subjectHits := FindOverlaps(r, s)
+  n        := len(queryHits)
+  seqnames := make([]string, n)
+  from     := make([]int, n)
+  to       := make([]int, n)
+  strand   := make([]byte, n)
+
+  for i := 0; i < n; i++ {
+    iQ := queryHits[i]
+    iS := subjectHits[i]
+    gr := r.Ranges[iQ].Intersection(s.Ranges[iS])
+    seqnames[i] = r.Seqnames[iQ]
+    strand  [i] = r.Strand  [iQ]
+    from    [i] = gr.From
+    to      [i] = gr.To
+  }
+  result := NewGRanges(seqnames, from, to, strand)
+  result.Meta = r.Meta.Subset(queryHits)
+
+  return result
+}
+
 func (r GRanges) Sort(name string, reverse bool) (GRanges, error) {
   j, err := r.sortedIndices(name, reverse)
   if err != nil {

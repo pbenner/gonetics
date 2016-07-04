@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "bufio"
+import "bytes"
 import "compress/gzip"
 import "fmt"
 import "os"
@@ -123,4 +124,25 @@ func (s StringSet) ReadFasta(filename string) error {
     s[name] = seq
   }
   return nil
+}
+
+func (s StringSet) WriteFasta(filename string, compress bool) error {
+  var buffer bytes.Buffer
+
+  w := bufio.NewWriter(&buffer)
+
+  for name, seq := range s {
+    fmt.Fprintf(w,  ">%s\n", name)
+    for i := 0; i < len(seq); i += 80 {
+      from := i
+      to   := i+80
+      if to >= len(seq) {
+        to = len(seq)
+      }
+      fmt.Fprintf(w, "%s\n", seq[from:to])
+    }
+  }
+
+  w.Flush()
+  return writeFile(filename, &buffer, compress)
 }

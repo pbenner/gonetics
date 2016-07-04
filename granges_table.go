@@ -31,7 +31,7 @@ import "strings"
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(filename string, header, strand, compress bool) {
+func (granges GRanges) WriteTable(filename string, header, strand, compress bool) error {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
@@ -62,7 +62,7 @@ func (granges GRanges) WriteTable(filename string, header, strand, compress bool
     fmt.Fprintf(w, "\n")
   }
   w.Flush()
-  writeFile(filename, &buffer, compress)
+  return writeFile(filename, &buffer, compress)
 }
 
 func ReadGRangesFromTable(filename string, names, types []string) (GRanges, error) {

@@ -81,7 +81,7 @@ func divIntUp(a, b int) int {
 
 /* -------------------------------------------------------------------------- */
 
-func writeFile(filename string, r io.Reader, compress bool) {
+func writeFile(filename string, r io.Reader, compress bool) error {
   var buffer bytes.Buffer
 
   if compress {
@@ -93,7 +93,7 @@ func writeFile(filename string, r io.Reader, compress bool) {
     io.Copy(w, r)
     w.Flush()
   }
-  ioutil.WriteFile(filename, buffer.Bytes(), 0666)
+  return ioutil.WriteFile(filename, buffer.Bytes(), 0666)
 }
 
 func isGzip(filename string) bool {

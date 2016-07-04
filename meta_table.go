@@ -42,6 +42,9 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
       case []float64: fmt.Fprintf(w, " %f", v[i])
       case []int    : fmt.Fprintf(w, " %d", v[i])
       case [][]string:
+        if len(v[i]) == 0 {
+          fmt.Fprintf(w, " nil")
+        }
         for j := 0; j < len(v[i]); j++ {
           if j == 0 {
             fmt.Fprintf(w, " %s", v[i][j])
@@ -50,6 +53,9 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
           }
         }
       case [][]float64:
+        if len(v[i]) == 0 {
+          fmt.Fprintf(w, " nil")
+        }
         for j := 0; j < len(v[i]); j++ {
           if j == 0 {
             fmt.Fprintf(w, " %f", v[i][j])
@@ -58,6 +64,9 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
           }
         }
       case [][]int:
+        if len(v[i]) == 0 {
+          fmt.Fprintf(w, " nil")
+        }
         for j := 0; j < len(v[i]); j++ {
           if j == 0 {
             fmt.Fprintf(w, " %d", v[i][j])
@@ -158,36 +167,48 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
       case [][]int:
         data := strings.FieldsFunc(fields[idx], func(x rune) bool { return x == ',' })
         // parse counts
-        entry = append(entry, make([]int, len(data)))
-        // loop over count vector
-        for i := 0; i < len(data); i++ {
-          v, err := strconv.ParseInt(data[i], 10, 64)
-          if err != nil {
-            return result, err
+        if len(data) == 1 && data[0] == "nil" {
+          entry = append(entry, []int{})
+        } else {
+          entry = append(entry, make([]int, len(data)))
+          // loop over count vector
+          for i := 0; i < len(data); i++ {
+            v, err := strconv.ParseInt(data[i], 10, 64)
+            if err != nil {
+              return result, err
+            }
+            entry[len(entry)-1][i] = int(v)
           }
-          entry[len(entry)-1][i] = int(v)
         }
         metaMap[name] = entry
       case [][]float64:
         data := strings.FieldsFunc(fields[idx], func(x rune) bool { return x == ',' })
         // parse counts
-        entry = append(entry, make([]float64, len(data)))
-        // loop over count vector
-        for i := 0; i < len(data); i++ {
-          v, err := strconv.ParseFloat(data[i], 64)
-          if err != nil {
-            return result, err
+        if len(data) == 1 && data[0] == "nil" {
+          entry = append(entry, []float64{})
+        } else {
+          entry = append(entry, make([]float64, len(data)))
+          // loop over count vector
+          for i := 0; i < len(data); i++ {
+            v, err := strconv.ParseFloat(data[i], 64)
+            if err != nil {
+              return result, err
+            }
+            entry[len(entry)-1][i] = v
           }
-          entry[len(entry)-1][i] = v
         }
         metaMap[name] = entry
       case [][]string:
         data := strings.FieldsFunc(fields[idx], func(x rune) bool { return x == ',' })
         // parse counts
-        entry = append(entry, make([]string, len(data)))
-        // loop over count vector
-        for i := 0; i < len(data); i++ {
-          entry[len(entry)-1][i] = data[i]
+        if len(data) == 1 && data[0] == "nil" {
+          entry = append(entry, []string{})
+        } else {
+          entry = append(entry, make([]string, len(data)))
+          // loop over count vector
+          for i := 0; i < len(data); i++ {
+            entry[len(entry)-1][i] = data[i]
+          }
         }
         metaMap[name] = entry
       }

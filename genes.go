@@ -211,7 +211,7 @@ func (g Genes) Sort(name string, reverse bool) (Genes, error) {
 // Export Genes object to GRanges. The transcription region is exported
 // as the standard ranges field. Ranges of coding sequences and gene
 // names are exported as meta data.
-func (g *Genes) GRanges() *GRanges {
+func (g Genes) GRanges() GRanges {
   n := g.Length()
   names   := make([]string, n)
   txFrom  := make([]int, n)
@@ -230,7 +230,7 @@ func (g *Genes) GRanges() *GRanges {
   result.AddMeta("names",   names)
   result.AddMeta("cdsFrom", cdsFrom)
   result.AddMeta("cdsTo",   cdsTo)
-  return &result
+  return result
 }
 
 /* convert to string

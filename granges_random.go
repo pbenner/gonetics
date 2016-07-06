@@ -89,3 +89,10 @@ func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
   }
   return NewGRanges(seqnames, from, to, strand)
 }
+
+/* -------------------------------------------------------------------------- */
+
+func (r GRanges) RandomPermutation() GRanges {
+  idx := rand.Perm(r.Length())
+  return r.Subset(idx)
+}

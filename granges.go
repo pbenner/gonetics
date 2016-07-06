@@ -129,6 +129,12 @@ func (r GRanges) RemoveOverlapsWith(subject GRanges) GRanges {
   return r.Remove(queryHits)
 }
 
+func (r GRanges) KeepOverlapsWith(subject GRanges) GRanges {
+  queryHits, _ := FindOverlaps(r, subject)
+  queryHits     = removeDuplicatesInt(queryHits)
+  return r.Subset(queryHits)
+}
+
 func (r GRanges) Subset(indices []int) GRanges {
   n := len(indices)
   seqnames := make([]string, n)

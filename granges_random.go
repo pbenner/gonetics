@@ -49,14 +49,16 @@ func (rng GenomeRng) Draw(wsize int) (int, int) {
   k := 0
   // draw a chromosome
   t := 0.0
-  for i := 0; i < len(rng.Weights); i++ {
-    if t <= p && p < rng.Weights[i] {
-      k = i; break
+  for {
+    for i := 0; i < len(rng.Weights); i++ {
+      if t <= p && p < rng.Weights[i] {
+        k = i; break
+      }
+      t = rng.Weights[i]
     }
-    t = rng.Weights[i]
-  }
-  if rng.Genome.Lengths[k] - wsize < 0 {
-    panic("window size is too large")
+    if rng.Genome.Lengths[k] - wsize >= 0 {
+      break
+    }
   }
   i := rand.Intn(rng.Genome.Lengths[k] - wsize + 1)
 

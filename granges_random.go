@@ -26,9 +26,16 @@ import "math/rand"
 type GenomeRng struct {
   Weights []float64
   Genome  Genome
+  MaxLen  int
 }
 
 func NewGenomeRng(genome Genome) GenomeRng {
+  maxLen := 0
+  for i := 0; i < genome.Length(); i++ {
+    if maxLen < genome.Lengths[i] {
+      maxLen = genome.Lengths[i]
+    }
+  }
   // each chromosome is weighted by its length
   weights := make([]float64, genome.Length())
   sum     := 0.0
@@ -41,15 +48,18 @@ func NewGenomeRng(genome Genome) GenomeRng {
   for i := 1; i < genome.Length(); i++ {
     weights[i] = weights[i-1] + weights[i]/sum
   }
-  return GenomeRng{weights, genome}
+  return GenomeRng{weights, genome, maxLen}
 }
 
 func (rng GenomeRng) Draw(wsize int) (int, int) {
-  p := rand.Float64()
+  if wsize > rng.MaxLen {
+    return -1, 0
+  }
   k := 0
   // draw a chromosome
   t := 0.0
   for {
+    p := rand.Float64()
     for i := 0; i < len(rng.Weights); i++ {
       if t <= p && p < rng.Weights[i] {
         k = i; break
@@ -81,6 +91,9 @@ func RandomGRanges(n, wsize int, genome Genome, useStrand bool) GRanges {
   }
   for i := 0; i < n; i++ {
     j, position := rng.Draw(wsize)
+    if j == -1 {
+      return NewEmptyGRanges(0)
+    }
     seqnames[i] = genome.Seqnames[j]
     from    [i] = position
     to      [i] = position + wsize

@@ -143,7 +143,8 @@ func (track Track) Sub(seqname string, position int, value float64) error {
  * -------------------------------------------------------------------------- */
 
 // Add reads to track. All reads are extended in 3' direction to have
-// a length of `d'. This is the same as the macs2 `extsize' parameter.
+// a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Reads are not extended if [d] is zero.
 func (track Track) AddReads(reads GRanges, d int) {
   sum_reads_outside := 0
   for i := 0; i < reads.Length(); i++ {
@@ -153,7 +154,7 @@ func (track Track) AddReads(reads GRanges, d int) {
     }
     from := reads.Ranges[i].From
     to   := reads.Ranges[i].To
-    if to - from < d {
+    if d != 0 && to - from < d {
       // extend read in 3' direction
       if reads.Strand[i] == '+' {
         to = from + d - 1

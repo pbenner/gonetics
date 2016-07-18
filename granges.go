@@ -221,6 +221,16 @@ func (r GRanges) FilterGenome(genome Genome) GRanges {
   return r.Remove(idx)
 }
 
+func (r GRanges) FilterStrand(s byte) GRanges {
+  idx := []int{}
+  for i := 0; i < r.Length(); i++ {
+    if r.Strand[i] != s {
+      idx = append(idx, i)
+    }
+  }
+  return r.Remove(idx)
+}
+
 // Add data from a track to the GRanges object. The data will be
 // contained in a meta-data column with the same name as the track.
 // It is required that each range has the same length.

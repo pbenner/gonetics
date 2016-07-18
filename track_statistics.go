@@ -33,6 +33,7 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int, normalize bool)
   }
   if track1.Binsize != track2.Binsize {
     err = fmt.Errorf("Crosscorrelation(): track binsizes do not match")
+    return
   }
   for name, sequence1 := range track1.Data {
     sequence2, ok := track2.Data[name]
@@ -42,6 +43,7 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int, normalize bool)
     }
     if len(sequence1) != len(sequence2) {
       err = fmt.Errorf("Crosscorrelation(): track sequence lengths do not match")
+      return
     }
   }
   b := track1.Binsize

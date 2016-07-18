@@ -19,75 +19,14 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "math"
 
 /* -------------------------------------------------------------------------- */
 
-// Compute the sample autocorrelation. If [normalize[ is true the result is
-// normalized by mean and variance. The arguments [from] and [to] specify the
-// range of the delay in basepairs.
-func (track Track) Autocorrelation(from, to int, normalize bool) (x []int, y []float64, err error) {
-  if from < 0 || to < from {
-    err = fmt.Errorf("Autocorrelation(): invalid parameters")
-    return
-  }
-  n := (to-from)/track.Binsize // number of points in the resulting  autocorrelation
-  m := 0.0                     // number of data points
-  // sample mean and covariance
-  mean     := 0.0
-  variance := 1.0
-  // allocate result
-  x = make([]int,     n)
-  y = make([]float64, n)
-  if normalize {
-    // compute mean and covariance
-    for _, sequence := range track.Data {
-      s := 0.0
-      t := 0.0
-      // loop over sequence
-      for i := 0; i < len(sequence); i++ {
-        s += sequence[i]
-        t += sequence[i]*sequence[i]
-      }
-      k := float64(len(sequence))
-      mean     = m/(m+k)*mean     + 1/(m+k)*s
-      variance = m/(m+k)*variance + 1/(m+k)*t
-      m += k
-    }
-    variance -= mean*mean
-  }
-  // compute delays used for indexing (i.e. normalized by binsize)
-  for j, l := 0, from; l < to; j, l = j+1, l+track.Binsize {
-    x[j] = l/track.Binsize
-  }
-  // compute autocorrelation
-  m = 0
-  for _, sequence := range track.Data {
-    s := make([]float64, n)
-    // loop over sequence
-    for i := 0; i < len(sequence); i++ {
-      for j := 0; j < n && i+x[j] < len(sequence); j++ {
-        s[j] += (sequence[i]-mean)*(sequence[i+x[j]]-mean)
-      }
-    }
-    k := float64(len(sequence))
-    for j := 0; j < n ; j++ {
-      y[j] = m/(m+k)*y[j] + 1/(m+k)*s[j]
-    }
-    m += k
-  }
-  // normalize result and convert delays
-  for j := 0; j < n ; j++ {
-    x[j] *= track.Binsize
-    y[j] /= variance
-  }
-  return
-}
-
-/* -------------------------------------------------------------------------- */
-
-// Compute the sample cross-correlation between track1 and track2. The
+// Compute the sample cross-correlation between track1 and track2. If
+// [normalize] is true the result is normalized by mean and variance. The
 // arguments [from] and [to] specify the range of the delay in basepairs.
-func (track1 Track) Crosscorrelation(track2 Track, from, to int) (x []int, y []float64, err error) {
+func (track1 Track) Crosscorrelation(track2 Track, from, to int, normalize bool) (x []int, y []float64, err error) {
   if from < 0 || to < from {
     err = fmt.Errorf("Crosscorrelation(): invalid parameters")
     return
@@ -108,12 +47,46 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int) (x []int, y []f
   b := track1.Binsize
   n := (to-from)/b  // number of points in the resulting  autocorrelation
   m := 0.0          // number of data points
+  // sample mean and covariance
+  mean1     := 0.0
+  mean2     := 0.0
+  variance1 := 1.0
+  variance2 := 1.0
   // allocate result
   x = make([]int,     n)
   y = make([]float64, n)
   // compute delays used for indexing (i.e. normalized by binsize)
   for j, l := 0, from; l < to; j, l = j+1, l+b {
     x[j] = l/b
+  }
+  if normalize {
+    // compute mean and covariance
+    for name, sequence1 := range track1.Data {
+      sequence2, ok := track2.Data[name]
+      // skip sequence if it is not present in the second track
+      if !ok {
+        continue
+      }
+      s1 := 0.0
+      s2 := 0.0
+      t1 := 0.0
+      t2 := 0.0
+      // loop over sequence
+      for i := 0; i < len(sequence1); i++ {
+        s1 += sequence1[i]
+        s2 += sequence2[i]
+        t1 += sequence1[i]*sequence1[i]
+        t2 += sequence2[i]*sequence2[i]
+      }
+      k := float64(len(sequence1))
+      mean1     = m/(m+k)*mean1     + 1/(m+k)*s1
+      mean2     = m/(m+k)*mean2     + 1/(m+k)*s2
+      variance1 = m/(m+k)*variance1 + 1/(m+k)*t1
+      variance2 = m/(m+k)*variance2 + 1/(m+k)*t2
+      m += k
+    }
+    variance1 -= mean1*mean1
+    variance2 -= mean2*mean2
   }
   // compute autocorrelation
   m = 0
@@ -127,7 +100,7 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int) (x []int, y []f
     // loop over sequence
     for i := 0; i < len(sequence1); i++ {
       for j := 0; j < n && i+x[j] < len(sequence1); j++ {
-        s[j] += sequence1[i]*sequence2[i+x[j]]
+        s[j] += (sequence1[i]-mean1)*(sequence2[i+x[j]]-mean2)
       }
     }
     k := float64(len(sequence1))
@@ -139,6 +112,16 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int) (x []int, y []f
   // convert delays
   for j := 0; j < n ; j++ {
     x[j] *= b
+    y[j] /= math.Sqrt(variance1*variance2)
   }
   return
+}
+
+/* -------------------------------------------------------------------------- */
+
+// Compute the sample autocorrelation. If [normalize[ is true the result is
+// normalized by mean and variance. The arguments [from] and [to] specify the
+// range of the delay in basepairs.
+func (track Track) Autocorrelation(from, to int, normalize bool) (x []int, y []float64, err error) {
+  return track.Crosscorrelation(track, from, to, normalize)
 }

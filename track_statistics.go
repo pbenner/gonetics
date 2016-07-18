@@ -119,7 +119,7 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int, normalize bool)
 
 /* -------------------------------------------------------------------------- */
 
-// Compute the sample autocorrelation. If [normalize[ is true the result is
+// Compute the sample autocorrelation. If [normalize] is true the result is
 // normalized by mean and variance. The arguments [from] and [to] specify the
 // range of the delay in basepairs.
 func (track Track) Autocorrelation(from, to int, normalize bool) (x []int, y []float64, err error) {

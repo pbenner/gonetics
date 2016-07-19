@@ -231,6 +231,28 @@ func (r GRanges) FilterStrand(s byte) GRanges {
   return r.Remove(idx)
 }
 
+// Set length of each range to the given value. Ranges
+// with no strand information are not changed.
+func (r GRanges) SetLengths(n int) GRanges {
+  s := r.Clone()
+  // negative values are not allowed
+  if n < 0 {
+    n = 0
+  }
+  for i := 0; i < s.Length(); i++ {
+    // forward strand
+    if s.Strand[i] == '+' {
+      s.Ranges[i].To = s.Ranges[i].From+n
+    }
+    // reverse strand
+    if s.Strand[i] == '-' {
+      s.Ranges[i].From = s.Ranges[i].To-n
+    }
+    // if strand is '*' do nothing
+  }
+  return s
+}
+
 // Add data from a track to the GRanges object. The data will be
 // contained in a meta-data column with the same name as the track.
 // It is required that each range has the same length.

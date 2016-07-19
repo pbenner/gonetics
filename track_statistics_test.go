@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
+//import   "fmt"
 import   "math"
 import   "testing"
 
@@ -37,6 +37,7 @@ func TestTrackCrosscorrelation(t *testing.T) {
   // output:
   
   y1 := []float64{
+     0.0005482399,
      0.0211633071,  0.0129903831,  0.0138011575,  0.0106894531,
     -0.0274756566,  0.0017533539, -0.0181861776, -0.0067751107,
     -0.0038123595,  0.0020096182,  0.0022340036, -0.0357639711,
@@ -64,7 +65,8 @@ func TestTrackCrosscorrelation(t *testing.T) {
     if reads.Strand[i] == '+' {
       reads.Ranges[i].To = reads.Ranges[i].From+1
     } else {
-      reads.Ranges[i].From = reads.Ranges[i].To-1
+      reads.Ranges[i].From = reads.Ranges[i].To
+      reads.Ranges[i].To   = reads.Ranges[i].To+1
     }
   }
 
@@ -74,7 +76,7 @@ func TestTrackCrosscorrelation(t *testing.T) {
   track1.AddReads(forward, 0)
   track2.AddReads(reverse, 0)
 
-  _, y2, err := track1.Crosscorrelation(track2, 0, 20, true)
+  _, y2, err := track1.Crosscorrelation(track2, 0, 21, true)
 
   if err != nil {
     t.Error(err)
@@ -83,7 +85,6 @@ func TestTrackCrosscorrelation(t *testing.T) {
     t.Error("cross-correlation test failed")
   }
   for i := 0; i < len(y1); i++ {
-    fmt.Println(math.Abs(y1[i]-y2[i]))
     if math.Abs(y1[i]-y2[i]) > 0.006 {
       t.Error("cross-correlation test failed")
     }

@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "log"
 
 /* -------------------------------------------------------------------------- */
 
@@ -34,7 +35,7 @@ type Range struct {
 // as the interval [from, to).
 func NewRange(from, to int) Range {
   if from > to {
-    panic("NewRange(): from > to")
+    log.Fatalf("NewRange(): invalid range, i.e. from > to (from=%d, to=%d)\n", from, to)
   }
   return Range{from, to}
 }

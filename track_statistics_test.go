@@ -55,28 +55,9 @@ func TestTrackCrosscorrelation(t *testing.T) {
   // }
 
   genome := ReadGenome("track_statistics_test.genome")
-  track1 := AllocTrack("test", genome, 1)
-  track2 := AllocTrack("test", genome, 1)
+  reads  := ReadBed6("track_statistics_test.bed")
 
-  reads := ReadBed6("track_statistics_test.bed")
-
-  // set length of reads to one
-  for i := 0; i < reads.Length(); i++ {
-    if reads.Strand[i] == '+' {
-      reads.Ranges[i].To = reads.Ranges[i].From+1
-    } else {
-      reads.Ranges[i].From = reads.Ranges[i].To
-      reads.Ranges[i].To   = reads.Ranges[i].To+1
-    }
-  }
-
-  forward := reads.FilterStrand('+')
-  reverse := reads.FilterStrand('-')
-  
-  track1.AddReads(forward, 0)
-  track2.AddReads(reverse, 0)
-
-  _, y2, err := track1.Crosscorrelation(track2, 0, 21, true)
+  _, y2, err := CrosscorrelateReads(reads, genome, 21, 1)
 
   if err != nil {
     t.Error(err)

@@ -121,6 +121,30 @@ func (track1 Track) Crosscorrelation(track2 Track, from, to int, normalize bool)
 
 /* -------------------------------------------------------------------------- */
 
+// Compute crosscorrelation between reads on the forward and reverse strand.
+func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([]int, []float64, error) {
+  track1 := AllocTrack("forward", genome, binsize)
+  track2 := AllocTrack("reverse", genome, binsize)
+
+  s := reads.SetLengths(1)
+  // move reads on the reverse strand one bp to the right
+  for i := 0; i < s.Length(); i++ {
+    if s.Strand[i] == '-' {
+      s.Ranges[i].From++
+      s.Ranges[i].To  ++
+    }
+  }
+  // split reads into forward and reverse strand
+  forward := s.FilterStrand('+')
+  reverse := s.FilterStrand('-')
+  track1.AddReads(forward, 0)
+  track2.AddReads(reverse, 0)
+
+  return track1.Crosscorrelation(track2, 0, maxDelay, true)
+}
+
+/* -------------------------------------------------------------------------- */
+
 // Compute the sample autocorrelation. If [normalize] is true the result is
 // normalized by mean and variance. The arguments [from] and [to] specify the
 // range of the delay in basepairs.

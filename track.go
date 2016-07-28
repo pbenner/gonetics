@@ -139,6 +139,28 @@ func (track Track) Sub(seqname string, position int, value float64) error {
   return nil
 }
 
+func (track Track) GetSlice(r GRangesRow) ([]float64, error) {
+  seq, ok := track.Data[r.Seqnames[r.i]]
+  if !ok {
+    return nil, errors.New("invalid seqname")
+  }
+  from := r.Ranges[r.i].From/track.Binsize
+  to   := r.Ranges[r.i].To  /track.Binsize
+  if from >= len(seq) {
+    return nil, nil
+  }
+  if to < 0 {
+    return nil, nil
+  }
+  if from < 0 {
+    from = 0
+  }
+  if to > len(seq) {
+    to = len(seq)
+  }
+  return seq[from:to], nil
+}
+
 /* add read counts to the track
  * -------------------------------------------------------------------------- */
 

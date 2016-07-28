@@ -39,16 +39,16 @@ func (granges GRanges) WriteTable(filename string, header, strand, compress bool
   // print header
   if header {
     if strand {
-      fmt.Fprintf(w, "%10s %10s %10s %6s", "seqnames", "from", "to", "strand")
+      fmt.Fprintf(w, "%14s %10s %10s %6s", "seqnames", "from", "to", "strand")
     } else {
-      fmt.Fprintf(w, "%10s %10s %10s", "seqnames", "from", "to")
+      fmt.Fprintf(w, "%14s %10s %10s", "seqnames", "from", "to")
     }
     granges.Meta.WriteTableRow(w, -1)
     fmt.Fprintf(w, "\n")
   }
   // print data
   for i := 0; i < granges.Length(); i++ {
-    fmt.Fprintf(w,  "%10s", granges.Seqnames[i])
+    fmt.Fprintf(w,  "%14s", granges.Seqnames[i])
     fmt.Fprintf(w, " %10d", granges.Ranges[i].From)
     fmt.Fprintf(w, " %10d", granges.Ranges[i].To)
     if strand {

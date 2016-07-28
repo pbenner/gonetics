@@ -30,6 +30,11 @@ type GRanges struct {
   Meta
 }
 
+type GRangesRow struct {
+  GRanges
+  i int
+}
+
 /* constructors
  * -------------------------------------------------------------------------- */
 
@@ -84,6 +89,10 @@ func (r *GRanges) Clone() GRanges {
 
 func (r GRanges) Length() int {
   return len(r.Ranges)
+}
+
+func (r GRanges) Row(i int) GRangesRow {
+  return GRangesRow{r, i}
 }
 
 func (r1 GRanges) Append(r2 GRanges) GRanges {

@@ -24,39 +24,32 @@ import "errors"
 /* -------------------------------------------------------------------------- */
 
 type MetaRow struct {
-  MetaName []string
-  MetaData []interface{}
+  meta Meta
+  idx  int
 }
 
 /* -------------------------------------------------------------------------- */
 
 func NewMetaRow(m Meta, i int) MetaRow {
-  r := MetaRow{}
-
-  for i := 0; i < m.MetaLength(); i++ {
-    r.MetaName = append(r.MetaName, m.MetaName[i])
-    switch v := m.MetaData[i].(type) {
-    case [][]string:  r.MetaData = append(r.MetaData, v[i])
-    case   []string:  r.MetaData = append(r.MetaData, v[i])
-    case [][]float64: r.MetaData = append(r.MetaData, v[i])
-    case   []float64: r.MetaData = append(r.MetaData, v[i])
-    case [][]int:     r.MetaData = append(r.MetaData, v[i])
-    case   []int:     r.MetaData = append(r.MetaData, v[i])
-    default: panic("Row(): invalid type!")
-    }
-  }
-  return r
+  return MetaRow{m, i}
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (m MetaRow) GetMeta(name string) interface{} {
-  for i := 0; i < len(m.MetaName); i++ {
-    if m.MetaName[i] == name {
-      return m.MetaData[i]
-    }
+  tmp := m.meta.MetaData[m.idx]
+  if tmp == nil {
+    return nil
   }
-  return nil
+  switch v := tmp.(type) {
+  case [][]string:  return v[m.idx]
+  case   []string:  return v[m.idx]
+  case [][]float64: return v[m.idx]
+  case   []float64: return v[m.idx]
+  case [][]int:     return v[m.idx]
+  case   []int:     return v[m.idx]
+  default: panic("Row(): invalid type!")
+  }
 }
 
 func (m MetaRow) GetMetaStr(name string) (string, error) {

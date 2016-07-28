@@ -30,11 +30,6 @@ type GRanges struct {
   Meta
 }
 
-type GRangesRow struct {
-  GRanges
-  i int
-}
-
 /* constructors
  * -------------------------------------------------------------------------- */
 
@@ -92,7 +87,7 @@ func (r GRanges) Length() int {
 }
 
 func (r GRanges) Row(i int) GRangesRow {
-  return GRangesRow{r, i}
+  return NewGRangesRow(r, i)
 }
 
 func (r1 GRanges) Append(r2 GRanges) GRanges {

@@ -140,12 +140,12 @@ func (track Track) Sub(seqname string, position int, value float64) error {
 }
 
 func (track Track) GetSlice(r GRangesRow) ([]float64, error) {
-  seq, ok := track.Data[r.Seqnames[r.i]]
+  seq, ok := track.Data[r.Seqname]
   if !ok {
     return nil, errors.New("invalid seqname")
   }
-  from := r.Ranges[r.i].From/track.Binsize
-  to   := r.Ranges[r.i].To  /track.Binsize
+  from := r.Range.From/track.Binsize
+  to   := r.Range.To  /track.Binsize
   if from >= len(seq) {
     return nil, nil
   }

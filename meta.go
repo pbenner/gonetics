@@ -92,13 +92,17 @@ func (m *Meta) Clone() Meta {
 /* -------------------------------------------------------------------------- */
 
 // Returns the number of rows.
-func (m *Meta) Length() int {
+func (m Meta) Length() int {
   return m.rows
 }
 
 // Returns the number of columns.
-func (m *Meta) MetaLength() int {
+func (m Meta) MetaLength() int {
   return len(m.MetaName)
+}
+
+func (m Meta) Row(i int) MetaRow {
+  return NewMetaRow(m, i)
 }
 
 func (m *Meta) AddMeta(name string, meta interface{}) {
@@ -149,7 +153,7 @@ func (m *Meta) RenameMeta(nameOld, nameNew string) {
   }
 }
 
-func (m *Meta) GetMeta(name string) interface{} {
+func (m Meta) GetMeta(name string) interface{} {
   for i := 0; i < m.MetaLength(); i++ {
     if m.MetaName[i] == name {
       return m.MetaData[i]
@@ -158,7 +162,7 @@ func (m *Meta) GetMeta(name string) interface{} {
   return nil
 }
 
-func (m *Meta) GetMetaStr(name string) []string {
+func (m Meta) GetMetaStr(name string) []string {
   r := m.GetMeta(name)
   if r != nil {
     return r.([]string)
@@ -166,7 +170,7 @@ func (m *Meta) GetMetaStr(name string) []string {
   return []string{}
 }
 
-func (m *Meta) GetMetaFloat(name string) []float64 {
+func (m Meta) GetMetaFloat(name string) []float64 {
   r := m.GetMeta(name)
   if r != nil {
     return r.([]float64)
@@ -174,7 +178,7 @@ func (m *Meta) GetMetaFloat(name string) []float64 {
   return []float64{}
 }
 
-func (m *Meta) GetMetaInt(name string) []int {
+func (m Meta) GetMetaInt(name string) []int {
   r := m.GetMeta(name)
   if r != nil {
     return r.([]int)
@@ -182,7 +186,7 @@ func (m *Meta) GetMetaInt(name string) []int {
   return []int{}
 }
 
-func (meta1 *Meta) Append(meta2 Meta) Meta {
+func (meta1 Meta) Append(meta2 Meta) Meta {
   result := Meta{}
 
   // clone data so we do not have to deep copy
@@ -212,7 +216,7 @@ func (meta1 *Meta) Append(meta2 Meta) Meta {
   return result
 }
 
-func (meta *Meta) Remove(indices []int) Meta {
+func (meta Meta) Remove(indices []int) Meta {
   if len(indices) == 0 {
     return meta.Clone()
   }
@@ -237,7 +241,7 @@ func (meta *Meta) Remove(indices []int) Meta {
 
 // Return a new Meta object with a subset of the rows from
 // this object.
-func (meta *Meta) Subset(indices []int) Meta {
+func (meta Meta) Subset(indices []int) Meta {
   n := len(indices)
   m := meta.MetaLength()
   data := []interface{}{}
@@ -287,7 +291,7 @@ func (meta *Meta) Subset(indices []int) Meta {
 
 // Return a new Meta object containing rows given by the range
 // [ifrom, ito).
-func (meta *Meta) Slice(ifrom, ito int) Meta {
+func (meta Meta) Slice(ifrom, ito int) Meta {
   n := ito-ifrom
   m := meta.MetaLength()
   data := []interface{}{}
@@ -342,7 +346,7 @@ func (meta *Meta) Slice(ifrom, ito int) Meta {
 // replacing one-dimensional slices by two-dimensional slices. The Reduce{String,Float64,Int}
 // methods may be used afterwards to apply a function to the merged data. A Meta object that
 // already contains two-dimensional slices cannot be merged.
-func (meta *Meta) Merge(indices []int) Meta {
+func (meta Meta) Merge(indices []int) Meta {
   sliceMax := func(s []int) int {
     max := 0
     for _, v := range s {

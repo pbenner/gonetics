@@ -34,7 +34,7 @@ func NewMetaRow(m Meta, i int) MetaRow {
   r := MetaRow{}
 
   for i := 0; i < m.MetaLength(); i++ {
-    r.MetaName = append(r.MetaName)
+    r.MetaName = append(r.MetaName, m.MetaName[i])
     switch v := m.MetaData[i].(type) {
     case [][]string:  r.MetaData = append(r.MetaData, v[i])
     case   []string:  r.MetaData = append(r.MetaData, v[i])

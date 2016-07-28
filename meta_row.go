@@ -37,7 +37,7 @@ func NewMetaRow(m Meta, i int) MetaRow {
 /* -------------------------------------------------------------------------- */
 
 func (m MetaRow) GetMeta(name string) interface{} {
-  tmp := m.meta.MetaData[m.idx]
+  tmp := m.meta.GetMeta(name)
   if tmp == nil {
     return nil
   }

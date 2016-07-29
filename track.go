@@ -142,7 +142,7 @@ func (track Track) Sub(seqname string, position int, value float64) error {
 func (track Track) GetSlice(r GRangesRow) ([]float64, error) {
   seq, ok := track.Data[r.Seqname]
   if !ok {
-    return nil, errors.New("invalid seqname")
+    return nil, fmt.Errorf("GetSlice(): invalid seqname `%s'", r.Seqname)
   }
   from := r.Range.From/track.Binsize
   to   := r.Range.To  /track.Binsize

@@ -65,7 +65,7 @@ func (granges GRanges) WriteTable(filename string, header, strand, compress bool
   return writeFile(filename, &buffer, compress)
 }
 
-func ReadGRangesFromTable(filename string, names, types []string) (GRanges, error) {
+func (g *GRanges) ReadTable(filename string, names, types []string) error {
   result    := GRanges{}
   hasStrand := false
 
@@ -73,7 +73,7 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
   // open file
   f, err := os.Open(filename)
   if err != nil {
-    return result, err
+    return err
   }
   defer f.Close()
 
@@ -81,7 +81,7 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
-      return result, err
+      return err
     }
     defer g.Close()
     scanner = bufio.NewScanner(g)
@@ -94,10 +94,10 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
     fields := strings.Fields(scanner.Text())
     // get number of columns
     if len(fields) < 4 {
-      return result, errors.New("invalid table")
+      return errors.New("invalid table")
     }
     if fields[0] != "seqnames" || fields[1] != "from" || fields[2] != "to" {
-      return result, errors.New("invalid table")
+      return errors.New("invalid table")
     }
     if fields[3] == "strand" {
       hasStrand = true
@@ -109,15 +109,15 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
       continue
     }
     if len(fields) < 4 {
-      return result, errors.New("invalid table")
+      return errors.New("invalid table")
     }
     v1, err := strconv.ParseInt(fields[1], 10, 64)
     if err != nil {
-      return result, err
+      return err
     }
     v2, err := strconv.ParseInt(fields[2], 10, 64)
     if err != nil {
-      return result, err
+      return err
     }
     result.Seqnames = append(result.Seqnames, fields[0])
     result.Ranges   = append(result.Ranges,   NewRange(int(v1), int(v2)))
@@ -127,7 +127,5 @@ func ReadGRangesFromTable(filename string, names, types []string) (GRanges, erro
       result.Strand = append(result.Strand,   '*')
     }
   }
-  result.Meta, err = ReadMetaFromTable(filename, names, types)
-
-  return result, err
+  return result.Meta.ReadTable(filename, names, types)
 }

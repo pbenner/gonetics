@@ -79,11 +79,10 @@ func (meta *Meta) WriteTableRow(w io.Writer, i int) {
   }
 }
 
-func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
+func (meta *Meta) ReadTable(filename string, names, types []string) error {
   if len(names) != len(types) {
     panic("invalid arguments")
   }
-  result := Meta{}
   // header information
    idxMap := make(map[string]int)
   metaMap := make(map[string]interface{})
@@ -104,7 +103,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
   // open file
   f, err := os.Open(filename)
   if err != nil {
-    return result, err
+    return err
   }
   defer f.Close()
 
@@ -112,7 +111,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
-      return result, err
+      return err
     }
     defer g.Close()
     scanner = bufio.NewScanner(g)
@@ -125,7 +124,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
     fields := strings.Fields(scanner.Text())
     // get number of columns
     if len(fields) < 4 {
-      return result, errors.New("invalid table")
+      return errors.New("invalid table")
     }
     for i := 0; i < len(fields); i++ {
       if _, ok := idxMap[fields[i]]; ok {
@@ -144,7 +143,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
         continue
       }
       if idx >= len(fields) {
-        return result, errors.New("invalid table")
+        return errors.New("invalid table")
       }
       switch entry := metaMap[name].(type) {
       case []string:
@@ -153,14 +152,14 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
       case []int:
         v, err := strconv.ParseInt(fields[idx], 10, 64)
         if err != nil {
-          return result, err
+          return err
         }
         entry = append(entry, int(v))
         metaMap[name] = entry
       case []float64:
         v, err := strconv.ParseFloat(fields[idx], 64)
         if err != nil {
-          return result, err
+          return err
         }
         entry = append(entry, v)
         metaMap[name] = entry
@@ -175,7 +174,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
           for i := 0; i < len(data); i++ {
             v, err := strconv.ParseInt(data[i], 10, 64)
             if err != nil {
-              return result, err
+              return err
             }
             entry[len(entry)-1][i] = int(v)
           }
@@ -192,7 +191,7 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
           for i := 0; i < len(data); i++ {
             v, err := strconv.ParseFloat(data[i], 64)
             if err != nil {
-              return result, err
+              return err
             }
             entry[len(entry)-1][i] = v
           }
@@ -216,8 +215,8 @@ func ReadMetaFromTable(filename string, names, types []string) (Meta, error) {
   }
   for name, idx := range idxMap {
     if idx != -1 {
-      result.AddMeta(name, metaMap[name])
+      meta.AddMeta(name, metaMap[name])
     }
   }
-  return result, nil
+  return nil
 }

@@ -90,7 +90,8 @@ func ImportCpGIslandsFromUCSC(genome string) GRanges {
 }
 
 func ReadCpGIslandsFromTable(filename string) GRanges {
-  cpg, _ := ReadGRangesFromTable(filename,
+  cpg := GRanges{}
+  cpg.ReadTable(filename,
     []string{"length", "cpgNum", "gcNum", "perCpg", "perGc", "obsExp"},
     []string{"[]int", "[]int", "[]int", "[]float64", "[]float64", "[]float64"})
   return cpg

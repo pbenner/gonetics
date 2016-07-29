@@ -94,10 +94,12 @@ func (genome Genome) String() string {
 // Import chromosome sizes from a UCSC text file. The format is a whitespace
 // separated table where the first column is the name of the chromosome and
 // the second column the chromosome length.
-func ReadGenome(filename string) Genome {
+func (genome *Genome) ReadFile(filename string) error {
 
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return err
+  }
 
   // it seems that buffering the data does not increase
   // performance
@@ -111,12 +113,16 @@ func ReadGenome(filename string) Genome {
       continue
     }
     if len(fields) < 2 {
-      panic("Invalid genome file!")
+      return fmt.Errorf("ReadFile(): invalid genome file `%s'", filename)
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
-    check(e1)
+    if e1 != nil {
+      return e1
+    }
     seqnames = append(seqnames, fields[0])
     lengths  = append(lengths,  int(t1))
   }
-  return NewGenome(seqnames, lengths)
+  *genome = NewGenome(seqnames, lengths)
+
+  return nil
 }

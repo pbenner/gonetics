@@ -21,7 +21,6 @@ package gonetics
 import "fmt"
 import "bufio"
 import "compress/gzip"
-import "errors"
 import "io"
 import "os"
 import "strconv"
@@ -124,7 +123,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
     fields := strings.Fields(scanner.Text())
     // get number of columns
     if len(fields) < 4 {
-      return errors.New("invalid table")
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
     }
     for i := 0; i < len(fields); i++ {
       if _, ok := idxMap[fields[i]]; ok {
@@ -143,7 +142,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
         continue
       }
       if idx >= len(fields) {
-        return errors.New("invalid table")
+        return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
       }
       switch entry := metaMap[name].(type) {
       case []string:

@@ -20,7 +20,6 @@ package gonetics
 
 import "bufio"
 import "bytes"
-import "errors"
 import "fmt"
 import "compress/gzip"
 import "os"
@@ -94,10 +93,10 @@ func (g *GRanges) ReadTable(filename string, names, types []string) error {
     fields := strings.Fields(scanner.Text())
     // get number of columns
     if len(fields) < 4 {
-      return errors.New("invalid table")
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
     }
     if fields[0] != "seqnames" || fields[1] != "from" || fields[2] != "to" {
-      return errors.New("invalid table")
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
     }
     if fields[3] == "strand" {
       hasStrand = true
@@ -109,7 +108,7 @@ func (g *GRanges) ReadTable(filename string, names, types []string) error {
       continue
     }
     if len(fields) < 4 {
-      return errors.New("invalid table")
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
     }
     v1, err := strconv.ParseInt(fields[1], 10, 64)
     if err != nil {

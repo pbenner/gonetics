@@ -29,7 +29,7 @@ import "strings"
 /* -------------------------------------------------------------------------- */
 
 // Export GRanges object as bed file with three columns.
-func (granges GRanges) WriteBed3(filename string, compress bool) {
+func (granges GRanges) WriteBed3(filename string, compress bool) error {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
@@ -42,10 +42,11 @@ func (granges GRanges) WriteBed3(filename string, compress bool) {
     fmt.Fprintf(w, "\n")
   }
   w.Flush()
-  writeFile(filename, &buffer, compress)
+
+  return writeFile(filename, &buffer, compress)
 }
 
-func (granges GRanges) WriteBed6(filename string, compress bool) {
+func (granges GRanges) WriteBed6(filename string, compress bool) error {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
@@ -75,20 +76,25 @@ func (granges GRanges) WriteBed6(filename string, compress bool) {
     fmt.Fprintf(w, "\n")
   }
   w.Flush()
-  writeFile(filename, &buffer, compress)
+
+  return writeFile(filename, &buffer, compress)
 }
 
 // Import GRanges from a Bed file with 3 columns.
-func ReadBed3(filename string) GRanges {
+func (g *GRanges) ReadBed3(filename string) error {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return err
+  }
   defer f.Close()
   // check if file is gzipped
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    check(err)
+    if err != nil {
+      return err
+    }
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -106,30 +112,40 @@ func ReadBed3(filename string) GRanges {
       continue
     }
     if len(fields) < 3 {
-      panic("Bed file must have at least three columns!")
+      return fmt.Errorf("ReadBed3(): Bed file must have at least three columns!")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
     t2, e2 := strconv.ParseInt(fields[2], 10, 64)
-    check(e1)
-    check(e2)
+    if e1 != nil {
+      return e1
+    }
+    if e2 != nil {
+      return e2
+    }
     seqnames = append(seqnames, fields[0])
     from     = append(from,     int(t1))
     to       = append(to,       int(t2))
   }
-  return NewGRanges(seqnames, from, to, []byte{})
+  *g = NewGRanges(seqnames, from, to, []byte{})
+
+  return nil
 }
 
 // Import GRanges from a Bed file with 6 columns.
-func ReadBed6(filename string) GRanges {
+func (g *GRanges) ReadBed6(filename string) error {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return err
+  }
   defer f.Close()
   // check if file is gzipped
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    check(err)
+    if err != nil {
+      return nil
+    }
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -148,16 +164,22 @@ func ReadBed6(filename string) GRanges {
       continue
     }
     if len(fields) < 6 {
-      panic("Bed file must have at least six columns!")
+      fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
     t2, e2 := strconv.ParseInt(fields[2], 10, 64)
-    check(e1)
-    check(e2)
+    if e1 != nil {
+      return e1
+    }
+    if e2 != nil {
+      return e2
+    }
     seqnames = append(seqnames, fields[0])
     from     = append(from,     int(t1))
     to       = append(to,       int(t2))
     strand   = append(strand,   fields[5][0])
   }
-  return NewGRanges(seqnames, from, to, strand)
+  *g = NewGRanges(seqnames, from, to, strand)
+
+  return nil
 }

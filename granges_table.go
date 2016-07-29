@@ -64,8 +64,7 @@ func (granges GRanges) WriteTable(filename string, header, strand, compress bool
   return writeFile(filename, &buffer, compress)
 }
 
-func (g *GRanges) ReadTable(filename string, names, types []string) error {
-  result    := GRanges{}
+func (granges *GRanges) ReadTable(filename string, names, types []string) error {
   hasStrand := false
 
   var scanner *bufio.Scanner
@@ -118,13 +117,13 @@ func (g *GRanges) ReadTable(filename string, names, types []string) error {
     if err != nil {
       return err
     }
-    result.Seqnames = append(result.Seqnames, fields[0])
-    result.Ranges   = append(result.Ranges,   NewRange(int(v1), int(v2)))
+    granges.Seqnames = append(granges.Seqnames, fields[0])
+    granges.Ranges   = append(granges.Ranges,   NewRange(int(v1), int(v2)))
     if hasStrand {
-      result.Strand = append(result.Strand,   fields[3][0])
+      granges.Strand = append(granges.Strand,   fields[3][0])
     } else {
-      result.Strand = append(result.Strand,   '*')
+      granges.Strand = append(granges.Strand,   '*')
     }
   }
-  return result.Meta.ReadTable(filename, names, types)
+  return granges.Meta.ReadTable(filename, names, types)
 }

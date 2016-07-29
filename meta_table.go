@@ -28,7 +28,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (meta *Meta) WriteTableRow(w io.Writer, i int) {
+func (meta Meta) WriteTableRow(w io.Writer, i int) {
   if i == -1 {
     // write header
     for k := 0; k < meta.MetaLength(); k++ {

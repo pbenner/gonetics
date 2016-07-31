@@ -129,6 +129,8 @@ func (m *Meta) AddMeta(name string, meta interface{}) {
     default: panic("AddMeta(): invalid type!")
     }
   }
+  // if a meta column with this name already exists delete it
+  m.DeleteMeta(name)
   m.MetaData = append(m.MetaData, meta)
   m.MetaName = append(m.MetaName, name)
   return
@@ -146,6 +148,11 @@ func (m *Meta) DeleteMeta(name string) {
 }
 
 func (m *Meta) RenameMeta(nameOld, nameNew string) {
+  if nameOld == nameNew {
+    return
+  }
+  // if a meta column with this name already exists delete it
+  m.DeleteMeta(nameNew)
   for i := 0; i < m.MetaLength(); i++ {
     if m.MetaName[i] == nameOld {
       m.MetaName[i] = nameNew

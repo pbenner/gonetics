@@ -104,9 +104,13 @@ func (track Track) Length(seqname string) (int, error) {
 func (track Track) At(seqname string, position int) (float64, error) {
   seq, ok := track.Data[seqname]
   if !ok {
-    return 0, errors.New("invalid seqname")
+    return 0, fmt.Errorf("invalid seqname `%s'", seqname)
   }
-  return seq[track.Index(position)], nil
+  idx := track.Index(position)
+  if idx < 0 || idx >= len(seq) {
+    return 0, fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
+  }
+  return seq[idx], nil
 }
 
 func (track Track) Set(seqname string, position int, value float64) error {
@@ -114,7 +118,11 @@ func (track Track) Set(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("invalid seqname")
   }
-  seq[track.Index(position)] = value
+  idx := track.Index(position)
+  if idx < 0 || idx >= len(seq) {
+    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
+  }
+  seq[idx] = value
 
   return nil
 }
@@ -124,7 +132,11 @@ func (track Track) Add(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("invalid seqname")
   }
-  seq[track.Index(position)] += value
+  idx := track.Index(position)
+  if idx < 0 || idx >= len(seq) {
+    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
+  }
+  seq[idx] += value
 
   return nil
 }
@@ -134,7 +146,11 @@ func (track Track) Sub(seqname string, position int, value float64) error {
   if !ok {
     return errors.New("invalid seqname")
   }
-  seq[track.Index(position)] -= value
+  idx := track.Index(position)
+  if idx < 0 || idx >= len(seq) {
+    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
+  }
+  seq[idx] -= value
 
   return nil
 }

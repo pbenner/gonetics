@@ -26,7 +26,8 @@ import   "testing"
 
 func TestTrack1(t *testing.T) {
 
-  genome := ReadGenome("Data/hg19.genome")
+  genome := Genome{}
+  genome.ReadFile("Data/hg19.genome")
   track  := AllocTrack("test", genome, 100)
 
   track.Set("chrX", 100, 13.0)
@@ -40,7 +41,8 @@ func TestTrack1(t *testing.T) {
 
 func TestTrack2(t *testing.T) {
 
-  genome := ReadGenome("Data/hg19.genome")
+  genome := Genome{}
+  genome.ReadFile("Data/hg19.genome")
   track  := AllocTrack("test", genome, 100)
 
   // bin                                         bin                                         bin                                         bin

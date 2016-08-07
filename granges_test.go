@@ -76,7 +76,8 @@ func TestGRanges3(t *testing.T) {
 }
 
 func TestGRangesRandom(t *testing.T) {
-  genome  := ReadGenome("Data/hg19.genome")
+  genome  := Genome{}
+  genome.ReadFile("Data/hg19.genome")
   granges := RandomGRanges(1000, 10000, genome, true)
 
   if granges.Length() != 1000 {

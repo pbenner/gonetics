@@ -18,7 +18,9 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
+import "bufio"
+import "bytes"
 
 /* -------------------------------------------------------------------------- */
 
@@ -37,4 +39,20 @@ func NewGRangesRow(granges GRanges, i int) GRangesRow {
     granges.Ranges  [i],
     granges.Strand  [i],
     granges.Meta.Row(i) }
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (r GRangesRow) String() string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if r.Strand == '*' {
+    fmt.Fprintf(writer, "%s:%d-%d", r.Seqname, r.Range.From, r.Range.To)
+  } else {
+    fmt.Fprintf(writer, "%s:%d-%d (%c)", r.Seqname, r.Range.From, r.Range.To, r.Strand)
+  }
+  writer.Flush()
+
+  return buffer.String()
 }

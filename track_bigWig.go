@@ -25,7 +25,9 @@ import "os"
 
 /* -------------------------------------------------------------------------- */
 
-const BIGWIG_MAGIC = 0x888FFC26
+const  BIGWIG_MAGIC = 0x888FFC26
+const CIRTREE_MAGIC = 0x78ca8c91
+const     IDX_MAGIC = 0x2468ace0
 
 /* -------------------------------------------------------------------------- */
 
@@ -59,6 +61,26 @@ type BigWigHeader struct {
 
 }
 
+type BigWigChromList struct {
+
+}
+
+func (chromList *BigWigChromList) Read(file *os.File, header BigWigHeader) error {
+
+  file.Seek(int64(header.CtOffset), 0)
+
+  var magic uint32
+
+  // magic number
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
+  if magic != CIRTREE_MAGIC {
+    return fmt.Errorf("invalid chromosome list")
+  }
+  return nil
+}
+
 func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
 
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
@@ -85,7 +107,7 @@ func (header *BigWigHeader) Read(file *os.File) error {
     return err
   }
   if magic != BIGWIG_MAGIC {
-    return fmt.Errorf("invalid bigWig file")
+    return fmt.Errorf("invalid header")
   }
   // header information
   if err := binary.Read(file, binary.LittleEndian, &header.Version); err != nil {
@@ -161,9 +183,13 @@ func (track *Track) ReadBigWig(filename string) error {
   }
   defer f.Close()
 
-  header := BigWigHeader{}
+  header    := BigWigHeader{}
+  chromList := BigWigChromList{}
   
   if err := header.Read(f); err != nil {
+    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  }
+  if err := chromList.Read(f, header); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
 

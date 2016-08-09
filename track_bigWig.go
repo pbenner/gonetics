@@ -370,8 +370,10 @@ func (vertex *RTreeVertex) Read(file *os.File) error {
   vertex.ChrIdxEnd   = make([]uint32, vertex.NChildren)
   vertex.BaseEnd     = make([]uint32, vertex.NChildren)
   vertex.DataOffset  = make([]uint64, vertex.NChildren)
-  if vertex.IsLeaf != 0{
-    vertex.Sizes  = make([]uint64, vertex.NChildren)
+  if vertex.IsLeaf != 0 {
+    vertex.Sizes     = make([]uint64, vertex.NChildren)
+  } else {
+    vertex.Children  = make([]*RTreeVertex, vertex.NChildren)
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {

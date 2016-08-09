@@ -20,7 +20,7 @@ package gonetics
 
 import "fmt"
 import "encoding/binary"
-import "io"
+//import "io"
 import "os"
 
 /* -------------------------------------------------------------------------- */
@@ -59,72 +59,92 @@ type BigWigHeader struct {
 
 }
 
-func (zoomHeader *BigWigHeaderZoom) Read(reader io.Reader) error {
+func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
 
-  if err := binary.Read(reader, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
     return err
   }
   return nil
 }
 
-func (header *BigWigHeader) Read(reader io.Reader) error {
+func (header *BigWigHeader) Read(file *os.File) error {
 
   var magic uint32
 
   // magic number
-  if err := binary.Read(reader, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
     return err
   }
   if magic != BIGWIG_MAGIC {
     return fmt.Errorf("invalid bigWig file")
   }
   // header information
-  if err := binary.Read(reader, binary.LittleEndian, &header.Version); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.Version); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.ZoomLevels); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.ZoomLevels); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.CtOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.CtOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.DataOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.DataOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.IndexOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.IndexOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.FieldCould); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.FieldCould); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.DefinedFieldCount); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.DefinedFieldCount); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.SqlOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.SqlOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.SummaryOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.SummaryOffset); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.BufSize); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.BufSize); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &header.ExtensionOffset); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.ExtensionOffset); err != nil {
     return err
   }
   // zoom levels
   header.ZoomHeaders = make([]BigWigHeaderZoom, header.ZoomLevels)
   for i := 0; i < int(header.ZoomLevels); i++ {
-    if err := header.ZoomHeaders[i].Read(reader); err != nil {
+    if err := header.ZoomHeaders[i].Read(file); err != nil {
+      return err
+    }
+  }
+  // summary
+  if header.SummaryOffset > 0 {
+    file.Seek(int64(header.SummaryOffset), 0)
+
+    if err := binary.Read(file, binary.LittleEndian, &header.NBasesCovered); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &header.MinVal); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &header.MaxVal); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &header.SumData); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &header.SumSquared); err != nil {
       return err
     }
   }

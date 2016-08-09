@@ -275,6 +275,68 @@ func (header *BigWigHeader) Read(file *os.File) error {
   return nil
 }
 
+/* -------------------------------------------------------------------------- */
+
+type RTree struct {
+
+  BlockSize     uint32
+  NItems        uint64
+  ChrIdxStart   uint32
+  BaseStart     uint32
+  ChrIdxEnd     uint32
+  BaseEnd       uint32
+  IdxSize       uint64
+  NItemsPerSlot uint32
+  RootOffset    uint64
+
+}
+
+func (tree *RTree) Read(file *os.File) error {
+
+  var magic uint32
+
+  // magic number
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
+  if magic != IDX_MAGIC {
+    return fmt.Errorf("invalid bigWig tree")
+  }
+
+  if err := binary.Read(file, binary.LittleEndian, &tree.BlockSize); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.NItems); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.ChrIdxStart); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.BaseStart); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.ChrIdxEnd); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.BaseEnd); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.IdxSize); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &tree.NItemsPerSlot); err != nil {
+    return err
+  }
+  if offset, err := file.Seek(0, 0); err != nil {
+    return err
+  } else {
+    tree.RootOffset = uint64(offset)
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (track *Track) ReadBigWig(filename string) error {
 
   // open file

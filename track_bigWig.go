@@ -348,13 +348,16 @@ func (track *Track) ReadBigWig(filename string) error {
 
   header    := BigWigHeader{}
   chromData := BData{}
+  tree      := RTree{}
 
   // parse header
   if err := header.Read(f); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   // parse chromosome list, which is represented as a tree
-  f.Seek(int64(header.CtOffset), 0)
+  if _, err := f.Seek(int64(header.CtOffset), 0); err != nil {
+    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  }
   if err := chromData.Read(f); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
@@ -375,6 +378,14 @@ func (track *Track) ReadBigWig(filename string) error {
   genome := NewGenome(seqnames, lengths)
 
   *track = AllocTrack("", genome, 10)
+
+  // parse data
+  if _, err := f.Seek(int64(header.IndexOffset), 0); err != nil {
+    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  }
+  if err := tree.Read(f); err != nil {
+    return err
+  }
 
   return nil
 }

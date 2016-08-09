@@ -337,6 +337,71 @@ func (tree *RTree) Read(file *os.File) error {
 
 /* -------------------------------------------------------------------------- */
 
+type RTreeVertex struct {
+
+  IsLeaf        uint8
+  NChildren     uint16
+  ChrIdxStart []uint32
+  BaseStart   []uint32
+  ChrIdxEnd   []uint32
+  BaseEnd     []uint32
+  DataOffset  []uint64
+  Sizes       []uint64
+  Children    []*RTreeVertex
+
+}
+
+func (vertex *RTreeVertex) Read(file *os.File) error {
+
+  var padding uint8
+
+  if err := binary.Read(file, binary.LittleEndian, &vertex.IsLeaf); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &padding); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &vertex.NChildren); err != nil {
+    return err
+  }
+  // allocate data
+  vertex.ChrIdxStart = make([]uint32, vertex.NChildren)
+  vertex.BaseStart   = make([]uint32, vertex.NChildren)
+  vertex.ChrIdxEnd   = make([]uint32, vertex.NChildren)
+  vertex.BaseEnd     = make([]uint32, vertex.NChildren)
+  vertex.DataOffset  = make([]uint64, vertex.NChildren)
+  if vertex.IsLeaf != 0{
+    vertex.Sizes  = make([]uint64, vertex.NChildren)
+  }
+
+  for i := 0; i < int(vertex.NChildren); i++ {
+    if err := binary.Read(file, binary.LittleEndian, &vertex.ChrIdxStart[i]); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &vertex.BaseStart[i]); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &vertex.ChrIdxEnd[i]); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &vertex.BaseEnd[i]); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &vertex.DataOffset[i]); err != nil {
+      return err
+    }
+    if vertex.IsLeaf != 0 {
+      if err := binary.Read(file, binary.LittleEndian, &vertex.Sizes[i]); err != nil {
+        return err
+      }  
+    }
+  }
+  
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (track *Track) ReadBigWig(filename string) error {
 
   // open file

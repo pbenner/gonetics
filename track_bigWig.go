@@ -31,12 +31,150 @@ const     IDX_MAGIC = 0x2468ace0
 
 /* -------------------------------------------------------------------------- */
 
+type BData struct {
+  KeySize       uint32
+  ValueSize     uint32
+  ItemsPerBlock uint32
+
+  Keys   [][]byte
+  Values [][]byte
+}
+
+func (data *BData) readVertexLeaf(file *os.File) error {
+  var nVals   uint16
+  var key   []byte
+  var value []byte
+
+  if err := binary.Read(file, binary.LittleEndian, &nVals); err != nil {
+    return err
+  }
+
+  for i := 0; i < int(nVals); i++ {
+    key   = make([]byte, data.KeySize)
+    value = make([]byte, data.ValueSize)
+    if err := binary.Read(file, binary.LittleEndian, &key); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &value); err != nil {
+      return err
+    }
+    data.Keys   = append(data.Keys, key)
+    data.Values = append(data.Values, value)
+  }
+  return nil
+}
+
+func (data *BData) readVertexIndex(file *os.File) error {
+  var nVals     uint16
+  var key     []byte
+  var position  uint64
+
+  key = make([]byte, data.KeySize)
+
+  if err := binary.Read(file, binary.LittleEndian, &nVals); err != nil {
+    return err
+  }
+
+  for i := 0; i < int(nVals); i++ {
+    if err := binary.Read(file, binary.LittleEndian, &key); err != nil {
+      return err
+    }
+    if err := binary.Read(file, binary.LittleEndian, &position); err != nil {
+      return err
+    }
+    // save current position and jump to child vertex
+    currentPosition, _ := file.Seek(0, 0)
+    file.Seek(int64(position), 0)
+    data.readVertex(file)
+    file.Seek(currentPosition, 0)
+  }
+  return nil
+}
+
+func (data *BData) readVertex(file *os.File) error {
+  var isLeaf  uint8
+  var padding uint8
+
+  if err := binary.Read(file, binary.LittleEndian, &isLeaf); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &padding); err != nil {
+    return err
+  }
+  if isLeaf != 0 {
+    data.readVertexLeaf(file)
+  } else {
+    data.readVertexIndex(file)
+  }
+  return nil
+}
+
+func (data *BData) Read(file *os.File) error {
+
+  var magic uint32
+  var itemCount uint64
+
+  // magic number
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
+  if magic != CIRTREE_MAGIC {
+    return fmt.Errorf("invalid tree")
+  }
+
+  if err := binary.Read(file, binary.LittleEndian, &data.ItemsPerBlock); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &data.KeySize); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &data.ValueSize); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &itemCount); err != nil {
+    return err
+  }
+  // padding
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
+
+  for i := 0; i < int(itemCount); i++ {
+    data.readVertex(file)
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BigWigHeaderZoom struct {
   ReductionLevel    uint32
   Reserved          uint32
   DataOffset        uint64
   IndexOffset       uint64
 }
+
+func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
+
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
+    return err
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
 
 type BigWigHeader struct {
 
@@ -59,43 +197,6 @@ type BigWigHeader struct {
 
   ZoomHeaders     []BigWigHeaderZoom
 
-}
-
-type BigWigChromList struct {
-
-}
-
-func (chromList *BigWigChromList) Read(file *os.File, header BigWigHeader) error {
-
-  file.Seek(int64(header.CtOffset), 0)
-
-  var magic uint32
-
-  // magic number
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
-    return err
-  }
-  if magic != CIRTREE_MAGIC {
-    return fmt.Errorf("invalid chromosome list")
-  }
-  return nil
-}
-
-func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
-
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
-    return err
-  }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
-    return err
-  }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
-    return err
-  }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
-    return err
-  }
-  return nil
 }
 
 func (header *BigWigHeader) Read(file *os.File) error {
@@ -184,14 +285,34 @@ func (track *Track) ReadBigWig(filename string) error {
   defer f.Close()
 
   header    := BigWigHeader{}
-  chromList := BigWigChromList{}
-  
+  chromData := BData{}
+
+  // parse header
   if err := header.Read(f); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  if err := chromList.Read(f, header); err != nil {
+  // parse chromosome list, which is represented as a tree
+  f.Seek(int64(header.CtOffset), 0)
+  if err := chromData.Read(f); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
+  seqnames := make([]string, len(chromData.Keys))
+  lengths  := make([]int,    len(chromData.Keys))
+
+  for i := 0; i < len(chromData.Keys); i++ {
+    if len(chromData.Values[i]) != 8 {
+      return fmt.Errorf("invalid chromosome list")
+    }
+    idx := int(binary.LittleEndian.Uint32(chromData.Values[i][0:4]))
+    if idx >= len(chromData.Keys) {
+      return fmt.Errorf("invalid chromosome index")
+    }
+    seqnames[idx] = string(chromData.Keys[i])
+    lengths [idx] = int(binary.LittleEndian.Uint32(chromData.Values[i][4:8]))
+  }
+  genome := NewGenome(seqnames, lengths)
+
+  *track = AllocTrack("", genome, 10)
 
   return nil
 }

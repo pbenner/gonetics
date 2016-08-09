@@ -187,3 +187,12 @@ func TestTrack6(t *testing.T) {
     }
   }
 }
+
+func TestTrack7(t *testing.T) {
+
+  track := Track{}
+
+  if err := track.ReadBigWig("track_test.1.bw"); err != nil {
+    t.Error(err)
+  }
+}

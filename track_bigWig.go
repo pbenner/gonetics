@@ -332,6 +332,10 @@ func (tree *RTree) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &tree.NItemsPerSlot); err != nil {
     return err
   }
+  // padding
+  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+    return err
+  }
   tree.Root.Read(file)
 
   return nil

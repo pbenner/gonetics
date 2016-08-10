@@ -34,22 +34,41 @@ func (track *Track) parseBlock(buffer []byte, genome Genome) error {
   if idx := int(header.ChromId); idx < 0 || idx > genome.Length() {
     return fmt.Errorf("invalid chromosome id")
   }
-  seq := track.Data[genome.Seqnames[int(header.ChromId)]]
-
-  switch header.Type {
-  default:
-    return fmt.Errorf("unsupported block type")
-  case 3:
-    if len(seq) != 4*len(buffer) {
-      return fmt.Errorf("data block has invalid length")
-    }
-    for i := 0; i < len(buffer); i += 4 {
-      value1  := binary.LittleEndian.Uint32(buffer[i:i+4])
-      value2  := math.Float32frombits(value1)
-      seq[i/4] = float64(value2)
+  r := GRangesRow{}
+  r.Seqname = genome.Seqnames[int(header.ChromId)]
+  r.Range.From = int(header.Start)
+  r.Range.To   = int(header.End)
+  if seq, err := track.GetSlice(r); err != nil {
+    return err
+  } else {
+    switch header.Type {
+    default:
+      return fmt.Errorf("unsupported block type")
+    case 2:
+      if len(buffer) % 8 != 0{
+        return fmt.Errorf("variable step data block has invalid length")
+      }
+      for i := 0; i < len(buffer); i += 8 {
+        position := binary.LittleEndian.Uint32(buffer[i+0:i+4])
+        value1   := binary.LittleEndian.Uint32(buffer[i+4:i+8])
+        value2   := math.Float32frombits(value1)
+        if idx := track.Index(int(position)); idx >= len(seq) {
+          return fmt.Errorf("variable step data block contains invalid index")
+        } else {
+          seq[idx] = float64(value2)
+        }
+      }
+    case 3:
+      if len(seq) != 4*len(buffer) {
+        return fmt.Errorf("fixed step data block has invalid length")
+      }
+      for i := 0; i < len(buffer); i += 4 {
+        value1  := binary.LittleEndian.Uint32(buffer[i:i+4])
+        value2  := math.Float32frombits(value1)
+        seq[i/4] = float64(value2)
+      }
     }
   }
-
   return nil
 }
 

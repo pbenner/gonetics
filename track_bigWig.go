@@ -40,12 +40,13 @@ func (track *Track) parseBlock(buffer []byte, genome Genome) error {
   default:
     return fmt.Errorf("unsupported block type")
   case 3:
-    if len(buffer) % 4 != 0 {
+    if len(seq) != 4*len(buffer) {
       return fmt.Errorf("data block has invalid length")
     }
     for i := 0; i < len(buffer); i += 4 {
-      value := math.Float32frombits(binary.LittleEndian.Uint32(buffer[i:i+4]))
-      seq[i/4] = float64(value)
+      value1  := binary.LittleEndian.Uint32(buffer[i:i+4])
+      value2  := math.Float32frombits(value1)
+      seq[i/4] = float64(value2)
     }
   }
 

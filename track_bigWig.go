@@ -510,15 +510,16 @@ func (bwf *BigWigFile) Close() error {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) parseBlock(buffer []byte) error {
+func (track *Track) parseBlock(buffer []byte, genome Genome) error {
   header := BigWigDataHeader{}
   header.ReadBuffer(buffer)
   // crop header from buffer
   buffer = buffer[24:]
 
-  fmt.Println("buf:", buffer)
-  fmt.Println("len:", len(buffer))
-  fmt.Printf("%+v\n", header)
+  if idx := int(header.ChromId); idx < 0 || idx > genome.Length() {
+    return fmt.Errorf("invalid chromosome id")
+  }
+  seq := track.Data[genome.Seqnames[int(header.ChromId)]]
 
   switch header.Type {
   default:
@@ -529,15 +530,14 @@ func (track *Track) parseBlock(buffer []byte) error {
     }
     for i := 0; i < len(buffer); i += 4 {
       value := math.Float32frombits(binary.LittleEndian.Uint32(buffer[i:i+4]))
-      fmt.Println(value)
+      seq[i/4] = float64(value)
     }
   }
-  fmt.Println()
 
   return nil
 }
 
-func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex) error {
+func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex, genome Genome) error {
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
@@ -548,11 +548,11 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex) error {
       if bwf.Header.BufSize != 0 {
         buf, _ = uncompressSlice(buf)
       }
-      track.parseBlock(buf)
+      track.parseBlock(buf, genome)
     }
   } else {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if err := track.parseBWIndex(bwf, &vertex.Children[i]); err != nil {
+      if err := track.parseBWIndex(bwf, &vertex.Children[i], genome); err != nil {
         return err
       }
     }
@@ -560,7 +560,7 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex) error {
   return nil
 }
 
-func (track *Track) ReadBigWig(filename string) error {
+func (track *Track) ReadBigWig(filename, description string, binsize int) error {
 
   bwf := new(BigWigFile)
   bwf.Open(filename)
@@ -582,9 +582,9 @@ func (track *Track) ReadBigWig(filename string) error {
   }
   genome := NewGenome(seqnames, lengths)
 
-  *track = AllocTrack("", genome, 10)
+  *track = AllocTrack(description, genome, binsize)
 
-  if err := track.parseBWIndex(bwf, &bwf.Index.Root); err != nil {
+  if err := track.parseBWIndex(bwf, &bwf.Index.Root, genome); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   return nil

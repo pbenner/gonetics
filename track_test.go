@@ -192,7 +192,7 @@ func TestTrack7(t *testing.T) {
 
   track := Track{}
 
-  if err := track.ReadBigWig("track_test.1.bw"); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw", "", 10); err != nil {
     t.Error(err)
   }
 }

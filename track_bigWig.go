@@ -563,7 +563,9 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex, genome Ge
 func (track *Track) ReadBigWig(filename, description string, binsize int) error {
 
   bwf := new(BigWigFile)
-  bwf.Open(filename)
+  if err := bwf.Open(filename); err != nil {
+    return err
+  }
   defer bwf.Close()
 
   seqnames := make([]string, len(bwf.ChromData.Keys))

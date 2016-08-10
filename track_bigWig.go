@@ -56,14 +56,11 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex, genome Ge
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      buf := make([]byte, vertex.Sizes[i])
-      if err := fileReadPart(bwf.Fptr, int64(vertex.DataOffset[i]), buf); err != nil {
-        panic(err)
+      if block, err := vertex.GetBlock(bwf.Fptr, bwf.Header, i); err != nil {
+        return err
+      } else {
+        track.parseBlock(block, genome)
       }
-      if bwf.Header.BufSize != 0 {
-        buf, _ = uncompressSlice(buf)
-      }
-      track.parseBlock(buf, genome)
     }
   } else {
     for i := 0; i < int(vertex.NChildren); i++ {

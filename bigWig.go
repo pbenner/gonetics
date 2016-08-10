@@ -404,6 +404,20 @@ type RTreeVertex struct {
   Children    []RTreeVertex
 }
 
+func (vertex *RTreeVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
+  var err error
+  block := make([]byte, vertex.Sizes[i])
+  if err = fileReadPart(file, int64(vertex.DataOffset[i]), block); err != nil {
+    return nil, err
+  }
+  if header.BufSize != 0 {
+    if block, err = uncompressSlice(block); err != nil {
+      return nil, err
+    }
+  }
+  return block, nil
+}
+
 func (vertex *RTreeVertex) Read(file *os.File) error {
 
   var padding uint8

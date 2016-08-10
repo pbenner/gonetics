@@ -22,6 +22,7 @@ import "fmt"
 import "encoding/binary"
 //import "io"
 import "os"
+import "strings"
 
 /* -------------------------------------------------------------------------- */
 
@@ -83,10 +84,14 @@ func (data *BData) readVertexIndex(file *os.File) error {
       return err
     }
     // save current position and jump to child vertex
-    currentPosition, _ := file.Seek(0, 0)
-    file.Seek(int64(position), 0)
+    currentPosition, _ := file.Seek(0, 1)
+    if _, err := file.Seek(int64(position), 0); err != nil {
+      return err
+    }
     data.readVertex(file)
-    file.Seek(currentPosition, 0)
+    if _, err := file.Seek(currentPosition, 0); err != nil {
+      return err
+    }
   }
   return nil
 }
@@ -141,10 +146,8 @@ func (data *BData) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
     return err
   }
+  data.readVertex(file)
 
-  for i := 0; i < int(itemCount); i++ {
-    data.readVertex(file)
-  }
   return nil
 }
 
@@ -253,7 +256,9 @@ func (header *BigWigHeader) Read(file *os.File) error {
   }
   // summary
   if header.SummaryOffset > 0 {
-    file.Seek(int64(header.SummaryOffset), 0)
+    if _, err := file.Seek(int64(header.SummaryOffset), 0); err != nil {
+      return err
+    }
 
     if err := binary.Read(file, binary.LittleEndian, &header.NBasesCovered); err != nil {
       return err
@@ -287,7 +292,7 @@ type RTree struct {
   BaseEnd       uint32
   IdxSize       uint64
   NItemsPerSlot uint32
-  RootOffset    uint64
+  Root          RTreeVertex
 
 }
 
@@ -327,11 +332,8 @@ func (tree *RTree) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &tree.NItemsPerSlot); err != nil {
     return err
   }
-  if offset, err := file.Seek(0, 0); err != nil {
-    return err
-  } else {
-    tree.RootOffset = uint64(offset)
-  }
+  tree.Root.Read(file)
+
   return nil
 }
 
@@ -347,7 +349,7 @@ type RTreeVertex struct {
   BaseEnd     []uint32
   DataOffset  []uint64
   Sizes       []uint64
-  Children    []*RTreeVertex
+  Children    []RTreeVertex
 
 }
 
@@ -373,7 +375,7 @@ func (vertex *RTreeVertex) Read(file *os.File) error {
   if vertex.IsLeaf != 0 {
     vertex.Sizes     = make([]uint64, vertex.NChildren)
   } else {
-    vertex.Children  = make([]*RTreeVertex, vertex.NChildren)
+    vertex.Children  = make([]RTreeVertex, vertex.NChildren)
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {
@@ -395,10 +397,18 @@ func (vertex *RTreeVertex) Read(file *os.File) error {
     if vertex.IsLeaf != 0 {
       if err := binary.Read(file, binary.LittleEndian, &vertex.Sizes[i]); err != nil {
         return err
-      }  
+      }
     }
   }
-  
+  if vertex.IsLeaf == 0 {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      // seek to child position
+      if _, err := file.Seek(int64(vertex.DataOffset[i]), 0); err != nil {
+        return err
+      }
+      vertex.Children[i].Read(file)
+    }
+  }
   return nil
 }
 
@@ -439,7 +449,7 @@ func (track *Track) ReadBigWig(filename string) error {
     if idx >= len(chromData.Keys) {
       return fmt.Errorf("invalid chromosome index")
     }
-    seqnames[idx] = string(chromData.Keys[i])
+    seqnames[idx] = strings.TrimRight(string(chromData.Keys[i]), "\x00")
     lengths [idx] = int(binary.LittleEndian.Uint32(chromData.Values[i][4:8]))
   }
   genome := NewGenome(seqnames, lengths)

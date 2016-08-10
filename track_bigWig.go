@@ -18,9 +18,12 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "bytes"
+import "compress/zlib"
 import "fmt"
 import "encoding/binary"
-//import "io"
+import "io/ioutil"
+import "math"
 import "os"
 import "strings"
 
@@ -29,6 +32,33 @@ import "strings"
 const  BIGWIG_MAGIC = 0x888FFC26
 const CIRTREE_MAGIC = 0x78ca8c91
 const     IDX_MAGIC = 0x2468ace0
+
+/* -------------------------------------------------------------------------- */
+
+func fileReadPart(file *os.File, offset int64, buffer []byte) error {
+  currentPosition, _ := file.Seek(0, 1)
+  if _, err := file.Seek(offset, 0); err != nil {
+    return err
+  }
+  if err := binary.Read(file, binary.LittleEndian, &buffer); err != nil {
+    return err
+  }
+  if _, err := file.Seek(currentPosition, 0); err != nil {
+    return err
+  }
+  return nil
+}
+
+func uncompressSlice(data []byte) ([]byte, error) {
+  b := bytes.NewReader(data)
+  z, err := zlib.NewReader(b)
+  if err != nil {
+    return nil, err
+  }
+  defer z.Close()
+
+  return ioutil.ReadAll(z)
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -179,8 +209,33 @@ func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
 
 /* -------------------------------------------------------------------------- */
 
-type BigWigHeader struct {
+type BigWigDataHeader struct {
+  ChromId   uint32
+  Start     uint32
+  End       uint32
+  Step      uint32
+  Span      uint32
+  Type      byte
+  Reserved  byte
+  ItemCount uint16
+}
 
+func (header *BigWigDataHeader) ReadBuffer(buffer []byte) {
+
+  header.ChromId   = binary.LittleEndian.Uint32(buffer[ 0: 4])
+  header.Start     = binary.LittleEndian.Uint32(buffer[ 4: 8])
+  header.End       = binary.LittleEndian.Uint32(buffer[ 8:12])
+  header.Step      = binary.LittleEndian.Uint32(buffer[12:16])
+  header.Span      = binary.LittleEndian.Uint32(buffer[16:20])
+  header.Type      = buffer[20]
+  header.Reserved  = buffer[21]
+  header.ItemCount = binary.LittleEndian.Uint16(buffer[22:24])
+
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BigWigHeader struct {
   Version           uint16
   ZoomLevels        uint16
   CtOffset          uint64
@@ -197,9 +252,7 @@ type BigWigHeader struct {
   MaxVal            uint64
   SumData           uint64
   SumSquared        uint64
-
   ZoomHeaders     []BigWigHeaderZoom
-
 }
 
 func (header *BigWigHeader) Read(file *os.File) error {
@@ -283,7 +336,6 @@ func (header *BigWigHeader) Read(file *os.File) error {
 /* -------------------------------------------------------------------------- */
 
 type RTree struct {
-
   BlockSize     uint32
   NItems        uint64
   ChrIdxStart   uint32
@@ -293,7 +345,6 @@ type RTree struct {
   IdxSize       uint64
   NItemsPerSlot uint32
   Root          RTreeVertex
-
 }
 
 func (tree *RTree) Read(file *os.File) error {
@@ -344,7 +395,6 @@ func (tree *RTree) Read(file *os.File) error {
 /* -------------------------------------------------------------------------- */
 
 type RTreeVertex struct {
-
   IsLeaf        uint8
   NChildren     uint16
   ChrIdxStart []uint32
@@ -354,7 +404,6 @@ type RTreeVertex struct {
   DataOffset  []uint64
   Sizes       []uint64
   Children    []RTreeVertex
-
 }
 
 func (vertex *RTreeVertex) Read(file *os.File) error {
@@ -418,55 +467,125 @@ func (vertex *RTreeVertex) Read(file *os.File) error {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) ReadBigWig(filename string) error {
+type BigWigFile struct {
+  Header    BigWigHeader
+  ChromData BData
+  Index     RTree
+  Fptr      *os.File
+}
+
+func (bwf *BigWigFile) Open(filename string) error {
 
   // open file
   f, err := os.Open(filename)
   if err != nil {
     return err
   }
-  defer f.Close()
-
-  header    := BigWigHeader{}
-  chromData := BData{}
-  tree      := RTree{}
+  bwf.Fptr  = f
 
   // parse header
-  if err := header.Read(f); err != nil {
+  if err := bwf.Header.Read(bwf.Fptr); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   // parse chromosome list, which is represented as a tree
-  if _, err := f.Seek(int64(header.CtOffset), 0); err != nil {
+  if _, err := bwf.Fptr.Seek(int64(bwf.Header.CtOffset), 0); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  if err := chromData.Read(f); err != nil {
+  if err := bwf.ChromData.Read(bwf.Fptr); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  seqnames := make([]string, len(chromData.Keys))
-  lengths  := make([]int,    len(chromData.Keys))
+  // parse data index
+  if _, err := bwf.Fptr.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
+    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  }
+  if err := bwf.Index.Read(bwf.Fptr); err != nil {
+    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  }
+  return nil
+}
 
-  for i := 0; i < len(chromData.Keys); i++ {
-    if len(chromData.Values[i]) != 8 {
-      return fmt.Errorf("invalid chromosome list")
+func (bwf *BigWigFile) Close() error {
+  return bwf.Fptr.Close()
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (track *Track) parseBlock(buffer []byte) error {
+  header := BigWigDataHeader{}
+  header.ReadBuffer(buffer)
+  // crop header from buffer
+  buffer = buffer[24:]
+
+  fmt.Println("buf:", buffer)
+  fmt.Println("len:", len(buffer))
+  fmt.Printf("%+v\n", header)
+
+  switch header.Type {
+  default:
+    return fmt.Errorf("unsupported block type")
+  case 3:
+    if len(buffer) % 4 != 0 {
+      return fmt.Errorf("data block has invalid length")
     }
-    idx := int(binary.LittleEndian.Uint32(chromData.Values[i][0:4]))
-    if idx >= len(chromData.Keys) {
-      return fmt.Errorf("invalid chromosome index")
+    for i := 0; i < len(buffer); i += 4 {
+      value := math.Float32frombits(binary.LittleEndian.Uint32(buffer[i:i+4]))
+      fmt.Println(value)
     }
-    seqnames[idx] = strings.TrimRight(string(chromData.Keys[i]), "\x00")
-    lengths [idx] = int(binary.LittleEndian.Uint32(chromData.Values[i][4:8]))
+  }
+  fmt.Println()
+
+  return nil
+}
+
+func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex) error {
+
+  if vertex.IsLeaf != 0 {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      buf := make([]byte, vertex.Sizes[i])
+      if err := fileReadPart(bwf.Fptr, int64(vertex.DataOffset[i]), buf); err != nil {
+        panic(err)
+      }
+      if bwf.Header.BufSize != 0 {
+        buf, _ = uncompressSlice(buf)
+      }
+      track.parseBlock(buf)
+    }
+  } else {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if err := track.parseBWIndex(bwf, &vertex.Children[i]); err != nil {
+        return err
+      }
+    }
+  }
+  return nil
+}
+
+func (track *Track) ReadBigWig(filename string) error {
+
+  bwf := new(BigWigFile)
+  bwf.Open(filename)
+  defer bwf.Close()
+
+  seqnames := make([]string, len(bwf.ChromData.Keys))
+  lengths  := make([]int,    len(bwf.ChromData.Keys))
+
+  for i := 0; i < len(bwf.ChromData.Keys); i++ {
+    if len(bwf.ChromData.Values[i]) != 8 {
+      return fmt.Errorf("reading `%s' failed: invalid chromosome list", filename)
+    }
+    idx := int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][0:4]))
+    if idx >= len(bwf.ChromData.Keys) {
+      return fmt.Errorf("reading `%s' failed: invalid chromosome index", filename)
+    }
+    seqnames[idx] = strings.TrimRight(string(bwf.ChromData.Keys[i]), "\x00")
+    lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
   }
   genome := NewGenome(seqnames, lengths)
 
   *track = AllocTrack("", genome, 10)
 
-  // parse data
-  if _, err := f.Seek(int64(header.IndexOffset), 0); err != nil {
+  if err := track.parseBWIndex(bwf, &bwf.Index.Root); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  if err := tree.Read(f); err != nil {
-    return err
-  }
-
   return nil
 }

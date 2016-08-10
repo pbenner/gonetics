@@ -179,6 +179,32 @@ func (data *BData) Read(file *os.File) error {
   return nil
 }
 
+func (data *BData) Write(file *os.File) error {
+  magic     := uint32(CIRTREE_MAGIC)
+  itemCount := uint64(len(data.Keys))
+
+  if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, data.ItemsPerBlock); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, data.KeySize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, data.ValueSize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, itemCount); err != nil {
+    return err
+  }
+  // padding
+  if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
+    return err
+  }
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BigWigHeaderZoom struct {

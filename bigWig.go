@@ -479,7 +479,7 @@ func (bwf *BigWigFile) Open(filename string) error {
   if err != nil {
     return err
   }
-  bwf.Fptr  = f
+  bwf.Fptr = f
 
   // parse header
   if err := bwf.Header.Read(bwf.Fptr); err != nil {

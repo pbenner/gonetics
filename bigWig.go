@@ -180,8 +180,7 @@ func (data *BData) Read(file *os.File) error {
 }
 
 func (data *BData) Write(file *os.File) error {
-  magic     := uint32(CIRTREE_MAGIC)
-  itemCount := uint64(len(data.Keys))
+  magic := uint32(CIRTREE_MAGIC)
 
   if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
     return err
@@ -195,7 +194,7 @@ func (data *BData) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, data.ValueSize); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, itemCount); err != nil {
+  if err := binary.Write(file, binary.LittleEndian, data.ItemCount); err != nil {
     return err
   }
   // padding

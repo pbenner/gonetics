@@ -239,6 +239,11 @@ func (data *BData) writeVertexIndex(file *os.File, from, to uint64) error {
   padding := uint8(0)
   nVals   := uint16(data.ItemsPerBlock)
 
+  // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
+  if data.ItemsPerBlock > uint32(^uint16(0)) {
+    nVals = ^uint16(0)
+  }
+
   if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
     return err
   }

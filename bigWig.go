@@ -64,6 +64,7 @@ type BData struct {
   KeySize       uint32
   ValueSize     uint32
   ItemsPerBlock uint32
+  ItemCount     uint64
 
   Keys   [][]byte
   Values [][]byte
@@ -145,7 +146,6 @@ func (data *BData) readVertex(file *os.File) error {
 func (data *BData) Read(file *os.File) error {
 
   var magic uint32
-  var itemCount uint64
 
   // magic number
   if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
@@ -164,7 +164,7 @@ func (data *BData) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &data.ValueSize); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &itemCount); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &data.ItemCount); err != nil {
     return err
   }
   // padding

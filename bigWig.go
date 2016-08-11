@@ -218,10 +218,36 @@ func (data *BData) writeVertexLeaf(file *os.File, from, to uint64) error {
       return err
     }
   }
+  // fill with zeros
+  if uint32(nVals) < data.ItemsPerBlock {
+    key   := make([]byte, data.KeySize)
+    value := make([]byte, data.ValueSize)
+    for i := uint32(nVals); i < data.ItemsPerBlock; i++ {
+      if err := binary.Write(file, binary.LittleEndian, key); err != nil {
+        return err
+      }
+      if err := binary.Write(file, binary.LittleEndian, value); err != nil {
+        return err
+      }
+    }
+  }
   return nil
 }
 
 func (data *BData) writeVertexIndex(file *os.File, from, to uint64) error {
+  isLeaf  := uint8(0)
+  padding := uint8(0)
+  nVals   := uint16(data.ItemsPerBlock)
+
+  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+    return err
+  }
   for i := from; i < to; i += uint64(data.ItemsPerBlock) {
     i_from := i
     i_to   := i+uint64(data.ItemsPerBlock)

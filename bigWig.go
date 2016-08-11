@@ -222,6 +222,16 @@ func (data *BData) writeVertexLeaf(file *os.File, from, to uint64) error {
 }
 
 func (data *BData) writeVertexIndex(file *os.File, from, to uint64) error {
+  for i := from; i < to; i += uint64(data.ItemsPerBlock) {
+    i_from := i
+    i_to   := i+uint64(data.ItemsPerBlock)
+    if i_to > to {
+      i_to = to
+    }
+    if err := data.writeVertex(file, i_from, i_to); err != nil {
+      return err
+    }
+  }
   return nil
 }
 

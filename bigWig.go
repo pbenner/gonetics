@@ -136,11 +136,10 @@ func (data *BData) readVertex(file *os.File) error {
     return err
   }
   if isLeaf != 0 {
-    data.readVertexLeaf(file)
+    return data.readVertexLeaf(file)
   } else {
-    data.readVertexIndex(file)
+    return data.readVertexIndex(file)
   }
-  return nil
 }
 
 func (data *BData) Read(file *os.File) error {
@@ -174,8 +173,52 @@ func (data *BData) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
     return err
   }
-  data.readVertex(file)
+  return data.readVertex(file)
+}
 
+func (data *BData) writeVertexLeaf(file *os.File, from, to uint64) error {
+  isLeaf  := uint8(1)
+  padding := uint8(0)
+  nVals   := uint16(to-from)
+
+  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+    return err
+  }
+  for i := from; i < to; i++ {
+    if uint32(len(data.Keys[i])) != data.KeySize {
+      return fmt.Errorf("key number `%d' has invalid size", i)
+    }
+    if uint32(len(data.Values[i])) != data.ValueSize {
+      return fmt.Errorf("value number `%d' has invalid size", i)
+    }
+    if err := binary.Write(file, binary.LittleEndian, data.Keys[i]); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, data.Values[i]); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (data *BData) writeVertexIndex(file *os.File, from, to uint64) error {
+  return nil
+}
+
+func (data *BData) writeVertex(file *os.File, from, to uint64) error {
+  if to-from <= uint64(data.ItemsPerBlock) {
+    // data fits into a single leaf
+    return data.writeVertexLeaf(file, from, to)
+  } else {
+    // need to split data into multiple leafs
+    return data.writeVertexIndex(file, from, to)
+  }
   return nil
 }
 
@@ -201,7 +244,7 @@ func (data *BData) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
     return err
   }
-  return nil
+  return data.writeVertex(file, 0, data.ItemCount)
 }
 
 /* -------------------------------------------------------------------------- */

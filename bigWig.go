@@ -33,12 +33,12 @@ const     IDX_MAGIC = 0x2468ace0
 
 /* -------------------------------------------------------------------------- */
 
-func fileReadPosition(file *os.File, offset int64, arg interface{}) error {
+func fileReadAt(file *os.File, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, arg); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, data); err != nil {
     return err
   }
   if _, err := file.Seek(currentPosition, 0); err != nil {
@@ -47,12 +47,12 @@ func fileReadPosition(file *os.File, offset int64, arg interface{}) error {
   return nil
 }
 
-func fileWritePosition(file *os.File, offset int64, arg interface{}) error {
+func fileWriteAt(file *os.File, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, arg); err != nil {
+  if err := binary.Write(file, binary.LittleEndian, data); err != nil {
     return err
   }
   if _, err := file.Seek(currentPosition, 0); err != nil {
@@ -489,7 +489,7 @@ type RTreeVertex struct {
 func (vertex *RTreeVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
-  if err = fileReadPosition(file, int64(vertex.DataOffset[i]), &block); err != nil {
+  if err = fileReadAt(file, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
   if header.BufSize != 0 {

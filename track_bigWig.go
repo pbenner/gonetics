@@ -59,8 +59,8 @@ func (track *Track) parseBlock(buffer []byte, genome Genome) error {
         }
       }
     case 3:
-      if len(seq) != 4*len(buffer) {
-        return fmt.Errorf("fixed step data block has invalid length")
+      if 4*len(seq) != len(buffer) {
+        return fmt.Errorf("fixed step data block for sequence `%s' has invalid length (length is `%d' but should be `%d')", r.Seqname, len(seq), 4*len(buffer))
       }
       for i := 0; i < len(buffer); i += 4 {
         value1  := binary.LittleEndian.Uint32(buffer[i:i+4])
@@ -79,7 +79,9 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex, genome Ge
       if block, err := vertex.GetBlock(bwf.Fptr, bwf.Header, i); err != nil {
         return err
       } else {
-        track.parseBlock(block, genome)
+        if err := track.parseBlock(block, genome); err != nil {
+          return err
+        }
       }
     }
   } else {

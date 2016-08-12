@@ -115,6 +115,8 @@ func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) uint64 
   } else {
     vertex.IsLeaf = 0
     for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
+      // append first key
+      vertex.Keys = append(vertex.Keys, data.Keys[i])
       // create new child vertex
       v := BVertex{}
       i += uint64(v.BuildTree(data, from+i, to, level-1))

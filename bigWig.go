@@ -165,6 +165,7 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
   isLeaf  := uint8(0)
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
+  offsets := make([]int64, nVals)
 
   if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
     return err
@@ -175,7 +176,24 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
     return err
   }
-  for i := 0; i < len(vertex.Children); i++ {
+  for i := 0; i < int(nVals); i++ {
+    if err := binary.Write(file, binary.LittleEndian, vertex.Keys[i]); err != nil {
+      return err
+    }
+    // save current file offset
+    offsets[i], _ = file.Seek(0, 1)
+    // offset of the ith child vertex (first set to zero)
+    if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
+      return err
+    }
+  }
+  // write child vertices
+  for i := 0; i < int(nVals); i++ {
+    // get current file offset (where the ith child vertex begins)
+    offset, _ := file.Seek(0, 1)
+    // and write it at the expected position 
+    fileWriteAt(file, offsets[i], uint64(offset))
+    // write ith child
     if err := vertex.Children[i].write(file); err != nil {
       return err
     }

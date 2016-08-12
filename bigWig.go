@@ -384,6 +384,23 @@ func (zoomHeader *BigWigHeaderZoom) Read(file *os.File) error {
   return nil
 }
 
+func (zoomHeader *BigWigHeaderZoom) Write(file *os.File) error {
+
+  if err := binary.Write(file, binary.LittleEndian, zoomHeader.ReductionLevel); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, zoomHeader.Reserved); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, zoomHeader.DataOffset); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, zoomHeader.IndexOffset); err != nil {
+    return err
+  }
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BigWigDataHeader struct {
@@ -407,6 +424,19 @@ func (header *BigWigDataHeader) ReadBuffer(buffer []byte) {
   header.Type      = buffer[20]
   header.Reserved  = buffer[21]
   header.ItemCount = binary.LittleEndian.Uint16(buffer[22:24])
+
+}
+
+func (header *BigWigDataHeader) WriteBuffer(buffer []byte) {
+
+  binary.LittleEndian.PutUint32(buffer[ 0: 4], header.ChromId)
+  binary.LittleEndian.PutUint32(buffer[ 4: 8], header.Start)
+  binary.LittleEndian.PutUint32(buffer[ 8:12], header.End)
+  binary.LittleEndian.PutUint32(buffer[12:16], header.Step)
+  binary.LittleEndian.PutUint32(buffer[16:20], header.Span)
+  buffer[20] = header.Type
+  buffer[21] = header.Reserved
+  binary.LittleEndian.PutUint16(buffer[22:24], header.ItemCount)
 
 }
 

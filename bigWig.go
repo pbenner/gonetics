@@ -127,6 +127,97 @@ func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) uint64 
   return i
 }
 
+func (vertex *BVertex) writeLeaf(file *os.File) error {
+  padding := uint8(0)
+  nVals   := uint16(len(vertex.Keys))
+
+  if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+    return err
+  }
+  for i := 0; i < len(vertex.Keys); i++ {
+    // if uint32(len(vertex.Keys[i])) != vertex.KeySize {
+    //   return fmt.Errorf("key number `%d' has invalid size", i)
+    // }
+    // if uint32(len(vertex.Values[i])) != vertex.ValueSize {
+    //   return fmt.Errorf("value number `%d' has invalid size", i)
+    // }
+    if err := binary.Write(file, binary.LittleEndian, vertex.Keys[i]); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, vertex.Values[i]); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (vertex *BVertex) writeIndex(file *os.File) error {
+  isLeaf  := uint8(0)
+  padding := uint8(0)
+  nVals   := uint16(len(vertex.Keys))
+
+  // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
+  // if vertex.ItemsPerBlock > uint32(^uint16(0)) {
+  //   nVals = ^uint16(0)
+  // }
+
+  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+    return err
+  }
+  for i := 0; i < len(vertex.Children); i++ {
+    if err := vertex.Children[i].write(file); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (vertex *BVertex) write(file *os.File) error {
+  if vertex.IsLeaf != 0 {
+    return vertex.writeLeaf(file)
+  } else {
+    return vertex.writeIndex(file)
+  }
+  return nil
+}
+
+func (tree *BTree) Write(file *os.File) error {
+  magic := uint32(CIRTREE_MAGIC)
+
+  if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.ItemsPerBlock); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.KeySize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.ValueSize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.ItemCount); err != nil {
+    return err
+  }
+  // padding
+  if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
+    return err
+  }
+  return tree.Root.write(file)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BData struct {
@@ -243,118 +334,6 @@ func (data *BData) Read(file *os.File) error {
     return err
   }
   return data.readVertex(file)
-}
-
-func (data *BData) writeVertexLeaf(file *os.File, from, to uint64) error {
-  isLeaf  := uint8(1)
-  padding := uint8(0)
-  nVals   := uint16(to-from)
-
-  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
-    return err
-  }
-  for i := from; i < to; i++ {
-    if uint32(len(data.Keys[i])) != data.KeySize {
-      return fmt.Errorf("key number `%d' has invalid size", i)
-    }
-    if uint32(len(data.Values[i])) != data.ValueSize {
-      return fmt.Errorf("value number `%d' has invalid size", i)
-    }
-    if err := binary.Write(file, binary.LittleEndian, data.Keys[i]); err != nil {
-      return err
-    }
-    if err := binary.Write(file, binary.LittleEndian, data.Values[i]); err != nil {
-      return err
-    }
-  }
-  // fill with zeros
-  if uint32(nVals) < data.ItemsPerBlock {
-    key   := make([]byte, data.KeySize)
-    value := make([]byte, data.ValueSize)
-    for i := uint32(nVals); i < data.ItemsPerBlock; i++ {
-      if err := binary.Write(file, binary.LittleEndian, key); err != nil {
-        return err
-      }
-      if err := binary.Write(file, binary.LittleEndian, value); err != nil {
-        return err
-      }
-    }
-  }
-  return nil
-}
-
-func (data *BData) writeVertexIndex(file *os.File, from, to uint64) error {
-  isLeaf  := uint8(0)
-  padding := uint8(0)
-  nVals   := uint16(data.ItemsPerBlock)
-
-  // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
-  if data.ItemsPerBlock > uint32(^uint16(0)) {
-    nVals = ^uint16(0)
-  }
-
-  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
-    return err
-  }
-  for i := from; i < to; i += uint64(data.ItemsPerBlock) {
-    i_from := i
-    i_to   := i+uint64(data.ItemsPerBlock)
-    if i_to > to {
-      i_to = to
-    }
-    if err := data.writeVertex(file, i_from, i_to); err != nil {
-      return err
-    }
-  }
-  return nil
-}
-
-func (data *BData) writeVertex(file *os.File, from, to uint64) error {
-  if to-from <= uint64(data.ItemsPerBlock) {
-    // data fits into a single leaf
-    return data.writeVertexLeaf(file, from, to)
-  } else {
-    // need to split data into multiple leafs
-    return data.writeVertexIndex(file, from, to)
-  }
-  return nil
-}
-
-func (data *BData) Write(file *os.File) error {
-  magic := uint32(CIRTREE_MAGIC)
-
-  if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, data.ItemsPerBlock); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, data.KeySize); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, data.ValueSize); err != nil {
-    return err
-  }
-  if err := binary.Write(file, binary.LittleEndian, data.ItemCount); err != nil {
-    return err
-  }
-  // padding
-  if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
-    return err
-  }
-  return data.writeVertex(file, 0, data.ItemCount)
 }
 
 /* -------------------------------------------------------------------------- */

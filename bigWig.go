@@ -21,6 +21,7 @@ package gonetics
 import "bytes"
 import "compress/zlib"
 import "fmt"
+import "math"
 import "encoding/binary"
 import "io/ioutil"
 import "os"
@@ -70,6 +71,58 @@ func uncompressSlice(data []byte) ([]byte, error) {
   defer z.Close()
 
   return ioutil.ReadAll(z)
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BTree struct {
+  KeySize       uint32
+  ValueSize     uint32
+  ItemsPerBlock uint32
+  ItemCount     uint64
+  Root          BVertex
+}
+
+type BVertex struct {
+  IsLeaf       uint8
+  Keys     [][]byte
+  Values   [][]byte
+  Children   []BVertex
+}
+
+func NewBTree(data BData) {
+  tree := BTree{}
+  tree.KeySize       = data.KeySize
+  tree.ValueSize     = data.ValueSize
+  tree.ItemsPerBlock = data.ItemsPerBlock
+  tree.ItemCount     = data.ItemCount
+  // compute tree depth
+  d := int(math.Ceil(math.Log(float64(data.ItemCount))/math.Log(float64(data.ItemsPerBlock))))
+
+  tree.Root.BuildTree(data, 0, data.ItemCount, d-1)
+}
+
+func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) uint64 {
+  // number of values below this node
+  i := uint64(0)
+  if level == 0 {
+    vertex.IsLeaf = 1
+    for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
+      vertex.Keys   = append(vertex.Keys,   data.Keys  [from+i])
+      vertex.Values = append(vertex.Values, data.Values[from+i])
+      i++
+    }
+  } else {
+    vertex.IsLeaf = 0
+    for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
+      // create new child vertex
+      v := BVertex{}
+      i += uint64(v.BuildTree(data, from+i, to, level-1))
+      // append child
+      vertex.Children = append(vertex.Children, v)
+    }
+  }
+  return i
 }
 
 /* -------------------------------------------------------------------------- */

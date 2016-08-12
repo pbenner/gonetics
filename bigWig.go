@@ -102,12 +102,18 @@ func NewBTree(data BData) {
   tree.Root.BuildTree(data, 0, data.ItemCount, d-1)
 }
 
-func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) uint64 {
+func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) (uint64, error) {
   // number of values below this node
   i := uint64(0)
   if level == 0 {
     vertex.IsLeaf = 1
     for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
+      if uint32(len(vertex.Keys[from+i])) != data.KeySize {
+        return 0, fmt.Errorf("key number `%d' has invalid size", i)
+      }
+      if uint32(len(vertex.Values[from+i])) != data.ValueSize {
+        return 0, fmt.Errorf("value number `%d' has invalid size", i)
+      }
       vertex.Keys   = append(vertex.Keys,   data.Keys  [from+i])
       vertex.Values = append(vertex.Values, data.Values[from+i])
       i++
@@ -116,15 +122,19 @@ func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) uint64 
     vertex.IsLeaf = 0
     for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
       // append first key
-      vertex.Keys = append(vertex.Keys, data.Keys[i])
+      vertex.Keys = append(vertex.Keys, data.Keys[from+i])
       // create new child vertex
       v := BVertex{}
-      i += uint64(v.BuildTree(data, from+i, to, level-1))
+      if j, err := v.BuildTree(data, from+i, to, level-1); err != nil {
+        return 0, err
+      } else {
+        i += j
+      }
       // append child
       vertex.Children = append(vertex.Children, v)
     }
   }
-  return i
+  return i, nil
 }
 
 func (vertex *BVertex) writeLeaf(file *os.File) error {
@@ -141,12 +151,6 @@ func (vertex *BVertex) writeLeaf(file *os.File) error {
     return err
   }
   for i := 0; i < len(vertex.Keys); i++ {
-    // if uint32(len(vertex.Keys[i])) != vertex.KeySize {
-    //   return fmt.Errorf("key number `%d' has invalid size", i)
-    // }
-    // if uint32(len(vertex.Values[i])) != vertex.ValueSize {
-    //   return fmt.Errorf("value number `%d' has invalid size", i)
-    // }
     if err := binary.Write(file, binary.LittleEndian, vertex.Keys[i]); err != nil {
       return err
     }
@@ -161,11 +165,6 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
   isLeaf  := uint8(0)
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
-
-  // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
-  // if vertex.ItemsPerBlock > uint32(^uint16(0)) {
-  //   nVals = ^uint16(0)
-  // }
 
   if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
     return err
@@ -195,6 +194,11 @@ func (vertex *BVertex) write(file *os.File) error {
 
 func (tree *BTree) Write(file *os.File) error {
   magic := uint32(CIRTREE_MAGIC)
+
+  // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
+  if tree.ItemsPerBlock > uint32(^uint16(0)) {
+    return fmt.Errorf("ItemsPerBlock too large (maximum value is `%d')", ^uint16(0))
+  }
 
   if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
     return err

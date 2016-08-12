@@ -521,7 +521,7 @@ type RTree struct {
   BaseEnd       uint32
   IdxSize       uint64
   NItemsPerSlot uint32
-  Root          RTreeVertex
+  Root          RVertex
 }
 
 func (tree *RTree) Read(file *os.File) error {
@@ -571,7 +571,7 @@ func (tree *RTree) Read(file *os.File) error {
 
 /* -------------------------------------------------------------------------- */
 
-type RTreeVertex struct {
+type RVertex struct {
   IsLeaf        uint8
   NChildren     uint16
   ChrIdxStart []uint32
@@ -580,10 +580,10 @@ type RTreeVertex struct {
   BaseEnd     []uint32
   DataOffset  []uint64
   Sizes       []uint64
-  Children    []RTreeVertex
+  Children    []RVertex
 }
 
-func (vertex *RTreeVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
+func (vertex *RVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
   if err = fileReadAt(file, int64(vertex.DataOffset[i]), &block); err != nil {
@@ -597,7 +597,7 @@ func (vertex *RTreeVertex) GetBlock(file *os.File, header BigWigHeader, i int) (
   return block, nil
 }
 
-func (vertex *RTreeVertex) Read(file *os.File) error {
+func (vertex *RVertex) Read(file *os.File) error {
 
   var padding uint8
 
@@ -619,7 +619,7 @@ func (vertex *RTreeVertex) Read(file *os.File) error {
   if vertex.IsLeaf != 0 {
     vertex.Sizes     = make([]uint64, vertex.NChildren)
   } else {
-    vertex.Children  = make([]RTreeVertex, vertex.NChildren)
+    vertex.Children  = make([]RVertex, vertex.NChildren)
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {

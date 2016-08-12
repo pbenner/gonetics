@@ -72,7 +72,7 @@ func (track *Track) parseBlock(buffer []byte, genome Genome) error {
   return nil
 }
 
-func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RTreeVertex, genome Genome) error {
+func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RVertex, genome Genome) error {
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {

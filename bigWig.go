@@ -34,12 +34,12 @@ const     IDX_MAGIC = 0x2468ace0
 
 /* -------------------------------------------------------------------------- */
 
-func fileReadAt(file *os.File, offset int64, data interface{}) error {
+func fileReadAt(file *os.File, order binary.ByteOrder, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, data); err != nil {
+  if err := binary.Read(file, order, data); err != nil {
     return err
   }
   if _, err := file.Seek(currentPosition, 0); err != nil {
@@ -48,12 +48,12 @@ func fileReadAt(file *os.File, offset int64, data interface{}) error {
   return nil
 }
 
-func fileWriteAt(file *os.File, offset int64, data interface{}) error {
+func fileWriteAt(file *os.File, order binary.ByteOrder, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, data); err != nil {
+  if err := binary.Write(file, order, data); err != nil {
     return err
   }
   if _, err := file.Seek(currentPosition, 0); err != nil {
@@ -192,7 +192,7 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
     // get current file offset (where the ith child vertex begins)
     offset, _ := file.Seek(0, 1)
     // and write it at the expected position 
-    if err := fileWriteAt(file, offsets[i], uint64(offset)); err != nil {
+    if err := fileWriteAt(file, binary.LittleEndian, offsets[i], uint64(offset)); err != nil {
       return err
     }
     // write ith child
@@ -595,7 +595,7 @@ func (header *BigWigHeader) Write(file *os.File) error {
     // get current offset
     offset, _ := file.Seek(0, 1)
     // write curent offset to the position of SummaryOffset
-    if err := fileWriteAt(file, ptrSummaryOffset, offset); err != nil {
+    if err := fileWriteAt(file, binary.LittleEndian, ptrSummaryOffset, offset); err != nil {
       return err
     }
     if err := binary.Write(file, binary.LittleEndian, header.NBasesCovered); err != nil {
@@ -694,7 +694,7 @@ type RVertex struct {
 func (vertex *RVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
-  if err = fileReadAt(file, int64(vertex.DataOffset[i]), &block); err != nil {
+  if err = fileReadAt(file, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
   if header.BufSize != 0 {

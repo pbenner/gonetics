@@ -593,10 +593,14 @@ func (header *BigWigHeader) Write(file *os.File) error {
   // summary
   if header.NBasesCovered > 0 {
     // get current offset
-    offset, _ := file.Seek(0, 1)
-    // write curent offset to the position of SummaryOffset
-    if err := fileWriteAt(file, binary.LittleEndian, ptrSummaryOffset, offset); err != nil {
+    if offset, err := file.Seek(0, 1); err != nil {
       return err
+    } else {
+      header.SummaryOffset = uint64(offset)
+      // write curent offset to the position of SummaryOffset
+      if err := fileWriteAt(file, binary.LittleEndian, ptrSummaryOffset, header.SummaryOffset); err != nil {
+        return err
+      }
     }
     if err := binary.Write(file, binary.LittleEndian, header.NBasesCovered); err != nil {
       return err
@@ -798,6 +802,63 @@ func (vertex *RVertex) Read(file *os.File) error {
       }
       vertex.Children[i].Read(file)
     }
+  }
+  return nil
+}
+
+func (vertex *RVertex) Write(file *os.File) error {
+
+  ptrDataOffset := make([]int64, vertex.NChildren)
+
+  if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
+    return err
+  }
+  // padding
+  if err := binary.Write(file, binary.LittleEndian, uint8(0)); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, vertex.NChildren); err != nil {
+    return err
+  }
+
+  for i := 0; i < int(vertex.NChildren); i++ {
+    if err := binary.Write(file, binary.LittleEndian, vertex.ChrIdxStart[i]); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, vertex.BaseStart[i]); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, vertex.ChrIdxEnd[i]); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, vertex.BaseEnd[i]); err != nil {
+      return err
+    }
+    // save current offset
+    ptrDataOffset[i], _ = file.Seek(0, 1)
+    if err := binary.Write(file, binary.LittleEndian, vertex.DataOffset[i]); err != nil {
+      return err
+    }
+    if vertex.IsLeaf != 0 {
+      if err := binary.Write(file, binary.LittleEndian, vertex.Sizes[i]); err != nil {
+        return err
+      }
+    }
+  }
+  if vertex.IsLeaf == 0 {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if offset, err := file.Seek(0, 1); err != nil {
+        return err
+      } else {
+        // save current offset
+        vertex.DataOffset[i] = uint64(offset)
+        // and write at the required position
+        fileWriteAt(file, binary.LittleEndian, ptrDataOffset[i], vertex.DataOffset[i])
+        vertex.Children[i].Write(file)
+      }
+    }
+  } else {
+    // todo
   }
   return nil
 }

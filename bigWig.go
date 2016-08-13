@@ -192,7 +192,9 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
     // get current file offset (where the ith child vertex begins)
     offset, _ := file.Seek(0, 1)
     // and write it at the expected position 
-    fileWriteAt(file, offsets[i], uint64(offset))
+    if err := fileWriteAt(file, offsets[i], uint64(offset)); err != nil {
+      return err
+    }
     // write ith child
     if err := vertex.Children[i].write(file); err != nil {
       return err
@@ -533,6 +535,82 @@ func (header *BigWigHeader) Read(file *os.File) error {
       return err
     }
     if err := binary.Read(file, binary.LittleEndian, &header.SumSquared); err != nil {
+      return err
+    }
+  }
+
+  return nil
+}
+
+func (header *BigWigHeader) Write(file *os.File) error {
+
+  // magic number
+  if err := binary.Write(file, binary.LittleEndian, uint32(BIGWIG_MAGIC)); err != nil {
+    return err
+  }
+  // header information
+  if err := binary.Write(file, binary.LittleEndian, header.Version); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.ZoomLevels); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.CtOffset); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.DataOffset); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.IndexOffset); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.FieldCould); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.DefinedFieldCount); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.SqlOffset); err != nil {
+    return err
+  }
+  // save the position of SummaryOffset
+  ptrSummaryOffset, _ := file.Seek(0, 1)
+  if err := binary.Write(file, binary.LittleEndian, header.SummaryOffset); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.BufSize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, header.ExtensionOffset); err != nil {
+    return err
+  }
+  // zoom levels
+  for i := 0; i < int(header.ZoomLevels); i++ {
+    if err := header.ZoomHeaders[i].Write(file); err != nil {
+      return err
+    }
+  }
+  // summary
+  if header.NBasesCovered > 0 {
+    // get current offset
+    offset, _ := file.Seek(0, 1)
+    // write curent offset to the position of SummaryOffset
+    if err := fileWriteAt(file, ptrSummaryOffset, offset); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, header.NBasesCovered); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, header.MinVal); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, header.MaxVal); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, header.SumData); err != nil {
+      return err
+    }
+    if err := binary.Write(file, binary.LittleEndian, header.SumSquared); err != nil {
       return err
     }
   }

@@ -677,6 +677,44 @@ func (tree *RTree) Read(file *os.File) error {
   return nil
 }
 
+func (tree *RTree) Write(file *os.File) error {
+  // magic number
+  if err := binary.Write(file, binary.LittleEndian, uint32(IDX_MAGIC)); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.BlockSize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.NItems); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.ChrIdxStart); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.BaseStart); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.ChrIdxEnd); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.BaseEnd); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.IdxSize); err != nil {
+    return err
+  }
+  if err := binary.Write(file, binary.LittleEndian, tree.NItemsPerSlot); err != nil {
+    return err
+  }
+  // padding
+  if err := binary.Write(file, binary.LittleEndian, uint32(0)); err != nil {
+    return err
+  }
+  //tree.Root.Write(file)
+
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type RVertex struct {

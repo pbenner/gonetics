@@ -743,8 +743,9 @@ type RVertex struct {
   DataOffset  []uint64
   Sizes       []uint64
   Children    []RVertex
-  // positions of DataOffset values in file
+  // positions of DataOffset and Sizes values in file
   PtrDataOffset []int64
+  PtrSizes      []int64
 }
 
 func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
@@ -759,6 +760,36 @@ func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]b
     }
   }
   return block, nil
+}
+
+func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, block []byte) error {
+  var err error
+  if header.BufSize != 0 {
+    if block, err = compressSlice(block); err != nil {
+      return err
+    }
+  }
+  // get current offset and update DataOffset[i]
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    vertex.DataOffset[i] = uint64(offset)
+    // write updated value to the required position in the file
+    if err = fileWriteAt(file, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
+      return err
+    }
+  }
+  // write data
+  if err = binary.Write(file, binary.LittleEndian, block); err != nil {
+    return err
+  }
+  // update size of the data block
+  vertex.Sizes[i] = uint64(len(block))
+  // write it to the required position in the file
+  if err = fileWriteAt(file, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
+    return err
+  }
+  return nil
 }
 
 func (vertex *RVertex) Read(file *os.File) error {
@@ -783,6 +814,7 @@ func (vertex *RVertex) Read(file *os.File) error {
   vertex.PtrDataOffset = make([] int64, vertex.NChildren)
   if vertex.IsLeaf != 0 {
     vertex.Sizes       = make([]uint64, vertex.NChildren)
+    vertex.PtrSizes    = make([] int64, vertex.NChildren)
   } else {
     vertex.Children    = make([]RVertex, vertex.NChildren)
   }
@@ -860,6 +892,12 @@ func (vertex *RVertex) Write(file *os.File) error {
     }
     if err := binary.Write(file, binary.LittleEndian, vertex.DataOffset[i]); err != nil {
       return err
+    }
+    // save current offset
+    if offset, err := file.Seek(0, 1); err != nil {
+      return err
+    } else {
+      vertex.PtrSizes[i] = offset
     }
     if vertex.IsLeaf != 0 {
       if err := binary.Write(file, binary.LittleEndian, vertex.Sizes[i]); err != nil {

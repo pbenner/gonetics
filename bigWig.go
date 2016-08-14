@@ -73,6 +73,18 @@ func uncompressSlice(data []byte) ([]byte, error) {
   return ioutil.ReadAll(z)
 }
 
+func compressSlice(data []byte) ([]byte, error) {
+  var b bytes.Buffer
+  z := zlib.NewWriter(&b)
+  _, err := z.Write(data)
+  if err != nil {
+    return nil, err
+  }
+  z.Close()
+
+  return b.Bytes(), nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BTree struct {
@@ -731,6 +743,8 @@ type RVertex struct {
   DataOffset  []uint64
   Sizes       []uint64
   Children    []RVertex
+  // positions of DataOffset values in file
+  PtrDataOffset []int64
 }
 
 func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
@@ -761,15 +775,16 @@ func (vertex *RVertex) Read(file *os.File) error {
     return err
   }
   // allocate data
-  vertex.ChrIdxStart = make([]uint32, vertex.NChildren)
-  vertex.BaseStart   = make([]uint32, vertex.NChildren)
-  vertex.ChrIdxEnd   = make([]uint32, vertex.NChildren)
-  vertex.BaseEnd     = make([]uint32, vertex.NChildren)
-  vertex.DataOffset  = make([]uint64, vertex.NChildren)
+  vertex.ChrIdxStart   = make([]uint32, vertex.NChildren)
+  vertex.BaseStart     = make([]uint32, vertex.NChildren)
+  vertex.ChrIdxEnd     = make([]uint32, vertex.NChildren)
+  vertex.BaseEnd       = make([]uint32, vertex.NChildren)
+  vertex.DataOffset    = make([]uint64, vertex.NChildren)
+  vertex.PtrDataOffset = make([] int64, vertex.NChildren)
   if vertex.IsLeaf != 0 {
-    vertex.Sizes     = make([]uint64, vertex.NChildren)
+    vertex.Sizes       = make([]uint64, vertex.NChildren)
   } else {
-    vertex.Children  = make([]RVertex, vertex.NChildren)
+    vertex.Children    = make([]RVertex, vertex.NChildren)
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {
@@ -784,6 +799,11 @@ func (vertex *RVertex) Read(file *os.File) error {
     }
     if err := binary.Read(file, binary.LittleEndian, &vertex.BaseEnd[i]); err != nil {
       return err
+    }
+    if offset, err := file.Seek(0, 1); err != nil {
+      return err
+    } else {
+      vertex.PtrDataOffset[i] = offset
     }
     if err := binary.Read(file, binary.LittleEndian, &vertex.DataOffset[i]); err != nil {
       return err
@@ -807,8 +827,6 @@ func (vertex *RVertex) Read(file *os.File) error {
 }
 
 func (vertex *RVertex) Write(file *os.File) error {
-
-  ptrDataOffset := make([]int64, vertex.NChildren)
 
   if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
     return err
@@ -835,7 +853,11 @@ func (vertex *RVertex) Write(file *os.File) error {
       return err
     }
     // save current offset
-    ptrDataOffset[i], _ = file.Seek(0, 1)
+    if offset, err := file.Seek(0, 1); err != nil {
+      return err
+    } else {
+      vertex.PtrDataOffset[i] = offset
+    }
     if err := binary.Write(file, binary.LittleEndian, vertex.DataOffset[i]); err != nil {
       return err
     }
@@ -853,12 +875,10 @@ func (vertex *RVertex) Write(file *os.File) error {
         // save current offset
         vertex.DataOffset[i] = uint64(offset)
         // and write at the required position
-        fileWriteAt(file, binary.LittleEndian, ptrDataOffset[i], vertex.DataOffset[i])
+        fileWriteAt(file, binary.LittleEndian, vertex.PtrDataOffset[i], vertex.DataOffset[i])
         vertex.Children[i].Write(file)
       }
     }
-  } else {
-    // todo
   }
   return nil
 }

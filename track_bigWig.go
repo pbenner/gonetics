@@ -76,7 +76,7 @@ func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RVertex, genome Genome
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := vertex.GetBlock(bwf.Fptr, bwf.Header, i); err != nil {
+      if block, err := vertex.ReadBlock(bwf.Fptr, bwf.Header, i); err != nil {
         return err
       } else {
         if err := track.parseBlock(block, genome); err != nil {

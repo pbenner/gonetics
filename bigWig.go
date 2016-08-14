@@ -733,7 +733,7 @@ type RVertex struct {
   Children    []RVertex
 }
 
-func (vertex *RVertex) GetBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
+func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
   if err = fileReadAt(file, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {

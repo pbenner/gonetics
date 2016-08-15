@@ -217,6 +217,11 @@ func (track *Track) WriteBigWig(filename, description string) error {
       bwf.ChromData.KeySize = uint32(len(name)+1)
     }
     genome = genome.AddSequence(name, len(seq)*track.Binsize)
+    // compress by default, i.e. set UncompressBufSize to
+    // maximum sequence length
+    if bwf.Header.UncompressBufSize < uint32(len(seq)) {
+      bwf.Header.UncompressBufSize = uint32(len(seq))
+    }
   }
   // size of uint32
   bwf.ChromData.ValueSize = 8

@@ -497,7 +497,7 @@ type BigWigHeader struct {
   DefinedFieldCount uint16
   SqlOffset         uint64
   SummaryOffset     uint64
-  BufSize           uint32
+  UncompressBufSize uint32
   ExtensionOffset   uint64
   NBasesCovered     uint64
   MinVal            uint64
@@ -559,7 +559,7 @@ func (header *BigWigHeader) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &header.SummaryOffset); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.BufSize); err != nil {
+  if err := binary.Read(file, binary.LittleEndian, &header.UncompressBufSize); err != nil {
     return err
   }
   if err := binary.Read(file, binary.LittleEndian, &header.ExtensionOffset); err != nil {
@@ -675,7 +675,7 @@ func (header *BigWigHeader) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, header.SummaryOffset); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, header.BufSize); err != nil {
+  if err := binary.Write(file, binary.LittleEndian, header.UncompressBufSize); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -858,7 +858,7 @@ func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]b
   if err = fileReadAt(file, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
-  if header.BufSize != 0 {
+  if header.UncompressBufSize != 0 {
     if block, err = uncompressSlice(block); err != nil {
       return nil, err
     }
@@ -868,7 +868,7 @@ func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]b
 
 func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, block []byte) error {
   var err error
-  if header.BufSize != 0 {
+  if header.UncompressBufSize != 0 {
     if block, err = compressSlice(block); err != nil {
       return err
     }

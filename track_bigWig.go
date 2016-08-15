@@ -131,6 +131,33 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
 func (track *Track) WriteBigWig(filename, description string) error {
 
   bwf := NewBigWigFile()
+
+  // store indices and sequence lengths
+  genome := Genome{}
+
+  // identify ChromData key size and sequence lengths
+  for name, seq := range track.Data {
+    if bwf.ChromData.KeySize < uint32(len(name)+1) {
+      bwf.ChromData.KeySize = uint32(len(name)+1)
+    }
+    genome = genome.AddSequence(name, len(seq)*track.Binsize)
+  }
+  // size of uint32
+  bwf.ChromData.ValueSize = 8
+  // fill ChromData
+  for name, _ := range track.Data {
+    key   := make([]byte, bwf.ChromData.KeySize)
+    value := make([]byte, bwf.ChromData.ValueSize)
+    copy(key, name)
+    if idx, err := genome.GetIdx(name); err != nil {
+      panic(err)
+    } else {
+      binary.LittleEndian.PutUint32(value[0:4], uint32(idx))
+      binary.LittleEndian.PutUint32(value[4:8], uint32(genome.Lengths[idx]))
+    }
+    bwf.ChromData.Keys   = append(bwf.ChromData.Keys,   key)
+    bwf.ChromData.Values = append(bwf.ChromData.Values, value)
+  }
   if err := bwf.Create(filename); err != nil {
     return err
   }

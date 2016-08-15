@@ -62,6 +62,21 @@ func (genome Genome) SeqLength(seqname string) (int, error) {
   return 0, errors.New("sequence not found")
 }
 
+func (genome Genome) AddSequence(seqname string, length int) Genome {
+  seqnames := append(genome.Seqnames, seqname)
+  lengths  := append(genome.Lengths,  length)
+  return NewGenome(seqnames, lengths)
+}
+
+func (genome Genome) GetIdx(seqname string) (int, error) {
+  for i := 0; i < genome.Length(); i++ {
+    if genome.Seqnames[i] == seqname {
+      return i, nil
+    }
+  }
+  return 0, fmt.Errorf("sequence `%s' not found in genome", seqname)
+}
+
 /* convert to string
  * -------------------------------------------------------------------------- */
 

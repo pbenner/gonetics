@@ -125,3 +125,4 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
   }
   return nil
 }
+

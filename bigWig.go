@@ -102,7 +102,7 @@ type BVertex struct {
   Children   []BVertex
 }
 
-func NewBTree(data BData) {
+func NewBTree(data *BData) *BTree {
   tree := BTree{}
   tree.KeySize       = data.KeySize
   tree.ValueSize     = data.ValueSize
@@ -112,9 +112,11 @@ func NewBTree(data BData) {
   d := int(math.Ceil(math.Log(float64(data.ItemCount))/math.Log(float64(data.ItemsPerBlock))))
 
   tree.Root.BuildTree(data, 0, data.ItemCount, d-1)
+
+  return &tree
 }
 
-func (vertex *BVertex) BuildTree(data BData, from, to uint64, level int) (uint64, error) {
+func (vertex *BVertex) BuildTree(data *BData, from, to uint64, level int) (uint64, error) {
   // number of values below this node
   i := uint64(0)
   if level == 0 {
@@ -372,6 +374,11 @@ func (data *BData) Read(file *os.File) error {
   return data.readVertex(file)
 }
 
+func (data *BData) Write(file *os.File) error {
+  tree := NewBTree(data)
+  return tree.Write(file)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BigWigHeaderZoom struct {
@@ -474,6 +481,13 @@ type BigWigHeader struct {
   SumData           uint64
   SumSquared        uint64
   ZoomHeaders     []BigWigHeaderZoom
+  // offset positions
+  PtrCtOffset        int64
+  PtrDataOffset      int64
+  PtrIndexOffset     int64
+  PtrSqlOffset       int64
+  PtrSummaryOffset   int64
+  PtrExtensionOffset int64
 }
 
 func (header *BigWigHeader) Read(file *os.File) error {
@@ -550,7 +564,25 @@ func (header *BigWigHeader) Read(file *os.File) error {
       return err
     }
   }
+  return nil
+}
 
+func (header *BigWigHeader) WriteOffsets(file *os.File) error {
+  if err := fileWriteAt(file, binary.LittleEndian, header.PtrCtOffset, header.CtOffset); err != nil {
+    return err
+  }
+  if err := fileWriteAt(file, binary.LittleEndian, header.PtrDataOffset, header.DataOffset); err != nil {
+    return err
+  }
+  if err := fileWriteAt(file, binary.LittleEndian, header.PtrIndexOffset, header.IndexOffset); err != nil {
+    return err
+  }
+  if err := fileWriteAt(file, binary.LittleEndian, header.PtrSqlOffset, header.SqlOffset); err != nil {
+    return err
+  }
+  if err := fileWriteAt(file, binary.LittleEndian, header.PtrExtensionOffset, header.ExtensionOffset); err != nil {
+    return err
+  }
   return nil
 }
 
@@ -567,11 +599,26 @@ func (header *BigWigHeader) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, header.ZoomLevels); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrCtOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, header.CtOffset); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrDataOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, header.DataOffset); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrIndexOffset = offset
   }
   if err := binary.Write(file, binary.LittleEndian, header.IndexOffset); err != nil {
     return err
@@ -582,16 +629,29 @@ func (header *BigWigHeader) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, header.DefinedFieldCount); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrSqlOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, header.SqlOffset); err != nil {
     return err
   }
-  // save the position of SummaryOffset
-  ptrSummaryOffset, _ := file.Seek(0, 1)
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrSummaryOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, header.SummaryOffset); err != nil {
     return err
   }
   if err := binary.Write(file, binary.LittleEndian, header.BufSize); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrExtensionOffset = offset
   }
   if err := binary.Write(file, binary.LittleEndian, header.ExtensionOffset); err != nil {
     return err
@@ -610,7 +670,7 @@ func (header *BigWigHeader) Write(file *os.File) error {
     } else {
       header.SummaryOffset = uint64(offset)
       // write curent offset to the position of SummaryOffset
-      if err := fileWriteAt(file, binary.LittleEndian, ptrSummaryOffset, header.SummaryOffset); err != nil {
+      if err := fileWriteAt(file, binary.LittleEndian, header.PtrSummaryOffset, header.SummaryOffset); err != nil {
         return err
       }
     }
@@ -957,6 +1017,42 @@ func (bwf *BigWigFile) Open(filename string) error {
   if err := bwf.Index.Read(bwf.Fptr); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
+  return nil
+}
+
+func (bwf *BigWigFile) Create(filename string) error {
+
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  bwf.Fptr = f
+
+  // parse header
+  if err := bwf.Header.Write(bwf.Fptr); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  }
+  // parse chromosome list
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  } else {
+    bwf.Header.CtOffset = uint64(offset)
+  }
+  if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  }
+  // parse data index
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  } else {
+    bwf.Header.IndexOffset = uint64(offset)
+  }
+  if err := bwf.Index.Write(bwf.Fptr); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  }
+  // update offsets
+  bwf.Header.WriteOffsets(bwf.Fptr)
   return nil
 }
 

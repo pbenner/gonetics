@@ -122,10 +122,10 @@ func (vertex *BVertex) BuildTree(data *BData, from, to uint64, level int) (uint6
   if level == 0 {
     vertex.IsLeaf = 1
     for nVals := uint16(0); uint32(nVals) < data.ItemsPerBlock && from+i < to; nVals++ {
-      if uint32(len(vertex.Keys[from+i])) != data.KeySize {
+      if uint32(len(data.Keys[from+i])) != data.KeySize {
         return 0, fmt.Errorf("key number `%d' has invalid size", i)
       }
-      if uint32(len(vertex.Values[from+i])) != data.ValueSize {
+      if uint32(len(data.Values[from+i])) != data.ValueSize {
         return 0, fmt.Errorf("value number `%d' has invalid size", i)
       }
       vertex.Keys   = append(vertex.Keys,   data.Keys  [from+i])
@@ -266,6 +266,16 @@ type BData struct {
 
   Keys   [][]byte
   Values [][]byte
+}
+
+func NewBData() *BData {
+  data := BData{}
+  // default values
+  data.KeySize       = 0
+  data.ValueSize     = 0
+  data.ItemsPerBlock = 0
+  data.ItemCount     = 0
+  return &data
 }
 
 func (data *BData) readVertexLeaf(file *os.File) error {
@@ -490,6 +500,12 @@ type BigWigHeader struct {
   PtrExtensionOffset int64
 }
 
+func NewBigWigHeader() *BigWigHeader {
+  header := BigWigHeader{}
+  header.Version = 4
+  return &header
+}
+
 func (header *BigWigHeader) Read(file *os.File) error {
 
   var magic uint32
@@ -706,6 +722,20 @@ type RTree struct {
   IdxSize       uint64
   NItemsPerSlot uint32
   Root          RVertex
+}
+
+func NewRTree() *RTree {
+  tree := RTree{}
+  // default values
+  tree.BlockSize     = 256
+  tree.NItems        = 0
+  tree.ChrIdxStart   = 0
+  tree.BaseStart     = 0
+  tree.ChrIdxEnd     = 0
+  tree.BaseEnd       = 0
+  tree.IdxSize       = 0
+  tree.NItemsPerSlot = 1024
+  return &tree
 }
 
 func (tree *RTree) Read(file *os.File) error {
@@ -990,6 +1020,14 @@ type BigWigFile struct {
   Fptr      *os.File
 }
 
+func NewBigWigFile() *BigWigFile {
+  bwf := new(BigWigFile)
+  bwf.Header    = *NewBigWigHeader()
+  bwf.ChromData = *NewBData()
+  bwf.Index     = *NewRTree()
+  return bwf
+}
+
 func (bwf *BigWigFile) Open(filename string) error {
 
   // open file
@@ -1023,17 +1061,17 @@ func (bwf *BigWigFile) Open(filename string) error {
 func (bwf *BigWigFile) Create(filename string) error {
 
   // open file
-  f, err := os.Open(filename)
+  f, err := os.Create(filename)
   if err != nil {
     return err
   }
   bwf.Fptr = f
 
-  // parse header
+  // write header
   if err := bwf.Header.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
-  // parse chromosome list
+  // write chromosome list
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   } else {
@@ -1042,7 +1080,7 @@ func (bwf *BigWigFile) Create(filename string) error {
   if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
-  // parse data index
+  // write data index
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   } else {
@@ -1050,6 +1088,12 @@ func (bwf *BigWigFile) Create(filename string) error {
   }
   if err := bwf.Index.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  }
+  // data starts here
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+  } else {
+    bwf.Header.DataOffset = uint64(offset)
   }
   // update offsets
   bwf.Header.WriteOffsets(bwf.Fptr)

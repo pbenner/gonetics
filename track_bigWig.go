@@ -25,7 +25,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) parseBlock(buffer []byte, genome Genome) error {
+func (track *Track) readDataBlock(buffer []byte, genome Genome) error {
   header := BigWigDataHeader{}
   header.ReadBuffer(buffer)
   // crop header from buffer
@@ -72,21 +72,21 @@ func (track *Track) parseBlock(buffer []byte, genome Genome) error {
   return nil
 }
 
-func (track *Track) parseBWIndex(bwf *BigWigFile, vertex *RVertex, genome Genome) error {
+func (track *Track) readBWIndex(bwf *BigWigFile, vertex *RVertex, genome Genome) error {
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
       if block, err := vertex.ReadBlock(bwf.Fptr, bwf.Header, i); err != nil {
         return err
       } else {
-        if err := track.parseBlock(block, genome); err != nil {
+        if err := track.readDataBlock(block, genome); err != nil {
           return err
         }
       }
     }
   } else {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if err := track.parseBWIndex(bwf, &vertex.Children[i], genome); err != nil {
+      if err := track.readBWIndex(bwf, &vertex.Children[i], genome); err != nil {
         return err
       }
     }
@@ -120,9 +120,21 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
 
   *track = AllocTrack(description, genome, binsize)
 
-  if err := track.parseBWIndex(bwf, &bwf.Index.Root, genome); err != nil {
+  if err := track.readBWIndex(bwf, &bwf.Index.Root, genome); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   return nil
 }
 
+/* -------------------------------------------------------------------------- */
+
+func (track *Track) WriteBigWig(filename, description string) error {
+
+  bwf := NewBigWigFile()
+  if err := bwf.Create(filename); err != nil {
+    return err
+  }
+  defer bwf.Close()
+
+  return nil
+}

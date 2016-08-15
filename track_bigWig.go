@@ -152,6 +152,17 @@ func (track *Track) writeBigWig_block(idx uint32, genome Genome, fixedStep bool)
       return nil, fmt.Errorf("unsupported block type")
     case 2:
       // variable step
+      tmp := make([]byte, 8)
+      for i := 0; i < len(seq); i ++ {
+        if seq[i] != 0.0 {
+          binary.LittleEndian.PutUint32(tmp[0:4], math.Float32bits(float32(i*track.Binsize)))
+          binary.LittleEndian.PutUint32(tmp[4:8], math.Float32bits(float32(seq[i])))
+          if _, err := buffer.Write(tmp); err != nil {
+            return nil, err
+          }
+          header.ItemCount += 8
+        }
+      }
     case 3:
       // fixed step
       tmp := make([]byte, 4)
@@ -161,6 +172,7 @@ func (track *Track) writeBigWig_block(idx uint32, genome Genome, fixedStep bool)
           return nil, err
         }
       }
+      header.ItemCount += 4
     }
   }
   block := make([]byte, 24)

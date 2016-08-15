@@ -155,8 +155,9 @@ func (track *Track) WriteBigWig(filename, description string) error {
       binary.LittleEndian.PutUint32(value[0:4], uint32(idx))
       binary.LittleEndian.PutUint32(value[4:8], uint32(genome.Lengths[idx]))
     }
-    bwf.ChromData.Keys   = append(bwf.ChromData.Keys,   key)
-    bwf.ChromData.Values = append(bwf.ChromData.Values, value)
+    if err := bwf.ChromData.Add(key, value); err != nil {
+      panic(err)
+    }
   }
   if err := bwf.Create(filename); err != nil {
     return err

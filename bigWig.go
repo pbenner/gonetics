@@ -278,6 +278,20 @@ func NewBData() *BData {
   return &data
 }
 
+func (data *BData) Add(key, value []byte) error {
+  if uint32(len(key)) != data.KeySize {
+    return fmt.Errorf("BData.Add(): key has invalid length")
+  }
+  if uint32(len(value)) != data.ValueSize {
+    return fmt.Errorf("BData.Add(): value has invalid length")
+  }
+  data.Keys   = append(data.Keys,   key)
+  data.Values = append(data.Values, value)
+  data.ItemsPerBlock++
+  data.ItemCount++
+  return nil
+}
+
 func (data *BData) readVertexLeaf(file *os.File) error {
   var nVals   uint16
   var key   []byte

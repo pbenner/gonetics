@@ -18,6 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "bytes"
 import "fmt"
 import "encoding/binary"
 import "math"
@@ -127,6 +128,69 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
 }
 
 /* -------------------------------------------------------------------------- */
+
+func (track *Track) writeDataBlock(idx uint32, genome Genome, fixedStep bool) ([]byte, error) {
+  header := BigWigDataHeader{}
+  header.ChromId = uint32(idx)
+  header.Start   = 0
+  header.End     = uint32(genome.Lengths[idx])
+  header.Step    = uint32(track.Binsize)
+  header.Span    = uint32(track.Binsize)
+  if fixedStep {
+    header.Type = 3
+  } else {
+    header.Type = 2
+  }
+  // data buffer
+  var buffer bytes.Buffer
+
+  if seq, ok := track.Data[genome.Seqnames[idx]]; !ok {
+    return nil, fmt.Errorf("sequence `%s' not found in track", genome.Seqnames[idx])
+  } else {
+    switch header.Type {
+    default:
+      return nil, fmt.Errorf("unsupported block type")
+    case 2:
+      // variable step
+    case 3:
+      // fixed step
+      tmp := make([]byte, 4)
+      for i := 0; i < len(seq); i ++ {
+        binary.LittleEndian.PutUint32(tmp, math.Float32bits(float32(seq[i])))
+        if _, err := buffer.Write(tmp); err != nil {
+          return nil, err
+        }
+      }
+    }
+  }
+  block := make([]byte, 24)
+  header.WriteBuffer(block)
+  block = append(block, buffer.Bytes()...)
+
+  return block, nil
+}
+
+func (track *Track) writeBWIndex(bwf *BigWigFile, vertex *RVertex, genome Genome, fixedStep bool) error {
+
+  if vertex.IsLeaf != 0 {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if block, err := track.writeDataBlock(vertex.ChrIdxStart[i], genome, fixedStep); err != nil {
+        return err
+      } else {
+        if err := vertex.WriteBlock(bwf.Fptr, bwf.Header, i, block); err != nil {
+          return err
+        }
+      }
+    }
+  } else {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if err := track.writeBWIndex(bwf, &vertex.Children[i], genome, fixedStep); err != nil {
+        return err
+      }
+    }
+  }
+  return nil
+}
 
 func (track *Track) WriteBigWig(filename, description string) error {
 

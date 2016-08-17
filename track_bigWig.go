@@ -129,11 +129,19 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) writeBigWig_block(idx uint32, genome Genome, fixedStep bool) ([]byte, error) {
+func (track *Track) writeBigWig_block(vertex *RVertex, i int, genome Genome, fixedStep bool) ([]byte, error) {
+  // get sequence index
+  idx := vertex.ChrIdxStart[i]
+  // create genomic range
+  r := GRangesRow{}
+  r.Seqname = genome.Seqnames[idx]
+  r.Range.From = int(vertex.BaseStart[i])
+  r.Range.To   = int(vertex.BaseEnd[i])
+  // create header
   header := BigWigDataHeader{}
   header.ChromId = uint32(idx)
-  header.Start   = 0
-  header.End     = uint32(genome.Lengths[idx])
+  header.Start   = uint32(vertex.BaseStart[i])
+  header.End     = uint32(vertex.BaseEnd[i])
   header.Step    = uint32(track.Binsize)
   header.Span    = uint32(track.Binsize)
   if fixedStep {
@@ -144,8 +152,8 @@ func (track *Track) writeBigWig_block(idx uint32, genome Genome, fixedStep bool)
   // data buffer
   var buffer bytes.Buffer
 
-  if seq, ok := track.Data[genome.Seqnames[idx]]; !ok {
-    return nil, fmt.Errorf("sequence `%s' not found in track", genome.Seqnames[idx])
+  if seq, err := track.GetSlice(r); err != nil {
+    return nil, err
   } else {
     switch header.Type {
     default:
@@ -186,7 +194,7 @@ func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, geno
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := track.writeBigWig_block(vertex.ChrIdxStart[i], genome, fixedStep); err != nil {
+      if block, err := track.writeBigWig_block(vertex, i, genome, fixedStep); err != nil {
         return err
       } else {
         if err := vertex.WriteBlock(bwf.Fptr, bwf.Header, i, block); err != nil {
@@ -341,6 +349,8 @@ func (track *Track) WriteBigWig(filename, description string) error {
     return err
   }
   defer bwf.Close()
+  // traverse index tree and write data
+  track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, true)
 
   return nil
 }

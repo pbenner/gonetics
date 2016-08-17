@@ -946,6 +946,11 @@ func (vertex *RVertex) Read(file *os.File) error {
       return err
     }
     if vertex.IsLeaf != 0 {
+      if offset, err := file.Seek(0, 1); err != nil {
+        return err
+      } else {
+        vertex.PtrSizes[i] = offset
+      }
       if err := binary.Read(file, binary.LittleEndian, &vertex.Sizes[i]); err != nil {
         return err
       }

@@ -296,10 +296,14 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, genome G
   if len(leaves) == 0 {
     return tree
   }
-  // compute tree depth
-  d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(blockSize))))
-  // construct tree
-  tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, blockSize, d-1)
+  if len(leaves) == 1 {
+    tree.Root = leaves[0]
+  } else {
+    // compute tree depth
+    d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(blockSize))))
+    // construct tree
+    tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, blockSize, d-1)
+  }
   tree.ChrIdxStart = tree.Root.ChrIdxStart[0]
   tree.ChrIdxEnd   = tree.Root.ChrIdxEnd[tree.Root.NChildren-1]
   tree.BaseStart   = tree.Root.BaseStart[0]

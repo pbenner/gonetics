@@ -75,8 +75,11 @@ func uncompressSlice(data []byte) ([]byte, error) {
 
 func compressSlice(data []byte) ([]byte, error) {
   var b bytes.Buffer
-  z := zlib.NewWriter(&b)
-  _, err := z.Write(data)
+  z, err := zlib.NewWriterLevel(&b, zlib.BestCompression)
+  if err != nil {
+    panic(err)
+  }
+  _, err  = z.Write(data)
   if err != nil {
     return nil, err
   }

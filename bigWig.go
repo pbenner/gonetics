@@ -846,7 +846,7 @@ type RVertex struct {
   BaseEnd     []uint32
   DataOffset  []uint64
   Sizes       []uint64
-  Children    []RVertex
+  Children    []*RVertex
   // positions of DataOffset and Sizes values in file
   PtrDataOffset []int64
   PtrSizes      []int64
@@ -920,7 +920,7 @@ func (vertex *RVertex) Read(file *os.File) error {
     vertex.Sizes       = make([]uint64, vertex.NChildren)
     vertex.PtrSizes    = make([] int64, vertex.NChildren)
   } else {
-    vertex.Children    = make([]RVertex, vertex.NChildren)
+    vertex.Children    = make([]*RVertex, vertex.NChildren)
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {
@@ -956,6 +956,7 @@ func (vertex *RVertex) Read(file *os.File) error {
       if _, err := file.Seek(int64(vertex.DataOffset[i]), 0); err != nil {
         return err
       }
+      vertex.Children[i] = new(RVertex)
       vertex.Children[i].Read(file)
     }
   }

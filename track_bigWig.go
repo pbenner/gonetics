@@ -121,7 +121,7 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
 
   *track = AllocTrack(description, genome, binsize)
 
-  if err := track.readBigWig_allBlocks(bwf, &bwf.Index.Root, genome); err != nil {
+  if err := track.readBigWig_allBlocks(bwf, bwf.Index.Root, genome); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   return nil
@@ -205,7 +205,7 @@ func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, geno
 }
 
 func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, level int) (*RVertex, []*RVertex) {
-  v := &RVertex{}
+  v := new(RVertex)
   n := len(leaves)
   // return if there are no leaves
   if n == 0 {
@@ -239,9 +239,9 @@ func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, leve
 func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree {
   tree := NewRTree()
   // list of leaves
-  leaves := []RVertex{}
+  leaves := []*RVertex{}
   // current leaf
-  v := RVertex{}
+  v := new(RVertex)
   v.IsLeaf = 1
   // generate all leaves
   for idx := 0; idx < genome.Length(); idx++ {
@@ -252,7 +252,7 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
         // vertex is full
         leaves = append(leaves, v)
         // create new emtpy vertex
-        v = RVertex{}
+        v = new(RVertex)
         v.IsLeaf = 1
       }
       i_from := i
@@ -271,13 +271,29 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
       }
       v.ChrIdxStart = append(v.ChrIdxStart, uint32(idx))
       v.ChrIdxEnd   = append(v.ChrIdxEnd, uint32(idx))
-      v.BaseStart   = append(v.BaseStart, uint32(i_from))
-      v.BaseEnd     = append(v.BaseEnd, uint32(i_to))
+      v.BaseStart   = append(v.BaseStart, uint32(i_from*track.Binsize))
+      v.BaseEnd     = append(v.BaseEnd, uint32(i_to*track.Binsize))
       v.NChildren++
     }
+    if v.NChildren != 0 {
+      leaves = append(leaves, v)
+      // create new emtpy vertex
+      v = new(RVertex)
+      v.IsLeaf = 1
+    }
+  }
+  if len(leaves) == 0 {
+    return tree
   }
   // compute tree depth
-  //d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(tree.BlockSize))))
+  d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(tree.BlockSize))))
+  // construct tree
+  tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, int(tree.BlockSize), d-1)
+  tree.NItems  = uint64(len(leaves))
+  tree.ChrIdxStart = tree.Root.ChrIdxStart[0]
+  tree.ChrIdxEnd   = tree.Root.ChrIdxEnd[tree.Root.NChildren-1]
+  tree.BaseStart   = tree.Root.BaseStart[0]
+  tree.BaseEnd     = tree.Root.BaseEnd[tree.Root.NChildren-1]
 
   return tree
 }
@@ -318,6 +334,9 @@ func (track *Track) WriteBigWig(filename, description string) error {
       panic(err)
     }
   }
+  // construct index tree
+  bwf.Index = *track.WriteBigWig_buildRTree(genome, true)
+
   if err := bwf.Create(filename); err != nil {
     return err
   }

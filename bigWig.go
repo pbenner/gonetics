@@ -735,7 +735,7 @@ type RTree struct {
   BaseEnd       uint32
   IdxSize       uint64
   NItemsPerSlot uint32
-  Root          RVertex
+  Root          *RVertex
 }
 
 func NewRTree() *RTree {
@@ -792,6 +792,7 @@ func (tree *RTree) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
     return err
   }
+  tree.Root = new(RVertex)
   tree.Root.Read(file)
 
   return nil
@@ -830,7 +831,7 @@ func (tree *RTree) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, uint32(0)); err != nil {
     return err
   }
-  //tree.Root.Write(file)
+  tree.Root.Write(file)
 
   return nil
 }
@@ -965,6 +966,19 @@ func (vertex *RVertex) Read(file *os.File) error {
 
 func (vertex *RVertex) Write(file *os.File) error {
 
+  if len(vertex.DataOffset) != int(vertex.NChildren) {
+    vertex.DataOffset = make([]uint64, vertex.NChildren)
+  }
+  if len(vertex.Sizes) != int(vertex.NChildren) {
+    vertex.Sizes = make([]uint64, vertex.NChildren)
+  }
+  if len(vertex.PtrDataOffset) != int(vertex.NChildren) {
+    vertex.PtrDataOffset = make([]int64, vertex.NChildren)
+  }
+  if len(vertex.PtrSizes) != int(vertex.NChildren) {
+    vertex.PtrSizes = make([]int64, vertex.NChildren)
+  }
+
   if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
     return err
   }
@@ -1095,12 +1109,13 @@ func (bwf *BigWigFile) Create(filename string) error {
   if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
-  // write data index
+  // write data index offset
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   } else {
     bwf.Header.IndexOffset = uint64(offset)
   }
+  // write data index
   if err := bwf.Index.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
@@ -1111,7 +1126,9 @@ func (bwf *BigWigFile) Create(filename string) error {
     bwf.Header.DataOffset = uint64(offset)
   }
   // update offsets
-  bwf.Header.WriteOffsets(bwf.Fptr)
+  if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
+    return err
+  }
   return nil
 }
 

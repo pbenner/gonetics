@@ -356,7 +356,5 @@ func (track *Track) WriteBigWig(filename, description string) error {
   }
   defer bwf.Close()
   // traverse index tree and write data
-  track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, fixedStep)
-
-  return nil
+  return track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, fixedStep)
 }

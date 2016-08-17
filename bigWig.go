@@ -736,18 +736,13 @@ type RTree struct {
   IdxSize       uint64
   NItemsPerSlot uint32
   Root          *RVertex
+  PtrIdxSize    int64
 }
 
 func NewRTree() *RTree {
   tree := RTree{}
   // default values
   tree.BlockSize     = 256
-  tree.NItems        = 0
-  tree.ChrIdxStart   = 0
-  tree.BaseStart     = 0
-  tree.ChrIdxEnd     = 0
-  tree.BaseEnd       = 0
-  tree.IdxSize       = 0
   tree.NItemsPerSlot = 1024
   return &tree
 }
@@ -782,6 +777,12 @@ func (tree *RTree) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &tree.BaseEnd); err != nil {
     return err
   }
+  // get current offset
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    tree.PtrIdxSize = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &tree.IdxSize); err != nil {
     return err
   }
@@ -796,6 +797,10 @@ func (tree *RTree) Read(file *os.File) error {
   tree.Root.Read(file)
 
   return nil
+}
+
+func (tree *RTree) WriteSize(file *os.File) error {
+  return fileWriteAt(file, binary.LittleEndian, tree.PtrIdxSize, tree.IdxSize)
 }
 
 func (tree *RTree) Write(file *os.File) error {
@@ -820,6 +825,12 @@ func (tree *RTree) Write(file *os.File) error {
   }
   if err := binary.Write(file, binary.LittleEndian, tree.BaseEnd); err != nil {
     return err
+  }
+  // get current offset
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    tree.PtrIdxSize = offset
   }
   if err := binary.Write(file, binary.LittleEndian, tree.IdxSize); err != nil {
     return err
@@ -1130,6 +1141,9 @@ func (bwf *BigWigFile) Create(filename string) error {
   } else {
     bwf.Header.DataOffset = uint64(offset)
   }
+  // update index size
+  bwf.Index.IdxSize = bwf.Header.DataOffset - bwf.Header.IndexOffset
+  bwf.Index.WriteSize(bwf.Fptr)
   // update offsets
   if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
     return err

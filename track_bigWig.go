@@ -226,7 +226,7 @@ func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, leve
     v.NChildren   = uint16(n)
     v.Children    = leaves[0:n]
     // update free leaf set
-    leaves = leaves[0:n]
+    leaves = leaves[n:]
   } else {
     for i := 0; i < blockSize && len(leaves) > 0; i++ {
       var vertex *RVertex
@@ -244,8 +244,10 @@ func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, leve
   return v, leaves
 }
 
-func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree {
+func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, genome Genome, fixedStep bool) *RTree {
   tree := NewRTree()
+  tree.BlockSize     = uint32(blockSize)
+  tree.NItemsPerSlot = uint32(itemsPerSlot)
   // list of leaves
   leaves := []*RVertex{}
   // current leaf
@@ -255,8 +257,8 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
   for idx := 0; idx < genome.Length(); idx++ {
     name := genome.Seqnames[idx]
     seq  := track.Data[name]
-    for i := 0; i < len(seq); i += int(tree.NItemsPerSlot) {
-      if uint32(v.NChildren) == tree.BlockSize {
+    for i := 0; i < len(seq); i += itemsPerSlot {
+      if int(v.NChildren) == blockSize {
         // vertex is full
         leaves = append(leaves, v)
         // create new emtpy vertex
@@ -266,12 +268,12 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
       i_from := i
       i_to   := i
       if fixedStep {
-        i_to = i+int(tree.NItemsPerSlot)
+        i_to = i+itemsPerSlot
         if i_to > len(seq) {
           i_to = len(seq)
         }
       } else {
-        for n := 0; n < int(tree.NItemsPerSlot) && i_to < len(seq); i_to++ {
+        for n := 0; n < itemsPerSlot && i_to < len(seq); i_to++ {
           if seq[i_to] != 0.0 {
             n++
           }
@@ -282,22 +284,22 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
       v.BaseStart   = append(v.BaseStart, uint32(i_from*track.Binsize))
       v.BaseEnd     = append(v.BaseEnd, uint32(i_to*track.Binsize))
       v.NChildren++
+      tree.NItems++
     }
-    if v.NChildren != 0 {
-      leaves = append(leaves, v)
-      // create new emtpy vertex
-      v = new(RVertex)
-      v.IsLeaf = 1
-    }
+  }
+  if v.NChildren != 0 {
+    leaves = append(leaves, v)
+    // create new emtpy vertex
+    v = new(RVertex)
+    v.IsLeaf = 1
   }
   if len(leaves) == 0 {
     return tree
   }
   // compute tree depth
-  d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(tree.BlockSize))))
+  d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(blockSize))))
   // construct tree
-  tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, int(tree.BlockSize), d-1)
-  tree.NItems  = uint64(len(leaves))
+  tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, blockSize, d-1)
   tree.ChrIdxStart = tree.Root.ChrIdxStart[0]
   tree.ChrIdxEnd   = tree.Root.ChrIdxEnd[tree.Root.NChildren-1]
   tree.BaseStart   = tree.Root.BaseStart[0]
@@ -307,6 +309,10 @@ func (track *Track) WriteBigWig_buildRTree(genome Genome, fixedStep bool) *RTree
 }
 
 func (track *Track) WriteBigWig(filename, description string) error {
+
+  blockSize    := 32
+  itemsPerSlot := 10
+  fixedStep    := true
 
   bwf := NewBigWigFile()
 
@@ -343,14 +349,14 @@ func (track *Track) WriteBigWig(filename, description string) error {
     }
   }
   // construct index tree
-  bwf.Index = *track.WriteBigWig_buildRTree(genome, true)
+  bwf.Index = *track.WriteBigWig_buildRTree(blockSize, itemsPerSlot, genome, fixedStep)
 
   if err := bwf.Create(filename); err != nil {
     return err
   }
   defer bwf.Close()
   // traverse index tree and write data
-  track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, true)
+  track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, fixedStep)
 
   return nil
 }

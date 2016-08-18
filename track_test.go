@@ -195,6 +195,12 @@ func TestTrack7(t *testing.T) {
   if err := track.ReadBigWig("track_test.1.bw", "", 10); err != nil {
     t.Error(err)
   }
+  if err := track.WriteBigWig("track_test.1.bw.tmp", ""); err != nil {
+    t.Error(err)
+  }
+  if err := track.ReadBigWig("track_test.1.bw.tmp", "", 10); err != nil {
+    t.Error(err)
+  }
 }
 
 func TestTrack8(t *testing.T) {

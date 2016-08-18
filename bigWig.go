@@ -509,12 +509,13 @@ type BigWigHeader struct {
   SumSquared        uint64
   ZoomHeaders     []BigWigHeaderZoom
   // offset positions
-  PtrCtOffset        int64
-  PtrDataOffset      int64
-  PtrIndexOffset     int64
-  PtrSqlOffset       int64
-  PtrSummaryOffset   int64
-  PtrExtensionOffset int64
+  PtrCtOffset          int64
+  PtrDataOffset        int64
+  PtrIndexOffset       int64
+  PtrSqlOffset         int64
+  PtrSummaryOffset     int64
+  PtrUncompressBufSize int64
+  PtrExtensionOffset   int64
 }
 
 func NewBigWigHeader() *BigWigHeader {
@@ -587,6 +588,11 @@ func (header *BigWigHeader) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &header.SummaryOffset); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrUncompressBufSize = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &header.UncompressBufSize); err != nil {
     return err
   }
@@ -649,6 +655,10 @@ func (header *BigWigHeader) WriteOffsets(file *os.File) error {
   return nil
 }
 
+func (header *BigWigHeader) WriteUncompressBufSize(file *os.File) error {
+  return fileWriteAt(file, binary.LittleEndian, header.PtrUncompressBufSize, header.UncompressBufSize)
+}
+
 func (header *BigWigHeader) Write(file *os.File) error {
 
   // magic number
@@ -707,6 +717,11 @@ func (header *BigWigHeader) Write(file *os.File) error {
   }
   if err := binary.Write(file, binary.LittleEndian, header.SummaryOffset); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrUncompressBufSize = offset
   }
   if err := binary.Write(file, binary.LittleEndian, header.UncompressBufSize); err != nil {
     return err
@@ -914,6 +929,12 @@ func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]b
 func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, block []byte) error {
   var err error
   if header.UncompressBufSize != 0 {
+    // update header.UncompressBufSize if block length
+    // exceeds size
+    if uint32(len(block)) > header.UncompressBufSize {
+      header.UncompressBufSize = uint32(len(block))
+      header.WriteUncompressBufSize(file)
+    }
     if block, err = compressSlice(block); err != nil {
       return err
     }
@@ -1181,7 +1202,15 @@ func (bwf *BigWigFile) Create(filename string) error {
   if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
     return err
   }
+  // write number of blocks (zero at the moment)
+  if err := binary.Write(bwf.Fptr, binary.LittleEndian, uint64(0)); err != nil {
+    return err
+  }
   return nil
+}
+
+func (bwf *BigWigFile) WriteNBlocks(n int) error {
+  return fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(bwf.Header.DataOffset), uint64(n))
 }
 
 func (bwf *BigWigFile) Close() error {

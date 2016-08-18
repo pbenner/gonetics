@@ -117,13 +117,18 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
 
 ```go
   fmt.Fprintf(os.Stderr, "Parsing reads (treatment) ...\n")
-  treatment1 := ReadBed6("SRR094207.bed")
-  treatment2 := ReadBed6("SRR094208.bed")
+  treatment1 := GRanges{}
+  treatment1.ReadBed6("SRR094207.bed")
+  treatment2 := GRanges{}
+  treatment2.ReadBed6("SRR094208.bed")
   fmt.Fprintf(os.Stderr, "Parsing reads (control)   ...\n")
-  control1   := ReadBed6("SRR094215.bed")
-  control2   := ReadBed6("SRR094216.bed")
+  control1   := GRanges{}
+  control1.ReadBed6("SRR094215.bed")
+  control2   := GRanges{}
+  control2.ReadBed6("SRR094216.bed")
 
-  genome  := ReadGenome("Data/hg19.genome")
+  genome  := Genome{}
+  genome.ReadFile("Data/hg19.genome")
   d       := 200 // d=200 (see *_peaks.xls)
   binsize := 100 // binsize of the track
   pcounts := 1   // pseudocounts
@@ -132,7 +137,8 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
     genome, d, binsize, pcounts, pcounts, false)
 ```
 
-Export track:
+Export track to wig or bigWig:
 ```go
   track.WriteWiggle("track.wig", "track description", true)
+  track.WriteBigWig("track.bw",  "track description", true)
 ```

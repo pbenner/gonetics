@@ -933,7 +933,9 @@ func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, blo
     // exceeds size
     if uint32(len(block)) > header.UncompressBufSize {
       header.UncompressBufSize = uint32(len(block))
-      header.WriteUncompressBufSize(file)
+      if err = header.WriteUncompressBufSize(file); err != nil {
+        return err
+      }
     }
     if block, err = compressSlice(block); err != nil {
       return err

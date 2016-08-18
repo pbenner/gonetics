@@ -26,6 +26,21 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
+type BigWigParameters struct {
+  BlockSize    int
+  ItemsPerSlot int
+  FixedStep    bool
+}
+
+func DefaultBigWigParameters() BigWigParameters {
+  return BigWigParameters{
+    BlockSize: 256,
+    ItemsPerSlot: 1024,
+    FixedStep: true }
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   header := BigWigDataHeader{}
   header.ReadBuffer(buffer)
@@ -244,7 +259,7 @@ func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, leve
   return v, leaves
 }
 
-func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, genome Genome, fixedStep bool) *RTree {
+func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedStep bool, genome Genome) *RTree {
   tree := NewRTree()
   tree.BlockSize     = uint32(blockSize)
   tree.NItemsPerSlot = uint32(itemsPerSlot)
@@ -312,17 +327,20 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, genome G
   return tree
 }
 
-func (track *Track) WriteBigWig(filename, description string) error {
+func (track *Track) WriteBigWig(filename, description string, args... interface{}) error {
 
-  blockSize    := 32
-  itemsPerSlot := 10
-  fixedStep    := true
+  bwf        := NewBigWigFile()
+  parameters := DefaultBigWigParameters()
+  genome     := Genome{}
 
-  bwf := NewBigWigFile()
-
-  // store indices and sequence lengths
-  genome := Genome{}
-
+  // parse arguments
+  for i := 0; i < len(args); i++ {
+    switch v := args[i].(type) {
+    case BigWigParameters: parameters = v
+    default:
+      fmt.Errorf("WriteBigWig(): invalid arguments")
+    }
+  }
   // identify ChromData key size and sequence lengths
   for name, seq := range track.Data {
     if bwf.ChromData.KeySize < uint32(len(name)+1) {
@@ -350,12 +368,12 @@ func (track *Track) WriteBigWig(filename, description string) error {
     }
   }
   // construct index tree
-  bwf.Index = *track.WriteBigWig_buildRTree(blockSize, itemsPerSlot, genome, fixedStep)
+  bwf.Index = *track.WriteBigWig_buildRTree(parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
 
   if err := bwf.Create(filename); err != nil {
     return err
   }
   defer bwf.Close()
   // traverse index tree and write data
-  return track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, fixedStep)
+  return track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, parameters.FixedStep)
 }

@@ -541,11 +541,26 @@ func (header *BigWigHeader) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &header.ZoomLevels); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrCtOffset = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &header.CtOffset); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrDataOffset = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &header.DataOffset); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrIndexOffset = offset
   }
   if err := binary.Read(file, binary.LittleEndian, &header.IndexOffset); err != nil {
     return err
@@ -556,14 +571,29 @@ func (header *BigWigHeader) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &header.DefinedFieldCount); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrSqlOffset = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &header.SqlOffset); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrSummaryOffset = offset
   }
   if err := binary.Read(file, binary.LittleEndian, &header.SummaryOffset); err != nil {
     return err
   }
   if err := binary.Read(file, binary.LittleEndian, &header.UncompressBufSize); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    header.PtrExtensionOffset = offset
   }
   if err := binary.Read(file, binary.LittleEndian, &header.ExtensionOffset); err != nil {
     return err

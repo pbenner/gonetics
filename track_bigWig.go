@@ -47,6 +47,10 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   // crop header from buffer
   buffer = buffer[24:]
 
+  // allocate track if this is the first buffer
+  if len(track.Data) == 0 && track.Binsize == 0 {
+    *track = AllocTrack("", genome, int(header.Span))
+  }
   if idx := int(header.ChromId); idx < 0 || idx > genome.Length() {
     return fmt.Errorf("invalid chromosome id")
   }
@@ -119,7 +123,7 @@ func (track *Track) readBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genom
   return nil
 }
 
-func (track *Track) ReadBigWig(filename, description string, binsize int) error {
+func (track *Track) ReadBigWig(filename, name string) error {
 
   bwf := new(BigWigFile)
   if err := bwf.Open(filename); err != nil {
@@ -143,11 +147,11 @@ func (track *Track) ReadBigWig(filename, description string, binsize int) error 
   }
   genome := NewGenome(seqnames, lengths)
 
-  *track = AllocTrack(description, genome, binsize)
-
   if err := track.readBigWig_allBlocks(bwf, bwf.Index.Root, genome); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
+  track.Name = name
+
   return nil
 }
 

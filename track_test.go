@@ -192,13 +192,15 @@ func TestTrack7(t *testing.T) {
 
   track := Track{}
 
-  if err := track.ReadBigWig("track_test.1.bw", "", 10); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw", ""); err != nil {
     t.Error(err)
   }
   if err := track.WriteBigWig("track_test.1.bw.tmp", ""); err != nil {
     t.Error(err)
   }
-  if err := track.ReadBigWig("track_test.1.bw.tmp", "", 10); err != nil {
+  // reset track and read file again
+  track = Track{}
+  if err := track.ReadBigWig("track_test.1.bw.tmp", ""); err != nil {
     t.Error(err)
   }
 }
@@ -208,13 +210,13 @@ func TestTrack8(t *testing.T) {
   track1 := Track{}
   track2 := Track{}
 
-  if err := track1.ReadBigWig("track_test.3.bw", "", 10); err != nil {
+  if err := track1.ReadBigWig("track_test.3.bw", ""); err != nil {
     t.Error(err)
   }
   if err := track1.WriteBigWig("track_test.3.bw.tmp", ""); err != nil {
     t.Error(err)
   }
-  if err := track2.ReadBigWig("track_test.3.bw.tmp", "", 10); err != nil {
+  if err := track2.ReadBigWig("track_test.3.bw.tmp", ""); err != nil {
     t.Error(err)
   }
 }

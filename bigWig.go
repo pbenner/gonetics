@@ -912,13 +912,13 @@ type RVertex struct {
   PtrSizes      []int64
 }
 
-func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]byte, error) {
+func (vertex *RVertex) ReadBlock(bwf *BigWigFile, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
-  if err = fileReadAt(file, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {
+  if err = fileReadAt(bwf.Fptr, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
-  if header.UncompressBufSize != 0 {
+  if bwf.Header.UncompressBufSize != 0 {
     if block, err = uncompressSlice(block); err != nil {
       return nil, err
     }
@@ -926,14 +926,14 @@ func (vertex *RVertex) ReadBlock(file *os.File, header BigWigHeader, i int) ([]b
   return block, nil
 }
 
-func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, block []byte) error {
+func (vertex *RVertex) WriteBlock(bwf *BigWigFile, i int, block []byte) error {
   var err error
-  if header.UncompressBufSize != 0 {
+  if bwf.Header.UncompressBufSize != 0 {
     // update header.UncompressBufSize if block length
     // exceeds size
-    if uint32(len(block)) > header.UncompressBufSize {
-      header.UncompressBufSize = uint32(len(block))
-      if err = header.WriteUncompressBufSize(file); err != nil {
+    if uint32(len(block)) > bwf.Header.UncompressBufSize {
+      bwf.Header.UncompressBufSize = uint32(len(block))
+      if err = bwf.Header.WriteUncompressBufSize(bwf.Fptr); err != nil {
         return err
       }
     }
@@ -942,23 +942,23 @@ func (vertex *RVertex) WriteBlock(file *os.File, header BigWigHeader, i int, blo
     }
   }
   // get current offset and update DataOffset[i]
-  if offset, err := file.Seek(0, 1); err != nil {
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
     return err
   } else {
     vertex.DataOffset[i] = uint64(offset)
     // write updated value to the required position in the file
-    if err = fileWriteAt(file, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
+    if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
       return err
     }
   }
   // write data
-  if err = binary.Write(file, binary.LittleEndian, block); err != nil {
+  if err = binary.Write(bwf.Fptr, binary.LittleEndian, block); err != nil {
     return err
   }
   // update size of the data block
   vertex.Sizes[i] = uint64(len(block))
   // write it to the required position in the file
-  if err = fileWriteAt(file, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
+  if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
     return err
   }
   return nil

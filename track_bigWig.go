@@ -105,7 +105,7 @@ func (track *Track) readBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genom
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := vertex.ReadBlock(bwf.Fptr, bwf.Header, i); err != nil {
+      if block, err := vertex.ReadBlock(bwf, i); err != nil {
         return err
       } else {
         if err := track.readBigWig_block(block, genome); err != nil {
@@ -225,7 +225,7 @@ func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, geno
       if block, err := track.writeBigWig_block(vertex, i, genome, fixedStep); err != nil {
         return err
       } else {
-        if err := vertex.WriteBlock(bwf.Fptr, bwf.Header, i, block); err != nil {
+        if err := vertex.WriteBlock(bwf, i, block); err != nil {
           return err
         }
       }

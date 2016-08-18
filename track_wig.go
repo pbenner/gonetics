@@ -42,7 +42,7 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
 
   if fixedStep {
     for seqname, seq := range track.Data {
-      fmt.Fprintf(w, "fixedStep chrom=%s start=1 step=%d\n", seqname, track.Binsize)
+      fmt.Fprintf(w, "fixedStep chrom=%s start=1 span=%d step=%d\n", seqname, track.Binsize, track.Binsize)
 
       for i := 0; i < len(seq); i++ {
         fmt.Fprintf(w, "%f\n", seq[i])

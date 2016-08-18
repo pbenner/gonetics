@@ -61,7 +61,10 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
     default:
       return fmt.Errorf("unsupported block type")
     case 2:
-      if len(buffer) % 8 != 0{
+      if int(header.Span) != track.Binsize {
+        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", header.Span, track.Binsize)
+      }
+      if len(buffer) % 8 != 0 {
         return fmt.Errorf("variable step data block has invalid length")
       }
       for i := 0; i < len(buffer); i += 8 {
@@ -75,6 +78,12 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
         }
       }
     case 3:
+      if int(header.Span) != track.Binsize {
+        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", header.Span, track.Binsize)
+      }
+      if int(header.Step) != track.Binsize {
+        return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", header.Span, track.Binsize)
+      }
       if 4*len(seq) != len(buffer) {
         return fmt.Errorf("fixed step data block for sequence `%s' has invalid length (length is `%d' but should be `%d')", r.Seqname, len(seq), 4*len(buffer))
       }

@@ -1218,3 +1218,24 @@ func (bwf *BigWigFile) WriteNBlocks(n int) error {
 func (bwf *BigWigFile) Close() error {
   return bwf.Fptr.Close()
 }
+
+/* -------------------------------------------------------------------------- */
+
+func IsBigWigFile(filename string) (bool, error) {
+
+  var magic uint32
+
+  f, err := os.Open(filename)
+  if err != nil {
+    return false, err
+  }
+  defer f.Close()
+  // read magic number
+  if err := binary.Read(f, binary.LittleEndian, &magic); err != nil {
+    return false, err
+  }
+  if magic != BIGWIG_MAGIC {
+    return false, nil
+  }
+  return true, nil
+}

@@ -42,7 +42,7 @@ func DefaultBigWigParameters() BigWigParameters {
 /* -------------------------------------------------------------------------- */
 
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
-  header := BigWigDataHeader{}
+  header := BbiDataHeader{}
   header.ReadBuffer(buffer)
   // crop header from buffer
   buffer = buffer[24:]
@@ -105,7 +105,7 @@ func (track *Track) readBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genom
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := vertex.ReadBlock(bwf, i); err != nil {
+      if block, err := vertex.ReadBlock(&bwf.BbiFile, i); err != nil {
         return err
       } else {
         if err := track.readBigWig_block(block, genome); err != nil {
@@ -166,7 +166,7 @@ func (track *Track) writeBigWig_block(vertex *RVertex, i int, genome Genome, fix
   r.Range.From = int(vertex.BaseStart[i])
   r.Range.To   = int(vertex.BaseEnd[i])
   // create header
-  header := BigWigDataHeader{}
+  header := BbiDataHeader{}
   header.ChromId = uint32(idx)
   header.Start   = uint32(vertex.BaseStart[i])
   header.End     = uint32(vertex.BaseEnd[i])
@@ -225,7 +225,7 @@ func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, geno
       if block, err := track.writeBigWig_block(vertex, i, genome, fixedStep); err != nil {
         return err
       } else {
-        if err := vertex.WriteBlock(bwf, i, block); err != nil {
+        if err := vertex.WriteBlock(&bwf.BbiFile, i, block); err != nil {
           return err
         }
       }

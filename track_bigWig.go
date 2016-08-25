@@ -22,7 +22,6 @@ import "bytes"
 import "fmt"
 import "encoding/binary"
 import "math"
-import "strings"
 
 /* -------------------------------------------------------------------------- */
 
@@ -101,54 +100,19 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   return nil
 }
 
-func (track *Track) readBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genome Genome) error {
-
-  if vertex.IsLeaf != 0 {
-    for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := vertex.ReadBlock(&bwf.BbiFile, i); err != nil {
-        return err
-      } else {
-        if err := track.readBigWig_block(block, genome); err != nil {
-          return err
-        }
-      }
-    }
-  } else {
-    for i := 0; i < int(vertex.NChildren); i++ {
-      if err := track.readBigWig_allBlocks(bwf, vertex.Children[i], genome); err != nil {
-        return err
-      }
-    }
-  }
-  return nil
-}
-
 func (track *Track) ReadBigWig(filename, name string) error {
 
-  bwf := new(BigWigFile)
-  if err := bwf.Open(filename); err != nil {
+  bwr, err := NewBigWigReader(filename)
+  if err != nil {
     return err
   }
-  defer bwf.Close()
-
-  seqnames := make([]string, len(bwf.ChromData.Keys))
-  lengths  := make([]int,    len(bwf.ChromData.Keys))
-
-  for i := 0; i < len(bwf.ChromData.Keys); i++ {
-    if len(bwf.ChromData.Values[i]) != 8 {
-      return fmt.Errorf("reading `%s' failed: invalid chromosome list", filename)
+  for result := range bwr.ReadBlocks() {
+    if result.Error != nil {
+      return fmt.Errorf("reading `%s' failed: %v", filename, result.Error)
     }
-    idx := int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][0:4]))
-    if idx >= len(bwf.ChromData.Keys) {
-      return fmt.Errorf("reading `%s' failed: invalid chromosome index", filename)
+    if err := track.readBigWig_block(result.Block, bwr.Genome); err != nil {
+      return fmt.Errorf("reading `%s' failed: %v", filename, err)
     }
-    seqnames[idx] = strings.TrimRight(string(bwf.ChromData.Keys[i]), "\x00")
-    lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
-  }
-  genome := NewGenome(seqnames, lengths)
-
-  if err := track.readBigWig_allBlocks(bwf, bwf.Index.Root, genome); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   track.Name = name
 

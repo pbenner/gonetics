@@ -149,16 +149,22 @@ func IsBigWigFile(filename string) (bool, error) {
 /* -------------------------------------------------------------------------- */
 
 type BigWigReader struct {
-  Bwf    BigWigFile
-  Genome Genome
+  Bwf     BigWigFile
+  Genome  Genome
+  Channel chan BigWigReaderType
+}
+type BigWigReaderType struct {
+  Block []byte
+  Error error
 }
 
 func NewBigWigReader(filename string) (*BigWigReader, error) {
+  bwr := new(BigWigReader)
   bwf := new(BigWigFile)
   if err := bwf.Open(filename); err != nil {
     return nil, err
   }
-  defer bwf.Close()
+  bwr.Bwf = *bwf
 
   seqnames := make([]string, len(bwf.ChromData.Keys))
   lengths  := make([]int,    len(bwf.ChromData.Keys))
@@ -174,7 +180,40 @@ func NewBigWigReader(filename string) (*BigWigReader, error) {
     seqnames[idx] = strings.TrimRight(string(bwf.ChromData.Keys[i]), "\x00")
     lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
   }
-  genome := NewGenome(seqnames, lengths)
+  bwr.Genome = NewGenome(seqnames, lengths)
+  // create new channel
+  bwr.Channel = make(chan BigWigReaderType)
+  // fill channel with blocks
+  go func() {
+    bwr.fillChannel(bwf.Index.Root)
+    // close channel and file
+    close(bwr.Channel)
+    bwr.Bwf.Close()
+  }()
 
-  return &BigWigReader{*bwf, genome}, nil
+  return bwr, nil
+}
+
+func (reader *BigWigReader) ReadBlocks() <- chan BigWigReaderType {
+  return reader.Channel
+}
+
+func (reader *BigWigReader) fillChannel(vertex *RVertex) error {
+
+  if vertex.IsLeaf != 0 {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if block, err := vertex.ReadBlock(&reader.Bwf.BbiFile, i); err != nil {
+        reader.Channel <- BigWigReaderType{nil, err}
+      } else {
+        reader.Channel <- BigWigReaderType{block, nil}
+      }
+    }
+  } else {
+    for i := 0; i < int(vertex.NChildren); i++ {
+      if err := reader.fillChannel(vertex.Children[i]); err != nil {
+        reader.Channel <- BigWigReaderType{nil, err}
+      }
+    }
+  }
+  return nil
 }

@@ -21,6 +21,7 @@ package gonetics
 import "fmt"
 import "encoding/binary"
 import "os"
+import "strings"
 
 /* -------------------------------------------------------------------------- */
 
@@ -143,4 +144,37 @@ func IsBigWigFile(filename string) (bool, error) {
   }
   return true, nil
 
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BigWigReader struct {
+  Bwf    BigWigFile
+  Genome Genome
+}
+
+func NewBigWigReader(filename string) (*BigWigReader, error) {
+  bwf := new(BigWigFile)
+  if err := bwf.Open(filename); err != nil {
+    return nil, err
+  }
+  defer bwf.Close()
+
+  seqnames := make([]string, len(bwf.ChromData.Keys))
+  lengths  := make([]int,    len(bwf.ChromData.Keys))
+
+  for i := 0; i < len(bwf.ChromData.Keys); i++ {
+    if len(bwf.ChromData.Values[i]) != 8 {
+      return nil, fmt.Errorf("reading `%s' failed: invalid chromosome list", filename)
+    }
+    idx := int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][0:4]))
+    if idx >= len(bwf.ChromData.Keys) {
+      return nil, fmt.Errorf("reading `%s' failed: invalid chromosome index", filename)
+    }
+    seqnames[idx] = strings.TrimRight(string(bwf.ChromData.Keys[i]), "\x00")
+    lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
+  }
+  genome := NewGenome(seqnames, lengths)
+
+  return &BigWigReader{*bwf, genome}, nil
 }

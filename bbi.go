@@ -94,6 +94,65 @@ func compressSlice(data []byte) ([]byte, error) {
 
 /* -------------------------------------------------------------------------- */
 
+type BbiBlockReader struct {
+  Header  BbiDataHeader
+  Channel chan BbiBlockReaderType
+}
+type BbiBlockReaderType struct {
+  Idx   int
+  From  int
+  To    int
+  Value float64
+}
+
+func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
+  reader := BbiBlockReader{}
+  // parse header
+  reader.Header.ReadBuffer(buffer)
+  // crop header from buffer
+  buffer = buffer[24:]
+
+  switch reader.Header.Type {
+  default:
+    return nil, fmt.Errorf("unsupported block type")
+  case 2:
+    if len(buffer) % 8 != 0 {
+      return nil, fmt.Errorf("variable step data block has invalid length")
+    }
+    go func() {
+      for i := 0; i < len(buffer); i += 8 {
+        r := BbiBlockReaderType{}
+        r.Idx   = i
+        r.From  = int(binary.LittleEndian.Uint32(buffer[i+0:i+4]))
+        r.To    = r.From + int(reader.Header.Span)
+        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i+4:i+8])))
+        reader.Channel <- r
+      }
+    }()
+  case 3:
+    if len(buffer) % 4 != 0 {
+      return nil, fmt.Errorf("fixed step data block has invalid length")
+    }
+    go func() {
+      for i := 0; i < len(buffer); i += 4 {
+        r := BbiBlockReaderType{}
+        r.Idx   = i
+        r.From  = int(reader.Header.Start + uint32(i)*reader.Header.Step)
+        r.To    = int(reader.Header.Start + uint32(i)*reader.Header.Step + reader.Header.Span)
+        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i:i+4])))
+        reader.Channel <- r
+      }
+    }()
+  }
+  return &reader, nil
+}
+
+func (reader *BbiBlockReader) Read() <- chan BbiBlockReaderType {
+  return reader.Channel
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BTree struct {
   KeySize       uint32
   ValueSize     uint32

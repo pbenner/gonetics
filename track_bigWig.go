@@ -41,60 +41,40 @@ func DefaultBigWigParameters() BigWigParameters {
 /* -------------------------------------------------------------------------- */
 
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
-  header := BbiDataHeader{}
-  header.ReadBuffer(buffer)
-  // crop header from buffer
-  buffer = buffer[24:]
+  reader, err := NewBbiBlockReader(buffer)
+  if err != nil {
+    return err
+  }
+  if idx := int(reader.Header.ChromId); idx < 0 || idx > genome.Length() {
+    return fmt.Errorf("invalid chromosome id")
+  }
+  // convert chromosome id to sequence name
+  seqname := genome.Seqnames[int(reader.Header.ChromId)]
 
   // allocate track if this is the first buffer
   if len(track.Data) == 0 && track.Binsize == 0 {
-    *track = AllocTrack("", genome, int(header.Span))
+    *track = AllocTrack("", genome, int(reader.Header.Span))
   }
-  if idx := int(header.ChromId); idx < 0 || idx > genome.Length() {
-    return fmt.Errorf("invalid chromosome id")
-  }
-  r := GRangesRow{}
-  r.Seqname = genome.Seqnames[int(header.ChromId)]
-  r.Range.From = int(header.Start)
-  r.Range.To   = int(header.End)
-  if seq, err := track.GetSlice(r); err != nil {
-    return err
+  if seq, ok := track.Data[seqname]; !ok {
+    return fmt.Errorf("sequence `%s' not vailable in track", seqname)
   } else {
-    switch header.Type {
+    switch reader.Header.Type {
     default:
       return fmt.Errorf("unsupported block type")
     case 2:
-      if int(header.Span) != track.Binsize {
-        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", header.Span, track.Binsize)
-      }
-      if len(buffer) % 8 != 0 {
-        return fmt.Errorf("variable step data block has invalid length")
-      }
-      for i := 0; i < len(buffer); i += 8 {
-        position := binary.LittleEndian.Uint32(buffer[i+0:i+4])
-        value1   := binary.LittleEndian.Uint32(buffer[i+4:i+8])
-        value2   := math.Float32frombits(value1)
-        if idx := track.Index(int(position)); idx >= len(seq) {
-          return fmt.Errorf("variable step data block contains invalid index")
-        } else {
-          seq[idx] = float64(value2)
-        }
+      if int(reader.Header.Span) != track.Binsize {
+        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
       }
     case 3:
-      if int(header.Span) != track.Binsize {
-        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", header.Span, track.Binsize)
+      if int(reader.Header.Span) != track.Binsize {
+        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
       }
-      if int(header.Step) != track.Binsize {
-        return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", header.Span, track.Binsize)
+      if int(reader.Header.Step) != track.Binsize {
+        return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
       }
-      if 4*len(seq) != len(buffer) {
-        return fmt.Errorf("fixed step data block for sequence `%s' has invalid length (length is `%d' but should be `%d')", r.Seqname, len(seq), 4*len(buffer))
-      }
-      for i := 0; i < len(buffer); i += 4 {
-        value1  := binary.LittleEndian.Uint32(buffer[i:i+4])
-        value2  := math.Float32frombits(value1)
-        seq[i/4] = float64(value2)
-      }
+    }
+    for t := range reader.Read() {
+      seq[track.Index(t.From)] = t.Value
     }
   }
   return nil

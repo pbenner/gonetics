@@ -106,6 +106,9 @@ type BbiBlockReaderType struct {
 }
 
 func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
+  if len(buffer) < 24 {
+    return nil, fmt.Errorf("block length is shorter than 24 bytes")
+  }
   reader := BbiBlockReader{}
   reader.Channel = make(chan BbiBlockReaderType)
   // parse header

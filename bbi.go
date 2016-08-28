@@ -98,6 +98,7 @@ type BbiBlockReader struct {
   Header  BbiDataHeader
   Channel chan BbiBlockReaderType
 }
+
 type BbiBlockReaderType struct {
   Idx   int
   From  int
@@ -155,6 +156,74 @@ func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
 
 func (reader *BbiBlockReader) Read() <- chan BbiBlockReaderType {
   return reader.Channel
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BbiBlockWriter struct {
+  Header   BbiDataHeader
+  Buffer   bytes.Buffer
+  tmp      []byte
+  position int
+}
+
+func NewBbiBlockWriter(chromId, from, step, span int, fixedStep bool) *BbiBlockWriter {
+  writer := BbiBlockWriter{}
+  writer.Header.ChromId = uint32(chromId)
+  writer.Header.Start   = uint32(from)
+  writer.Header.End     = uint32(from)
+  writer.Header.Step    = uint32(step)
+  writer.Header.Span    = uint32(span)
+  writer.position       = from
+  if fixedStep {
+    writer.Header.Type = 3
+    writer.tmp = make([]byte, 4)
+  } else {
+    writer.Header.Type = 2
+    writer.tmp = make([]byte, 8)
+  }
+  return &writer
+}
+
+func (writer *BbiBlockWriter) Write(values []float64) error {
+  switch writer.Header.Type {
+  default:
+    return fmt.Errorf("unsupported block type")
+  case 2:
+    // variable step
+    for i := 0; i < len(values); i ++ {
+      if values[i] != 0.0 {
+        binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(writer.position)))
+        binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(values[i])))
+        if _, err := writer.Buffer.Write(writer.tmp); err != nil {
+          return err
+        }
+        writer.Header.ItemCount++
+        writer.position += int(writer.Header.Step)
+      }
+    }
+  case 3:
+    // fixed step
+    for i := 0; i < len(values); i ++ {
+      binary.LittleEndian.PutUint32(writer.tmp, math.Float32bits(float32(values[i])))
+      if _, err := writer.Buffer.Write(writer.tmp); err != nil {
+        return err
+      }
+      writer.Header.ItemCount++
+      writer.position += int(writer.Header.Step)
+    }
+  }
+  writer.Header.End = uint32(writer.position)
+
+  return nil
+}
+
+func (writer *BbiBlockWriter) Bytes() []byte {
+  block := make([]byte, 24)
+  writer.Header.WriteBuffer(block)
+  block = append(block, writer.Buffer.Bytes()...)
+
+  return block
 }
 
 /* -------------------------------------------------------------------------- */

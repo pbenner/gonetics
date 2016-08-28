@@ -18,7 +18,6 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "bytes"
 import "fmt"
 import "encoding/binary"
 import "math"
@@ -109,57 +108,17 @@ func (track *Track) writeBigWig_block(vertex *RVertex, i int, genome Genome, fix
   r.Seqname = genome.Seqnames[idx]
   r.Range.From = int(vertex.BaseStart[i])
   r.Range.To   = int(vertex.BaseEnd[i])
-  // create header
-  header := BbiDataHeader{}
-  header.ChromId = uint32(idx)
-  header.Start   = uint32(vertex.BaseStart[i])
-  header.End     = uint32(vertex.BaseEnd[i])
-  header.Step    = uint32(track.Binsize)
-  header.Span    = uint32(track.Binsize)
-  if fixedStep {
-    header.Type = 3
-  } else {
-    header.Type = 2
-  }
-  // data buffer
-  var buffer bytes.Buffer
+  // new block writer
+  writer := NewBbiBlockWriter(int(idx), int(vertex.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
 
   if seq, err := track.GetSlice(r); err != nil {
     return nil, err
   } else {
-    switch header.Type {
-    default:
-      return nil, fmt.Errorf("unsupported block type")
-    case 2:
-      // variable step
-      tmp := make([]byte, 8)
-      for i := 0; i < len(seq); i ++ {
-        if seq[i] != 0.0 {
-          binary.LittleEndian.PutUint32(tmp[0:4], math.Float32bits(float32(i*track.Binsize)))
-          binary.LittleEndian.PutUint32(tmp[4:8], math.Float32bits(float32(seq[i])))
-          if _, err := buffer.Write(tmp); err != nil {
-            return nil, err
-          }
-          header.ItemCount++
-        }
-      }
-    case 3:
-      // fixed step
-      tmp := make([]byte, 4)
-      for i := 0; i < len(seq); i ++ {
-        binary.LittleEndian.PutUint32(tmp, math.Float32bits(float32(seq[i])))
-        if _, err := buffer.Write(tmp); err != nil {
-          return nil, err
-        }
-        header.ItemCount++
-      }
+    if err := writer.Write(seq); err != nil {
+      return nil, err
     }
   }
-  block := make([]byte, 24)
-  header.WriteBuffer(block)
-  block = append(block, buffer.Bytes()...)
-
-  return block, nil
+  return writer.Bytes(), nil
 }
 
 func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genome Genome, fixedStep bool) error {

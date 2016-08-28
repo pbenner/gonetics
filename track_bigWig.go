@@ -54,24 +54,22 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   if len(track.Data) == 0 && track.Binsize == 0 {
     *track = AllocTrack("", genome, int(reader.Header.Span))
   }
+  switch reader.Header.Type {
+  case 2:
+    if int(reader.Header.Span) != track.Binsize {
+      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    }
+  case 3:
+    if int(reader.Header.Span) != track.Binsize {
+      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    }
+    if int(reader.Header.Step) != track.Binsize {
+      return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    }
+  }
   if seq, ok := track.Data[seqname]; !ok {
     return fmt.Errorf("sequence `%s' not vailable in track", seqname)
   } else {
-    switch reader.Header.Type {
-    default:
-      return fmt.Errorf("unsupported block type")
-    case 2:
-      if int(reader.Header.Span) != track.Binsize {
-        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
-      }
-    case 3:
-      if int(reader.Header.Span) != track.Binsize {
-        return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
-      }
-      if int(reader.Header.Step) != track.Binsize {
-        return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
-      }
-    }
     for t := range reader.Read() {
       seq[track.Index(t.From)] = t.Value
     }

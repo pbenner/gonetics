@@ -151,3 +151,55 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
 func (track Track) Autocorrelation(from, to int, normalize bool) (x []int, y []float64, err error) {
   return track.Crosscorrelation(track, from, to, normalize)
 }
+
+/* -------------------------------------------------------------------------- */
+
+type TrackSymmaryStatistics struct {
+  Name string
+  Mean float64
+  Max  float64
+  Min  float64
+}
+
+func (statistics TrackSymmaryStatistics) String() string {
+  s := "Track `%s' summary statistics\n"
+  s += "- Maximum: %f\n"
+  s += "- Minimum: %f\n"
+  s += "- Mean   : %f\n"
+  return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
+}
+
+func (track Track) SummaryStatistics() TrackSymmaryStatistics {
+  statistics := TrackSymmaryStatistics{}
+  statistics.Name = track.Name
+  statistics.Max  = math.Inf(-1)
+  statistics.Min  = math.Inf(+1)
+  n := 0
+
+  // compute number of data points
+  for _, sequence := range track.Data {
+    for i := 0; i < len(sequence); i++ {
+      if !math.IsNaN(sequence[i]) {
+        n++
+      }
+    }
+  }
+  // compute statistics
+  for _, sequence := range track.Data {
+    for i := 0; i < len(sequence); i++ {
+      // skip NaN values
+      if math.IsNaN(sequence[i]) {
+        continue
+      }
+      if sequence[i] < statistics.Min {
+        statistics.Min = sequence[i]
+      }
+      if sequence[i] > statistics.Max {
+        statistics.Max = sequence[i]
+      }
+      // update mean
+      statistics.Mean += 1.0/float64(n)*sequence[i]
+    }
+  }
+  return statistics
+}

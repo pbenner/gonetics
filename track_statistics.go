@@ -154,14 +154,14 @@ func (track Track) Autocorrelation(from, to int, normalize bool) (x []int, y []f
 
 /* -------------------------------------------------------------------------- */
 
-type TrackSymmaryStatistics struct {
+type TrackSummaryStatistics struct {
   Name string
   Mean float64
   Max  float64
   Min  float64
 }
 
-func (statistics TrackSymmaryStatistics) String() string {
+func (statistics TrackSummaryStatistics) String() string {
   s := "Track `%s' summary statistics\n"
   s += "- Maximum: %f\n"
   s += "- Minimum: %f\n"
@@ -169,8 +169,8 @@ func (statistics TrackSymmaryStatistics) String() string {
   return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
 }
 
-func (track Track) SummaryStatistics() TrackSymmaryStatistics {
-  statistics := TrackSymmaryStatistics{}
+func (track Track) SummaryStatistics() TrackSummaryStatistics {
+  statistics := TrackSummaryStatistics{}
   statistics.Name = track.Name
   statistics.Max  = math.Inf(-1)
   statistics.Min  = math.Inf(+1)
@@ -202,4 +202,53 @@ func (track Track) SummaryStatistics() TrackSymmaryStatistics {
     }
   }
   return statistics
+}
+
+/* -------------------------------------------------------------------------- */
+
+type TrackHistogram struct {
+  Name string
+  X    []float64
+  Y    []float64
+}
+
+func (histogram TrackHistogram) String() string {
+  s := "Track `%s' histogram\n"
+  s += "- X: %v\n"
+  s += "- Y: %v\n"
+  return fmt.Sprintf(s, histogram.Name, histogram.X, histogram.Y)
+}
+
+func (track Track) Histogram(from, to float64, bins int) TrackHistogram {
+
+  histogram := TrackHistogram{}
+
+  if from >= to || bins <= 0 {
+    return histogram
+  }
+  // allocate memory
+  histogram.X = make([]float64, bins)
+  histogram.Y = make([]float64, bins)
+
+  c := float64(bins)/(to-from)
+
+  // compute x values
+  for i := 0; i < bins; i++ {
+    histogram.X[i] = from + float64(i)/c
+  }
+  // compute y values
+  for _, sequence := range track.Data {
+    for i := 0; i < len(sequence); i++ {
+      // skip NaN values
+      if math.IsNaN(sequence[i]) {
+        continue
+      }
+      j := int(math.Floor((sequence[i] - from)*c))
+
+      if j >= 0 && j < bins {
+        histogram.Y[j] += 1.0
+      }
+    }
+  }
+  return histogram
 }

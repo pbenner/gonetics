@@ -165,7 +165,7 @@ func (statistics TrackSummaryStatistics) String() string {
   s := "Track `%s' summary statistics\n"
   s += "- Maximum: %f\n"
   s += "- Minimum: %f\n"
-  s += "- Mean   : %f\n"
+  s += "- Mean   : %f"
   return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
 }
 
@@ -215,7 +215,7 @@ type TrackHistogram struct {
 func (histogram TrackHistogram) String() string {
   s := "Track `%s' histogram\n"
   s += "- X: %v\n"
-  s += "- Y: %v\n"
+  s += "- Y: %v"
   return fmt.Sprintf(s, histogram.Name, histogram.X, histogram.Y)
 }
 
@@ -227,6 +227,7 @@ func (track Track) Histogram(from, to float64, bins int) TrackHistogram {
     return histogram
   }
   // allocate memory
+  histogram.Name = track.Name
   histogram.X = make([]float64, bins)
   histogram.Y = make([]float64, bins)
 

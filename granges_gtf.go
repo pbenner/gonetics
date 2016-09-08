@@ -94,7 +94,7 @@ func readGTFParseLine(line string) []string {
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string, verbose bool) error {
+func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) error {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)

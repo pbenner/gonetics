@@ -186,6 +186,14 @@ func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) er
       gtfOpt = tmp
     }
   }
+  // create new granges object
+  *granges = NewGRanges(seqname, start, end, strand)
+  // add meta columns
+  granges.AddMeta("source", source)
+  granges.AddMeta("feature", feature)
+  granges.AddMeta("score", score)
+  granges.AddMeta("frame", frame)
+  // add optional fields as meta columns
   for name, values := range gtfOpt {
     granges.AddMeta(name, values)
   }

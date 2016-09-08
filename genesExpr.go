@@ -24,23 +24,22 @@ import "compress/gzip"
 import "os"
 import "strconv"
 import "strings"
-import "unicode"
 
 /* i/o
  * -------------------------------------------------------------------------- */
 
-type gtfOptional struct {
+type gtfOptionalExpr struct {
   GeneId       string
   TranscriptId string
   FPKM         float64
   RPKM         float64
 }
 
-func readGTFParseOptional(fields []string) gtfOptional {
+func readGTFParseOptionalExpr(fields []string) gtfOptionalExpr {
   if len(fields) % 2 == 1 {
     panic("ReadGTF(): invalid file format!")
   }
-  gtfOpt := gtfOptional{}
+  gtfOpt := gtfOptionalExpr{}
   // loop through list
   for i := 0; i < len(fields); i += 2 {
     if fields[i] == "gene_id" {
@@ -59,20 +58,6 @@ func readGTFParseOptional(fields []string) gtfOptional {
     }
   }
   return gtfOpt
-}
-
-func readGTFParseLine(line string) []string {
-  // if quoted
-  q := false
-  f := func(r rune) bool {
-    if r == '"' {
-      q = !q
-    }
-    // A quote is treated as a white space so that it is removed from the
-    // line. Otherwise a white space is removed only if q (quote) is false.
-    return r == '"' || ((unicode.IsSpace(r) || r == ';') && q == false)
-  }
-  return strings.FieldsFunc(line, f)
 }
 
 // Parse expression data from a GTF file (gene transfer format). The data
@@ -115,7 +100,7 @@ func (genes *Genes) ReadGTF(filename, geneIdName, exprIdName string, verbose boo
     }
     // parse optional fields to get the gene/transcript id and
     // expression level
-    gtfOpt := readGTFParseOptional(fields[8:len(fields)])
+    gtfOpt := readGTFParseOptionalExpr(fields[8:len(fields)])
 
     switch geneIdName {
     case "gene_id"      : geneTmp = gtfOpt.GeneId

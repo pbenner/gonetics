@@ -49,14 +49,17 @@ func readGTFParseOptional(fields []string, gtfOpt gtfOptional, typeMap gtfTypeMa
         } else {
           v = append(v, int(value))
         }
+        gtfOpt[name] = v
       case []float64:
         if value, err := strconv.ParseFloat(valueStr, 64); err != nil {
           return nil, err
         } else {
           v = append(v, value)
         }
+        gtfOpt[name] = v
       case []string:
         v = append(v, valueStr)
+        gtfOpt[name] = v
       }
     }
   }

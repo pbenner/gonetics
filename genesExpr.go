@@ -28,103 +28,35 @@ import "strings"
 /* i/o
  * -------------------------------------------------------------------------- */
 
-type gtfOptionalExpr struct {
-  GeneId       string
-  TranscriptId string
-  FPKM         float64
-  RPKM         float64
-}
-
-func readGTFParseOptionalExpr(fields []string) gtfOptionalExpr {
-  if len(fields) % 2 == 1 {
-    panic("ReadGTF(): invalid file format!")
-  }
-  gtfOpt := gtfOptionalExpr{}
-  // loop through list
-  for i := 0; i < len(fields); i += 2 {
-    if fields[i] == "gene_id" {
-      gtfOpt.GeneId = fields[i+1]
-    }
-    if fields[i] == "transcript_id" {
-      gtfOpt.TranscriptId = fields[i+1]
-    }
-    if fields[i] == "FPKM" {
-      t, err := strconv.ParseFloat(fields[i+1], 64); check(err)
-      gtfOpt.FPKM = t
-    }
-    if fields[i] == "RPKM" {
-      t, err := strconv.ParseFloat(fields[i+1], 64); check(err)
-      gtfOpt.RPKM = t
-    }
-  }
-  return gtfOpt
-}
-
 // Parse expression data from a GTF file (gene transfer format). The data
 // is added as a meta column named "expr" to the gene list. Parameters:
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func (genes *Genes) ReadGTF(filename, geneIdName, exprIdName string, verbose bool) {
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  check(err)
-  defer f.Close()
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    check(err)
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
-  // it seems that buffering the data does not increase
-  // performance
+func (genes *Genes) ReadGTFExpr(filename, geneIdName, exprIdName string) error {
+  granges := GRanges{}
+  granges.ReadGTF(filename, []string{geneIdName, exprIdName}, []string{"[]string", "[]float64"})
+
+  // slice containing expression values
   expr := make([]float64, genes.Length())
 
-  for scanner.Scan() {
-    check(scanner.Err())
-    geneTmp := ""
-    exprTmp := 0.0
-    fields := readGTFParseLine(scanner.Text())
-    if len(fields) == 0 {
-      continue
-    }
-    if len(fields) <= 8 {
-      panic("File must have more than eight columns!")
-    }
-    if fields[2] != "transcript" && fields[2] != "TSS" {
-      continue
-    }
-    // parse optional fields to get the gene/transcript id and
-    // expression level
-    gtfOpt := readGTFParseOptionalExpr(fields[8:len(fields)])
+  geneIds := granges.GetMetaStr(geneIdName)
+  exprVal := granges.GetMetaFloat(exprIdName)
 
-    switch geneIdName {
-    case "gene_id"      : geneTmp = gtfOpt.GeneId
-    case "transcript_id": geneTmp = gtfOpt.TranscriptId
-    default: panic("Invalid gene_id/trascript_id!")
-    }
-    switch exprIdName {
-    case "FPKM": exprTmp = gtfOpt.FPKM
-    case "RPKM": exprTmp = gtfOpt.RPKM
-    default: panic("Invalid expression type!")
-    }
-    // parse gene/transcript list
-    fields = strings.FieldsFunc(geneTmp, func(r rune) bool { return r == ',' })
-    for _, gene := range fields {
-      if i, ok := genes.FindGene(gene); ok {
-        expr[i] += exprTmp
-      } else {
-        if verbose {
-          fmt.Fprintf(os.Stderr, "`%s' not present in gene list!\n", gene)
-        }
-      }
+  if len(geneIds) == 0 {
+    return fmt.Errorf("invalid geneIdName `%s'", geneIdName)
+  }
+  if len(exprVal) == 0 {
+    return fmt.Errorf("invalid exprIdName `%s'", exprIdName)
+  }
+  for i := 0; i < granges.Length(); i++ {
+    if j, ok := genes.FindGene(geneIds[i]); ok {
+      expr[j] += exprVal[i]
     }
   }
   genes.AddMeta("expr", expr)
+
+  return nil
 }
 
 // Import expression data from cufflinks. The data is added to the gene

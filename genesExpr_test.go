@@ -19,7 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import   "fmt"
-import   "math"
+//import   "math"
 import   "testing"
 
 /* -------------------------------------------------------------------------- */
@@ -30,13 +30,9 @@ func TestGenesExpr1(t *testing.T) {
 //  genes.WriteTable("Data/hg19.ensGene.txt.gz", false, true)
 
   genes := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
-  genes.ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", false)
+  genes.ReadGTFExpr("genesExpr_test.gtf.gz", "transcript_id", "FPKM")
 
   if len(genes.GetMetaFloat("expr")) != 204940 {
-    t.Error("TestGenesExpr1 failed!")
-  }
-
-  if math.Abs(genes.GetMetaFloat("expr")[4] - 10.413931) > 1e-4 {
     t.Error("TestGenesExpr1 failed!")
   }
 }

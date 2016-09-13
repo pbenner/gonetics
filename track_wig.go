@@ -31,19 +31,15 @@ import "strings"
 /* -------------------------------------------------------------------------- */
 
 func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) {
-  for i := 0; i < len(sequence); i += 0 {
-    // skip NaN values
-    for math.IsNaN(sequence[i]) {
-      if i >= len(sequence)-1 {
-        return
+  for i, gap := 0, true; i < len(sequence); i++ {
+    if !math.IsNaN(sequence[i]) {
+      if gap {
+        fmt.Fprintf(w, "fixedStep chrom=\"%s\" start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
+        gap = false
       }
-      i++
-    }
-    // print header
-    fmt.Fprintf(w, "fixedStep chrom=\"%s\" start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
-    // print values until end of sequence is reached or value is NaN
-    for i < len(sequence) && !math.IsNaN(sequence[i]) {
-      fmt.Fprintf(w, "%f\n", sequence[i]); i++
+      fmt.Fprintf(w, "%f\n", sequence[i])
+    } else {
+      gap = true
     }
   }
 }

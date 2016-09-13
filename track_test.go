@@ -220,3 +220,31 @@ func TestTrack8(t *testing.T) {
     t.Error(err)
   }
 }
+
+func TestTrack9(t *testing.T) {
+
+  filename := "track_test.4.wig"
+
+  genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
+  track1 := AllocTrack("Test Track", genome, 10)
+  track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
+  track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,math.NaN(),math.NaN(),7.8,8.9,9.0,0.1,1.2,math.NaN(),3.4,4.5,5.6,6.7,7.8,8.9,9.0}
+  track1.WriteWiggle(filename, "test description", true)
+
+  track2 := AllocTrack("Test Track", genome, 10)
+  // set all values to NaN
+  track2.Map(func(x float64) float64 { return math.NaN() })
+  track2.ReadWiggle(filename)
+
+  for seqname, sequence1 := range track1.Data {
+    sequence2 := track2.Data[seqname]
+    for i := 0; i < len(sequence1); i++ {
+      if math.IsNaN(sequence1[i]) && math.IsNaN(sequence2[i]) {
+        continue
+      }
+      if sequence1[i] != sequence2[i] {
+        t.Errorf("TestTrack4 failed for sequence `%s' at position `%d' (%f, %f)", seqname, i)
+      }
+    }
+  }
+}

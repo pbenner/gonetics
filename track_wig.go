@@ -22,11 +22,41 @@ import "bufio"
 import "compress/gzip"
 import "errors"
 import "fmt"
+import "io"
+import "math"
 import "os"
 import "strconv"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
+
+func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) {
+  for i := 0; i < len(sequence); i += 0 {
+    // skip NaN values
+    for math.IsNaN(sequence[i]) {
+      if i >= len(sequence)-1 {
+        return
+      }
+      i++
+    }
+    // print header
+    fmt.Fprintf(w, "fixedStep chrom=\"%s\" start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
+    // print values until end of sequence is reached or value is NaN
+    for i < len(sequence) && !math.IsNaN(sequence[i]) {
+      fmt.Fprintf(w, "%f\n", sequence[i]); i++
+    }
+  }
+}
+
+func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) {
+  fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize)
+
+  for i := 0; i < len(sequence); i++ {
+    if !math.IsNaN(sequence[i]) && sequence[i] != 0.0 {
+      fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, sequence[i])
+    }
+  }
+}
 
 // Export the track to wiggle format. If fixedStep is false, a value is
 // printed only if it is not zero. For sparse data this will significantly
@@ -41,22 +71,12 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
   fmt.Fprintf(w, "track type=wiggle_0 name=\"%s\" description=\"%s\"\n", track.Name, description)
 
   if fixedStep {
-    for seqname, seq := range track.Data {
-      fmt.Fprintf(w, "fixedStep chrom=%s start=1 span=%d step=%d\n", seqname, track.Binsize, track.Binsize)
-
-      for i := 0; i < len(seq); i++ {
-        fmt.Fprintf(w, "%f\n", seq[i])
-      }
+    for seqname, sequence := range track.Data {
+      track.writeWiggle_fixedStep(w, seqname, sequence)
     }
   } else {
-    for seqname, seq := range track.Data {
-      fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize)
-
-      for i := 0; i < len(seq); i++ {
-        if seq[i] != 0.0 {
-          fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, seq[i])
-        }
-      }
+    for seqname, sequence := range track.Data {
+      track.writeWiggle_variableStep(w, seqname, sequence)
     }
   }
 }

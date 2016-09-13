@@ -34,7 +34,7 @@ func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence [
   for i, gap := 0, true; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) {
       if gap {
-        fmt.Fprintf(w, "fixedStep chrom=\"%s\" start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
+        fmt.Fprintf(w, "fixedStep chrom=%s start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
         gap = false
       }
       fmt.Fprintf(w, "%f\n", sequence[i])

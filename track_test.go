@@ -91,12 +91,15 @@ func TestTrack3(t *testing.T) {
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
   track1 := AllocTrack("Test Track", genome, 10)
   track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
+  track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
 
   track1.WriteWiggle(filename1, "test description", true)
   track1.WriteWiggle(filename2, "test description", false)
 
   track2 := AllocTrack("", genome, 10)
+  track2.Map(func(x float64) float64 { return math.NaN() })
   track3 := AllocTrack("", genome, 10)
+  track3.Map(func(x float64) float64 { return math.NaN() })
   err1 := track2.ReadWiggle(filename1)
   err2 := track3.ReadWiggle(filename2)
   if err1 != nil {
@@ -121,6 +124,9 @@ func TestTrack3(t *testing.T) {
       t.Error("TestTrack3 failed")
     }
     for i := 0; i < len(seq1); i++ {
+      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) && math.IsNaN(seq3[i]) {
+        continue
+      }
       if seq1[i] != seq2[i] {
         t.Error("TestTrack3 failed")
       }
@@ -218,33 +224,5 @@ func TestTrack8(t *testing.T) {
   }
   if err := track2.ReadBigWig("track_test.3.bw.tmp", ""); err != nil {
     t.Error(err)
-  }
-}
-
-func TestTrack9(t *testing.T) {
-
-  filename := "track_test.4.wig"
-
-  genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
-  track1 := AllocTrack("Test Track", genome, 10)
-  track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
-  track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,math.NaN(),math.NaN(),7.8,8.9,9.0,0.1,1.2,math.NaN(),3.4,4.5,5.6,6.7,7.8,8.9,9.0}
-  track1.WriteWiggle(filename, "test description", true)
-
-  track2 := AllocTrack("Test Track", genome, 10)
-  // set all values to NaN
-  track2.Map(func(x float64) float64 { return math.NaN() })
-  track2.ReadWiggle(filename)
-
-  for seqname, sequence1 := range track1.Data {
-    sequence2 := track2.Data[seqname]
-    for i := 0; i < len(sequence1); i++ {
-      if math.IsNaN(sequence1[i]) && math.IsNaN(sequence2[i]) {
-        continue
-      }
-      if sequence1[i] != sequence2[i] {
-        t.Errorf("TestTrack4 failed for sequence `%s' at position `%d' (%f, %f)", seqname, i)
-      }
-    }
   }
 }

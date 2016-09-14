@@ -97,50 +97,7 @@ func (track *Track) ReadBigWig(filename, name string) error {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) writeBigWig_block(vertex *RVertex, i int, genome Genome, fixedStep bool) ([]byte, error) {
-  // get sequence index
-  idx := vertex.ChrIdxStart[i]
-  // create genomic range
-  r := GRangesRow{}
-  r.Seqname = genome.Seqnames[idx]
-  r.Range.From = int(vertex.BaseStart[i])
-  r.Range.To   = int(vertex.BaseEnd[i])
-  // new block writer
-  writer := NewBbiBlockWriter(int(idx), int(vertex.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
-
-  if seq, err := track.GetSlice(r); err != nil {
-    return nil, err
-  } else {
-    if err := writer.Write(seq); err != nil {
-      return nil, err
-    }
-  }
-  return writer.Bytes(), nil
-}
-
-func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, genome Genome, fixedStep bool) error {
-
-  if vertex.IsLeaf != 0 {
-    for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := track.writeBigWig_block(vertex, i, genome, fixedStep); err != nil {
-        return err
-      } else {
-        if err := vertex.WriteBlock(&bwf.BbiFile, i, block); err != nil {
-          return err
-        }
-      }
-    }
-  } else {
-    for i := 0; i < int(vertex.NChildren); i++ {
-      if err := track.writeBigWig_allBlocks(bwf, vertex.Children[i], genome, fixedStep); err != nil {
-        return err
-      }
-    }
-  }
-  return nil
-}
-
-func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedStep bool, genome Genome) *RTree {
+func (track *Track) WriteBigWig_buildRTree(bwf *BigWigFile, blockSize, itemsPerSlot int, fixedStep bool, genome Genome) *RTree {
   tree := NewRTree()
   tree.BlockSize     = uint32(blockSize)
   tree.NItemsPerSlot = uint32(itemsPerSlot)
@@ -156,8 +113,17 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedSte
   }
   generator, _ := NewRVertexGenerator(indices, sequences, track.Binsize, blockSize, itemsPerSlot, fixedStep)
 
-  for v := range generator.Read() {
-    leaves = append(leaves, v)
+  for leaf := range generator.Read() {
+    leaves = append(leaves, leaf)
+    for i := 0; i < int(leaf.NChildren); i++ {
+      writer := NewBbiBlockWriter(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
+      if err := writer.Write(leaf.Sequence[i]); err != nil {
+        return nil
+      }
+      if err := leaf.WriteBlock(&bwf.BbiFile, i, writer.Bytes()); err != nil {
+        return nil
+      }
+    }
   }
   if err := tree.BuildTree(leaves); err != nil {
     return nil
@@ -205,13 +171,13 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
       panic(err)
     }
   }
-  // construct index tree
-  bwf.Index = *track.WriteBigWig_buildRTree(parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
-
   if err := bwf.Create(filename); err != nil {
     return err
   }
   defer bwf.Close()
-  // traverse index tree and write data
-  return track.writeBigWig_allBlocks(bwf, bwf.Index.Root, genome, parameters.FixedStep)
+  // construct index tree
+  bwf.Index = *track.WriteBigWig_buildRTree(bwf, parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
+  bwf.WriteIndex()
+
+  return nil
 }

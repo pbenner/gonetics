@@ -846,6 +846,7 @@ type RVertex struct {
   BaseEnd     []uint32
   DataOffset  []uint64
   Sizes       []uint64
+  Sequence    [][]float64
   Children    []*RVertex
   // positions of DataOffset and Sizes values in file
   PtrDataOffset []int64
@@ -887,8 +888,10 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
   } else {
     vertex.DataOffset[i] = uint64(offset)
     // write updated value to the required position in the file
-    if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
-      return err
+    if vertex.PtrDataOffset[i] != 0 {
+      if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
+        return err
+      }
     }
   }
   // write data
@@ -898,8 +901,10 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
   // update size of the data block
   vertex.Sizes[i] = uint64(len(block))
   // write it to the required position in the file
-  if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
-    return err
+  if vertex.PtrSizes[i] != 0 {
+    if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
+      return err
+    }
   }
   return nil
 }
@@ -1080,7 +1085,6 @@ func (generator *RVertexGenerator) fillChannel(indices []int, sequences [][]floa
   if err != nil {
     return err
   }
-  // current leaf
   v := new(RVertex)
   v.IsLeaf = 1
   // loop over sequence chunks
@@ -1092,10 +1096,15 @@ func (generator *RVertexGenerator) fillChannel(indices []int, sequences [][]floa
       v = new(RVertex)
       v.IsLeaf = 1
     }
-    v.ChrIdxStart = append(v.ChrIdxStart, uint32(chunk.Idx))
-    v.ChrIdxEnd   = append(v.ChrIdxEnd,   uint32(chunk.Idx))
-    v.BaseStart   = append(v.BaseStart,   uint32(chunk.From*binsize))
-    v.BaseEnd     = append(v.BaseEnd,     uint32(chunk.To  *binsize))
+    v.ChrIdxStart   = append(v.ChrIdxStart, uint32(chunk.Idx))
+    v.ChrIdxEnd     = append(v.ChrIdxEnd,   uint32(chunk.Idx))
+    v.BaseStart     = append(v.BaseStart,   uint32(chunk.From*binsize))
+    v.BaseEnd       = append(v.BaseEnd,     uint32(chunk.To  *binsize))
+    v.DataOffset    = append(v.DataOffset,  0)
+    v.Sizes         = append(v.Sizes,       0)
+    v.Sequence      = append(v.Sequence,    chunk.Sequence)
+    v.PtrDataOffset = append(v.PtrDataOffset, 0)
+    v.PtrSizes      = append(v.PtrSizes, 0)
     v.NChildren++
   }
   if v.NChildren != 0 {

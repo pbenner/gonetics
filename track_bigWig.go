@@ -140,38 +140,6 @@ func (track *Track) writeBigWig_allBlocks(bwf *BigWigFile, vertex *RVertex, geno
   return nil
 }
 
-func (track *Track) WriteBigWig_buildRTreeRec(leaves []*RVertex, blockSize, level int) (*RVertex, []*RVertex) {
-  v := new(RVertex)
-  n := len(leaves)
-  // return if there are no leaves
-  if n == 0 {
-    return nil, leaves
-  }
-  if level == 0 {
-    if n > blockSize {
-      n = blockSize
-    }
-    v.NChildren   = uint16(n)
-    v.Children    = leaves[0:n]
-    // update free leaf set
-    leaves = leaves[n:]
-  } else {
-    for i := 0; i < blockSize && len(leaves) > 0; i++ {
-      var vertex *RVertex
-      vertex, leaves = track.WriteBigWig_buildRTreeRec(leaves, blockSize, level-1)
-      v.NChildren++
-      v.Children = append(v.Children, vertex)
-    }
-  }
-  for i := 0; i < len(v.Children); i++ {
-    v.ChrIdxStart = append(v.ChrIdxStart, v.Children[i].ChrIdxStart[0])
-    v.ChrIdxEnd   = append(v.ChrIdxEnd,   v.Children[i].ChrIdxEnd[v.Children[i].NChildren-1])
-    v.BaseStart   = append(v.BaseStart,   v.Children[i].BaseStart[0])
-    v.BaseEnd     = append(v.BaseEnd,     v.Children[i].BaseEnd[v.Children[i].NChildren-1])
-  }
-  return v, leaves
-}
-
 func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedStep bool, genome Genome) *RTree {
   tree := NewRTree()
   tree.BlockSize     = uint32(blockSize)

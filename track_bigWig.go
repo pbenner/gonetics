@@ -20,7 +20,6 @@ package gonetics
 
 import "fmt"
 import "encoding/binary"
-import "math"
 
 /* -------------------------------------------------------------------------- */
 
@@ -192,22 +191,9 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedSte
   for v := range generator.Read() {
     leaves = append(leaves, v)
   }
-  if len(leaves) == 0 {
-    return tree
+  if err := tree.BuildTree(leaves); err != nil {
+    return nil
   }
-  if len(leaves) == 1 {
-    tree.Root = leaves[0]
-  } else {
-    // compute tree depth
-    d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(blockSize))))
-    // construct tree
-    tree.Root, _ = track.WriteBigWig_buildRTreeRec(leaves, blockSize, d-1)
-  }
-  tree.ChrIdxStart = tree.Root.ChrIdxStart[0]
-  tree.ChrIdxEnd   = tree.Root.ChrIdxEnd[tree.Root.NChildren-1]
-  tree.BaseStart   = tree.Root.BaseStart[0]
-  tree.BaseEnd     = tree.Root.BaseEnd[tree.Root.NChildren-1]
-
   return tree
 }
 

@@ -771,6 +771,61 @@ func (tree *RTree) Write(file *os.File) error {
   return nil
 }
 
+func (tree *RTree) buildTreeRec(leaves []*RVertex, level int) (*RVertex, []*RVertex) {
+  v := new(RVertex)
+  n := len(leaves)
+  // return if there are no leaves
+  if n == 0 {
+    return nil, leaves
+  }
+  if level == 0 {
+    if n > int(tree.BlockSize) {
+      n = int(tree.BlockSize)
+    }
+    v.NChildren   = uint16(n)
+    v.Children    = leaves[0:n]
+    // update free leaf set
+    leaves = leaves[n:]
+  } else {
+    for i := 0; i < int(tree.BlockSize) && len(leaves) > 0; i++ {
+      var vertex *RVertex
+      vertex, leaves = tree.buildTreeRec(leaves, level-1)
+      v.NChildren++
+      v.Children = append(v.Children, vertex)
+    }
+  }
+  for i := 0; i < len(v.Children); i++ {
+    v.ChrIdxStart = append(v.ChrIdxStart, v.Children[i].ChrIdxStart[0])
+    v.ChrIdxEnd   = append(v.ChrIdxEnd,   v.Children[i].ChrIdxEnd[v.Children[i].NChildren-1])
+    v.BaseStart   = append(v.BaseStart,   v.Children[i].BaseStart[0])
+    v.BaseEnd     = append(v.BaseEnd,     v.Children[i].BaseEnd[v.Children[i].NChildren-1])
+  }
+  return v, leaves
+}
+
+func (tree *RTree) BuildTree(leaves []*RVertex) error {
+  if len(leaves) == 0 {
+    return nil
+  }
+  if len(leaves) == 1 {
+    tree.Root = leaves[0]
+  } else {
+    // compute tree depth
+    d := int(math.Ceil(math.Log(float64(len(leaves)))/math.Log(float64(tree.BlockSize))))
+    // construct tree
+    if root, leaves := tree.buildTreeRec(leaves, d-1); len(leaves) != 0 {
+      panic("internal error")
+    } else {
+      tree.Root = root
+    }
+  }
+  tree.ChrIdxStart = tree.Root.ChrIdxStart[0]
+  tree.ChrIdxEnd   = tree.Root.ChrIdxEnd[tree.Root.NChildren-1]
+  tree.BaseStart   = tree.Root.BaseStart[0]
+  tree.BaseEnd     = tree.Root.BaseEnd[tree.Root.NChildren-1]
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type RVertex struct {

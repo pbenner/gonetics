@@ -197,8 +197,8 @@ func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]fl
       i_from := i
       i_to   := i
       if fixedStep {
-        // loop over sequence and split sequence of maximum length
-        // is reached or value is NaN
+        // loop over sequence and split sequence if maximum length
+        // is reached or if value is NaN
         for j := 0; j < itemsPerSlot && i_to < len(seq); i_to++ {
           if math.IsNaN(seq[i_to]) {
             // split sequence if value is NaN

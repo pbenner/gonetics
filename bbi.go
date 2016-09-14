@@ -257,7 +257,7 @@ func (writer *BbiBlockWriter) Write(values []float64) error {
   case 2:
     // variable step
     for i := 0; i < len(values); i ++ {
-      if values[i] != 0.0 {
+      if values[i] != 0.0 && !math.IsNaN(values[i]) {
         binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(writer.position)))
         binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(values[i])))
         if _, err := writer.Buffer.Write(writer.tmp); err != nil {

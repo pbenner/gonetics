@@ -97,7 +97,7 @@ func (track *Track) ReadBigWig(filename, name string) error {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) WriteBigWig_buildRTree(bwf *BigWigFile, blockSize, itemsPerSlot int, fixedStep bool, genome Genome) *RTree {
+func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fixedStep bool, genome Genome) error {
   tree := NewRTree()
   tree.BlockSize     = uint32(blockSize)
   tree.NItemsPerSlot = uint32(itemsPerSlot)
@@ -118,17 +118,20 @@ func (track *Track) WriteBigWig_buildRTree(bwf *BigWigFile, blockSize, itemsPerS
     for i := 0; i < int(leaf.NChildren); i++ {
       writer := NewBbiBlockWriter(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
       if err := writer.Write(leaf.Sequence[i]); err != nil {
-        return nil
+        return err
       }
       if err := leaf.WriteBlock(&bwf.BbiFile, i, writer.Bytes()); err != nil {
-        return nil
+        return err
       }
     }
   }
   if err := tree.BuildTree(leaves); err != nil {
-    return nil
+    return err
   }
-  return tree
+  bwf.Index = *tree
+  bwf.WriteIndex()
+
+  return nil
 }
 
 func (track *Track) WriteBigWig(filename, description string, args... interface{}) error {
@@ -175,9 +178,6 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     return err
   }
   defer bwf.Close()
-  // construct index tree
-  bwf.Index = *track.WriteBigWig_buildRTree(bwf, parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
-  bwf.WriteIndex()
-
-  return nil
+  // write data and index tree
+  return track.writeBigWig(bwf, parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
 }

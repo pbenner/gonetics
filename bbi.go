@@ -160,6 +160,70 @@ func (reader *BbiBlockReader) Read() <- chan BbiBlockReaderType {
 
 /* -------------------------------------------------------------------------- */
 
+type BbiSequenceSplitter struct {
+  Channel chan BbiSequenceSplitterType
+}
+
+type BbiSequenceSplitterType struct {
+  Idx      int
+  From     int
+  To       int
+  Sequence []float64
+}
+
+func NewBbiSequenceSplitter(indices []int, sequences [][]float64, itemsPerSlot int, fixedStep bool) (*BbiSequenceSplitter, error) {
+  if len(indices) != len(sequences) {
+    return nil, fmt.Errorf("NewBbiSequenceSplitter(): invalid arguments")
+  }
+  splitter := BbiSequenceSplitter{}
+  splitter.Channel = make(chan BbiSequenceSplitterType)
+  go func() {
+    splitter.fillChannel(indices, sequences, itemsPerSlot, fixedStep)
+    close(splitter.Channel)
+  }()
+  return &splitter, nil
+}
+
+func (splitter *BbiSequenceSplitter) Read() <- chan BbiSequenceSplitterType {
+  return splitter.Channel
+}
+
+func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]float64, itemsPerSlot int, fixedStep bool) error {
+  for k := 0; k < len(indices); k++ {
+    idx := indices[k]
+    seq := sequences[k]
+
+    for i := 0; i < len(seq); i += itemsPerSlot {
+      i_from := i
+      i_to   := i
+      if fixedStep {
+        // loop over sequence and split sequence of maximum length
+        // is reached or value is NaN
+        for j := 0; j < itemsPerSlot && i_to < len(seq); i_to++ {
+          if math.IsNaN(seq[i_to]) {
+            // split sequence if value is NaN
+            break
+          }
+          j++
+        }
+      } else {
+        // loop over sequence and count the number of valid data points
+        // (i.e. non-zero and not NaN)
+        for j := 0; j < itemsPerSlot && i_to < len(seq); i_to++ {
+          if seq[i_to] != 0.0 && !math.IsNaN(seq[i_to]) {
+            // increment number of valid data points
+            j++
+          }
+        }
+      }
+      splitter.Channel <- BbiSequenceSplitterType{idx, i_from, i_to, seq[i_from:i_to]}
+    }
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiBlockWriter struct {
   Header   BbiDataHeader
   Buffer   bytes.Buffer
@@ -184,6 +248,7 @@ func NewBbiBlockWriter(chromId, from, step, span int, fixedStep bool) *BbiBlockW
   }
   return &writer
 }
+
 
 func (writer *BbiBlockWriter) Write(values []float64) error {
   switch writer.Header.Type {

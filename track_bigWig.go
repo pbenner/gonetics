@@ -183,38 +183,29 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedSte
   v := new(RVertex)
   v.IsLeaf = 1
   // generate all leaves
+  indices   := []int{}
+  sequences := [][]float64{}
   for idx := 0; idx < genome.Length(); idx++ {
-    name := genome.Seqnames[idx]
-    seq  := track.Data[name]
-    for i := 0; i < len(seq); i += itemsPerSlot {
-      if int(v.NChildren) == blockSize {
-        // vertex is full
-        leaves = append(leaves, v)
-        // create new emtpy vertex
-        v = new(RVertex)
-        v.IsLeaf = 1
-      }
-      i_from := i
-      i_to   := i
-      if fixedStep {
-        i_to = i+itemsPerSlot
-        if i_to > len(seq) {
-          i_to = len(seq)
-        }
-      } else {
-        for n := 0; n < itemsPerSlot && i_to < len(seq); i_to++ {
-          if seq[i_to] != 0.0 {
-            n++
-          }
-        }
-      }
-      v.ChrIdxStart = append(v.ChrIdxStart, uint32(idx))
-      v.ChrIdxEnd   = append(v.ChrIdxEnd, uint32(idx))
-      v.BaseStart   = append(v.BaseStart, uint32(i_from*track.Binsize))
-      v.BaseEnd     = append(v.BaseEnd, uint32(i_to*track.Binsize))
-      v.NChildren++
-      tree.NItems++
+    name     := genome.Seqnames[idx]
+    indices   = append(indices, idx)
+    sequences = append(sequences, track.Data[name])
+  }
+  splitter, _ := NewBbiSequenceSplitter(indices, sequences, itemsPerSlot, fixedStep)
+
+  for chunk := range splitter.Read() {
+    if int(v.NChildren) == blockSize {
+      // vertex is full
+      leaves = append(leaves, v)
+      // create new emtpy vertex
+      v = new(RVertex)
+      v.IsLeaf = 1
     }
+    v.ChrIdxStart = append(v.ChrIdxStart, uint32(chunk.Idx))
+    v.ChrIdxEnd   = append(v.ChrIdxEnd,   uint32(chunk.Idx))
+    v.BaseStart   = append(v.BaseStart,   uint32(chunk.From*track.Binsize))
+    v.BaseEnd     = append(v.BaseEnd,     uint32(chunk.To  *track.Binsize))
+    v.NChildren++
+    tree.NItems++
   }
   if v.NChildren != 0 {
     leaves = append(leaves, v)

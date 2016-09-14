@@ -229,8 +229,8 @@ func TestTrack8(t *testing.T) {
 
 func TestTrack9(t *testing.T) {
 
-  filename1 := "track_test.1.bw"
-  filename2 := "track_test.2.bw"
+  filename1 := "track_test.4.bw"
+  filename2 := "track_test.5.bw"
 
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
   track1 := AllocTrack("Test Track", genome, 10)

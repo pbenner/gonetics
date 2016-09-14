@@ -193,7 +193,14 @@ func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]fl
     idx := indices[k]
     seq := sequences[k]
 
-    for i := 0; i < len(seq); i += itemsPerSlot {
+    for i := 0; i < len(seq); {
+      // skip NaN values
+      for i < len(seq) && math.IsNaN(seq[i]) {
+        i++
+      }
+      if i == len(seq) {
+        break
+      }
       i_from := i
       i_to   := i
       if fixedStep {
@@ -217,6 +224,8 @@ func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]fl
         }
       }
       splitter.Channel <- BbiSequenceSplitterType{idx, i_from, i_to, seq[i_from:i_to]}
+      // update position
+      i = i_to
     }
   }
   return nil

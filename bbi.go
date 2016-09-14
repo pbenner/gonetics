@@ -990,6 +990,58 @@ func (vertex *RVertex) Write(file *os.File) error {
 
 /* -------------------------------------------------------------------------- */
 
+type RVertexGenerator struct {
+  Channel chan *RVertex
+}
+
+func NewRVertexGenerator(indices []int, sequences [][]float64, binsize, blockSize, itemsPerSlot int, fixedStep bool) (*RVertexGenerator, error) {
+  if len(indices) != len(sequences) {
+    return nil, fmt.Errorf("NewRVertexGenerator(): invalid arguments")
+  }
+  generator := RVertexGenerator{}
+  generator.Channel = make(chan *RVertex)
+  go func() {
+    generator.fillChannel(indices, sequences, binsize, blockSize, itemsPerSlot, fixedStep)
+    close(generator.Channel)
+  }()
+  return &generator, nil
+}
+
+func (generator *RVertexGenerator) Read() <- chan *RVertex {
+  return generator.Channel
+}
+
+func (generator *RVertexGenerator) fillChannel(indices []int, sequences [][]float64, binsize, blockSize, itemsPerSlot int, fixedStep bool) error {
+  splitter, err := NewBbiSequenceSplitter(indices, sequences, itemsPerSlot, fixedStep)
+  if err != nil {
+    return err
+  }
+  // current leaf
+  v := new(RVertex)
+  v.IsLeaf = 1
+  // loop over sequence chunks
+  for chunk := range splitter.Read() {
+    if int(v.NChildren) == blockSize {
+      // vertex is full
+      generator.Channel <- v
+      // create new emtpy vertex
+      v = new(RVertex)
+      v.IsLeaf = 1
+    }
+    v.ChrIdxStart = append(v.ChrIdxStart, uint32(chunk.Idx))
+    v.ChrIdxEnd   = append(v.ChrIdxEnd,   uint32(chunk.Idx))
+    v.BaseStart   = append(v.BaseStart,   uint32(chunk.From*binsize))
+    v.BaseEnd     = append(v.BaseEnd,     uint32(chunk.To  *binsize))
+    v.NChildren++
+  }
+  if v.NChildren != 0 {
+    generator.Channel <- v
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiHeaderZoom struct {
   ReductionLevel    uint32
   Reserved          uint32

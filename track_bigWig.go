@@ -179,9 +179,6 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedSte
   tree.NItemsPerSlot = uint32(itemsPerSlot)
   // list of leaves
   leaves := []*RVertex{}
-  // current leaf
-  v := new(RVertex)
-  v.IsLeaf = 1
   // generate all leaves
   indices   := []int{}
   sequences := [][]float64{}
@@ -190,28 +187,10 @@ func (track *Track) WriteBigWig_buildRTree(blockSize, itemsPerSlot int, fixedSte
     indices   = append(indices, idx)
     sequences = append(sequences, track.Data[name])
   }
-  splitter, _ := NewBbiSequenceSplitter(indices, sequences, itemsPerSlot, fixedStep)
+  generator, _ := NewRVertexGenerator(indices, sequences, track.Binsize, blockSize, itemsPerSlot, fixedStep)
 
-  for chunk := range splitter.Read() {
-    if int(v.NChildren) == blockSize {
-      // vertex is full
-      leaves = append(leaves, v)
-      // create new emtpy vertex
-      v = new(RVertex)
-      v.IsLeaf = 1
-    }
-    v.ChrIdxStart = append(v.ChrIdxStart, uint32(chunk.Idx))
-    v.ChrIdxEnd   = append(v.ChrIdxEnd,   uint32(chunk.Idx))
-    v.BaseStart   = append(v.BaseStart,   uint32(chunk.From*track.Binsize))
-    v.BaseEnd     = append(v.BaseEnd,     uint32(chunk.To  *track.Binsize))
-    v.NChildren++
-    tree.NItems++
-  }
-  if v.NChildren != 0 {
+  for v := range generator.Read() {
     leaves = append(leaves, v)
-    // create new emtpy vertex
-    v = new(RVertex)
-    v.IsLeaf = 1
   }
   if len(leaves) == 0 {
     return tree

@@ -234,70 +234,73 @@ func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]fl
 /* -------------------------------------------------------------------------- */
 
 type BbiBlockEncoder struct {
-  Header   BbiDataHeader
-  Buffer   bytes.Buffer
-  tmp      []byte
-  position int
+  Step      int
+  Span      int
+  Type      int
+  FixedStep bool
+  tmp       []byte
+  position  int
 }
 
-func NewBbiBlockEncoder(chromId, from, step, span int, fixedStep bool) *BbiBlockEncoder {
+func NewBbiBlockEncoder(step, span int, fixedStep bool) *BbiBlockEncoder {
   writer := BbiBlockEncoder{}
-  writer.Header.ChromId = uint32(chromId)
-  writer.Header.Start   = uint32(from)
-  writer.Header.End     = uint32(from)
-  writer.Header.Step    = uint32(step)
-  writer.Header.Span    = uint32(span)
-  writer.position       = from
+  writer.Step = step
+  writer.Span = span
   if fixedStep {
-    writer.Header.Type = 3
-    writer.tmp = make([]byte, 4)
+    writer.Type = 3
+    writer.tmp  = make([]byte, 4)
   } else {
-    writer.Header.Type = 2
-    writer.tmp = make([]byte, 8)
+    writer.Type = 2
+    writer.tmp  = make([]byte, 8)
   }
   return &writer
 }
 
-
-func (writer *BbiBlockEncoder) Write(values []float64) error {
-  switch writer.Header.Type {
+func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, values []float64) ([]byte, error) {
+  // create header for this block
+  header := BbiDataHeader{}
+  header.ChromId = uint32(chromid)
+  header.Start   = uint32(from)
+  header.End     = uint32(from)
+  header.Step    = uint32(writer.Step)
+  header.Span    = uint32(writer.Span)
+  header.Type    = byte(writer.Type)
+  // new buffer
+  var buffer bytes.Buffer
+  // fill buffer with data
+  switch writer.Type {
   default:
-    return fmt.Errorf("unsupported block type")
+    return nil, fmt.Errorf("unsupported block type")
   case 2:
     // variable step
     for i := 0; i < len(values); i ++ {
       if values[i] != 0.0 && !math.IsNaN(values[i]) {
-        binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(writer.position)))
+        binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(header.End)))
         binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(values[i])))
-        if _, err := writer.Buffer.Write(writer.tmp); err != nil {
-          return err
+        if _, err := buffer.Write(writer.tmp); err != nil {
+          return nil, err
         }
-        writer.Header.ItemCount++
-        writer.position += int(writer.Header.Step)
+        header.ItemCount++
+        header.End += header.Step
       }
     }
   case 3:
     // fixed step
     for i := 0; i < len(values); i ++ {
       binary.LittleEndian.PutUint32(writer.tmp, math.Float32bits(float32(values[i])))
-      if _, err := writer.Buffer.Write(writer.tmp); err != nil {
-        return err
+      if _, err := buffer.Write(writer.tmp); err != nil {
+        return nil, err
       }
-      writer.Header.ItemCount++
-      writer.position += int(writer.Header.Step)
+      header.ItemCount++
+      header.End += header.Step
     }
   }
-  writer.Header.End = uint32(writer.position)
-
-  return nil
-}
-
-func (writer *BbiBlockEncoder) Bytes() []byte {
+  // prepend header
   block := make([]byte, 24)
-  writer.Header.WriteBuffer(block)
-  block = append(block, writer.Buffer.Bytes()...)
+  header.WriteBuffer(block)
+  block = append(block, buffer.Bytes()...)
 
-  return block
+  return block, nil
 }
 
 /* -------------------------------------------------------------------------- */

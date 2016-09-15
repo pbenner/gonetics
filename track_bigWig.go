@@ -97,16 +97,17 @@ func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fi
     sequences = append(sequences, track.Data[name])
   }
   generator, _ := NewRVertexGenerator(indices, sequences, track.Binsize, blockSize, itemsPerSlot, fixedStep)
+  encoder      := NewBbiBlockEncoder(track.Binsize, track.Binsize, fixedStep)
 
   for leaf := range generator.Read() {
     leaves = append(leaves, leaf)
     for i := 0; i < int(leaf.NChildren); i++ {
-      writer := NewBbiBlockEncoder(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
-      if err := writer.Write(leaf.Sequence[i]); err != nil {
+      if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i]); err != nil {
         return err
-      }
-      if err := leaf.WriteBlock(&bwf.BbiFile, i, writer.Bytes()); err != nil {
-        return err
+      } else {
+        if err := leaf.WriteBlock(&bwf.BbiFile, i, block); err != nil {
+          return err
+        }
       }
     }
   }

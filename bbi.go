@@ -94,24 +94,24 @@ func compressSlice(data []byte) ([]byte, error) {
 
 /* -------------------------------------------------------------------------- */
 
-type BbiBlockReader struct {
+type BbiBlockDecoder struct {
   Header  BbiDataHeader
-  Channel chan BbiBlockReaderType
+  Channel chan BbiBlockDecoderType
 }
 
-type BbiBlockReaderType struct {
+type BbiBlockDecoderType struct {
   Idx   int
   From  int
   To    int
   Value float64
 }
 
-func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
+func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
   if len(buffer) < 24 {
     return nil, fmt.Errorf("block length is shorter than 24 bytes")
   }
-  reader := BbiBlockReader{}
-  reader.Channel = make(chan BbiBlockReaderType)
+  reader := BbiBlockDecoder{}
+  reader.Channel = make(chan BbiBlockDecoderType)
   // parse header
   reader.Header.ReadBuffer(buffer)
   // crop header from buffer
@@ -126,7 +126,7 @@ func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
     }
     go func() {
       for i := 0; i < len(buffer); i += 8 {
-        r := BbiBlockReaderType{}
+        r := BbiBlockDecoderType{}
         r.Idx   = i
         r.From  = int(binary.LittleEndian.Uint32(buffer[i+0:i+4]))
         r.To    = r.From + int(reader.Header.Span)
@@ -141,7 +141,7 @@ func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
     }
     go func() {
       for i := 0; i < len(buffer); i += 4 {
-        r := BbiBlockReaderType{}
+        r := BbiBlockDecoderType{}
         r.Idx   = i
         r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
         r.To    = r.From + int(reader.Header.Span)
@@ -154,7 +154,7 @@ func NewBbiBlockReader(buffer []byte) (*BbiBlockReader, error) {
   return &reader, nil
 }
 
-func (reader *BbiBlockReader) Read() <- chan BbiBlockReaderType {
+func (reader *BbiBlockDecoder) Read() <- chan BbiBlockDecoderType {
   return reader.Channel
 }
 
@@ -233,15 +233,15 @@ func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]fl
 
 /* -------------------------------------------------------------------------- */
 
-type BbiBlockWriter struct {
+type BbiBlockEncoder struct {
   Header   BbiDataHeader
   Buffer   bytes.Buffer
   tmp      []byte
   position int
 }
 
-func NewBbiBlockWriter(chromId, from, step, span int, fixedStep bool) *BbiBlockWriter {
-  writer := BbiBlockWriter{}
+func NewBbiBlockEncoder(chromId, from, step, span int, fixedStep bool) *BbiBlockEncoder {
+  writer := BbiBlockEncoder{}
   writer.Header.ChromId = uint32(chromId)
   writer.Header.Start   = uint32(from)
   writer.Header.End     = uint32(from)
@@ -259,7 +259,7 @@ func NewBbiBlockWriter(chromId, from, step, span int, fixedStep bool) *BbiBlockW
 }
 
 
-func (writer *BbiBlockWriter) Write(values []float64) error {
+func (writer *BbiBlockEncoder) Write(values []float64) error {
   switch writer.Header.Type {
   default:
     return fmt.Errorf("unsupported block type")
@@ -292,7 +292,7 @@ func (writer *BbiBlockWriter) Write(values []float64) error {
   return nil
 }
 
-func (writer *BbiBlockWriter) Bytes() []byte {
+func (writer *BbiBlockEncoder) Bytes() []byte {
   block := make([]byte, 24)
   writer.Header.WriteBuffer(block)
   block = append(block, writer.Buffer.Bytes()...)

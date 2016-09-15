@@ -39,7 +39,7 @@ func DefaultBigWigParameters() BigWigParameters {
 /* -------------------------------------------------------------------------- */
 
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
-  reader, err := NewBbiBlockReader(buffer)
+  reader, err := NewBbiBlockDecoder(buffer)
   if err != nil {
     return err
   }
@@ -116,7 +116,7 @@ func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fi
   for leaf := range generator.Read() {
     leaves = append(leaves, leaf)
     for i := 0; i < int(leaf.NChildren); i++ {
-      writer := NewBbiBlockWriter(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
+      writer := NewBbiBlockEncoder(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), track.Binsize, track.Binsize, fixedStep)
       if err := writer.Write(leaf.Sequence[i]); err != nil {
         return err
       }

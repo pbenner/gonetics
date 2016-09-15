@@ -24,37 +24,37 @@ import "encoding/binary"
 /* -------------------------------------------------------------------------- */
 
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
-  reader, err := NewBbiBlockDecoder(buffer)
+  decoder, err := NewBbiBlockDecoder(buffer)
   if err != nil {
     return err
   }
-  if idx := int(reader.Header.ChromId); idx < 0 || idx > genome.Length() {
+  if idx := int(decoder.Header.ChromId); idx < 0 || idx > genome.Length() {
     return fmt.Errorf("invalid chromosome id")
   }
   // convert chromosome id to sequence name
-  seqname := genome.Seqnames[int(reader.Header.ChromId)]
+  seqname := genome.Seqnames[int(decoder.Header.ChromId)]
 
   // allocate track if this is the first buffer
   if len(track.Data) == 0 && track.Binsize == 0 {
-    *track = AllocTrack("", genome, int(reader.Header.Span))
+    *track = AllocTrack("", genome, int(decoder.Header.Span))
   }
-  switch reader.Header.Type {
+  switch decoder.Header.Type {
   case 2:
-    if int(reader.Header.Span) != track.Binsize {
-      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    if int(decoder.Header.Span) != track.Binsize {
+      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
     }
   case 3:
-    if int(reader.Header.Span) != track.Binsize {
-      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    if int(decoder.Header.Span) != track.Binsize {
+      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
     }
-    if int(reader.Header.Step) != track.Binsize {
-      return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", reader.Header.Span, track.Binsize)
+    if int(decoder.Header.Step) != track.Binsize {
+      return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
     }
   }
   if seq, ok := track.Data[seqname]; !ok {
     return fmt.Errorf("sequence `%s' not vailable in track", seqname)
   } else {
-    for t := range reader.Read() {
+    for t := range decoder.Read() {
       seq[track.Index(t.From)] = t.Value
     }
   }
@@ -100,7 +100,7 @@ func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fi
   encoder      := NewBbiBlockEncoder(track.Binsize, track.Binsize, fixedStep)
 
   for leaf := range generator.Read() {
-    leaves = append(leaves, leaf)
+    // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
       if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i]); err != nil {
         return err
@@ -110,10 +110,13 @@ func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fi
         }
       }
     }
+    // save leaf for tree construction
+    leaves = append(leaves, leaf)
   }
   if err := tree.BuildTree(leaves); err != nil {
     return err
   }
+  // write index to file
   bwf.Index = *tree
   bwf.WriteIndex()
 

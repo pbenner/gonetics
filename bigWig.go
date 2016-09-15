@@ -29,6 +29,21 @@ const BIGWIG_MAGIC = 0x888FFC26
 
 /* -------------------------------------------------------------------------- */
 
+type BigWigParameters struct {
+  BlockSize    int
+  ItemsPerSlot int
+  FixedStep    bool
+}
+
+func DefaultBigWigParameters() BigWigParameters {
+  return BigWigParameters{
+    BlockSize: 256,
+    ItemsPerSlot: 1024,
+    FixedStep: true }
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BigWigFile struct {
   BbiFile
   Filename string

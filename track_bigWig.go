@@ -23,21 +23,6 @@ import "encoding/binary"
 
 /* -------------------------------------------------------------------------- */
 
-type BigWigParameters struct {
-  BlockSize    int
-  ItemsPerSlot int
-  FixedStep    bool
-}
-
-func DefaultBigWigParameters() BigWigParameters {
-  return BigWigParameters{
-    BlockSize: 256,
-    ItemsPerSlot: 1024,
-    FixedStep: true }
-}
-
-/* -------------------------------------------------------------------------- */
-
 func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   reader, err := NewBbiBlockDecoder(buffer)
   if err != nil {

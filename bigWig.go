@@ -46,13 +46,12 @@ func DefaultBigWigParameters() BigWigParameters {
 
 type BigWigFile struct {
   BbiFile
-  Filename string
 }
 
 func NewBigWigFile() *BigWigFile {
   bbiFile := *NewBbiFile()
   bbiFile.Header.Magic = BIGWIG_MAGIC
-  return &BigWigFile{bbiFile, ""}
+  return &BigWigFile{bbiFile}
 }
 
 func (bwf *BigWigFile) Open(filename string) error {
@@ -63,7 +62,6 @@ func (bwf *BigWigFile) Open(filename string) error {
     return err
   }
   bwf.Fptr = f
-  bwf.Filename = filename
 
   // parse header
   if err := bwf.Header.Read(bwf.Fptr); err != nil {
@@ -97,7 +95,6 @@ func (bwf *BigWigFile) Create(filename string) error {
     return err
   }
   bwf.Fptr = f
-  bwf.Filename = filename
 
   // write header
   if err := bwf.Header.Write(bwf.Fptr); err != nil {
@@ -140,13 +137,13 @@ func (bwf *BigWigFile) WriteChromList() error {
 func (bwf *BigWigFile) WriteIndex() error {
   // write data index offset
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", bwf.Filename, err)
+    return err
   } else {
     bwf.Header.IndexOffset = uint64(offset)
   }
   // write data index
   if err := bwf.Index.Write(bwf.Fptr); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", bwf.Filename, err)
+    return err
   }
   // update index size
   bwf.Index.IdxSize = bwf.Header.DataOffset - bwf.Header.IndexOffset

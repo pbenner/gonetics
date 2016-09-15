@@ -161,72 +161,70 @@ func (reader *BbiBlockDecoder) Read() <- chan BbiBlockDecoderType {
 /* -------------------------------------------------------------------------- */
 
 type BbiSequenceSplitter struct {
-  Channel chan BbiSequenceSplitterType
+  ItemsPerSlot int
+  FixedStep    bool
+  Channel      chan BbiSequenceSplitterType
 }
 
 type BbiSequenceSplitterType struct {
-  Idx      int
   From     int
   To       int
   Sequence []float64
 }
 
-func NewBbiSequenceSplitter(indices []int, sequences [][]float64, itemsPerSlot int, fixedStep bool) (*BbiSequenceSplitter, error) {
-  if len(indices) != len(sequences) {
-    return nil, fmt.Errorf("NewBbiSequenceSplitter(): invalid arguments")
+func NewBbiSequenceSplitter(itemsPerSlot int, fixedStep bool) (*BbiSequenceSplitter, error) {
+  if itemsPerSlot <= 0 {
+    return nil, fmt.Errorf("invalid ItemsPerSlot `%d' parameter", itemsPerSlot)
   }
   splitter := BbiSequenceSplitter{}
-  splitter.Channel = make(chan BbiSequenceSplitterType)
-  go func() {
-    splitter.fillChannel(indices, sequences, itemsPerSlot, fixedStep)
-    close(splitter.Channel)
-  }()
+  splitter.ItemsPerSlot = itemsPerSlot
+  splitter.FixedStep    = fixedStep
   return &splitter, nil
 }
 
-func (splitter *BbiSequenceSplitter) Read() <- chan BbiSequenceSplitterType {
+func (splitter *BbiSequenceSplitter) Split(sequence []float64) <- chan BbiSequenceSplitterType {
+  splitter.Channel = make(chan BbiSequenceSplitterType)
+  go func() {
+    splitter.fillChannel(sequence)
+    close(splitter.Channel)
+  }()
   return splitter.Channel
 }
 
-func (splitter *BbiSequenceSplitter) fillChannel(indices []int, sequences [][]float64, itemsPerSlot int, fixedStep bool) error {
-  for k := 0; k < len(indices); k++ {
-    idx := indices[k]
-    seq := sequences[k]
-
-    for i := 0; i < len(seq); {
-      // skip NaN values
-      for i < len(seq) && math.IsNaN(seq[i]) {
-        i++
+func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64) error {
+  for i := 0; i < len(sequence); {
+    // skip NaN values
+    for i < len(sequence) && math.IsNaN(sequence[i]) {
+      i++
+    }
+    if i == len(sequence) {
+      break
+    }
+    i_from := i
+    i_to   := i
+    if splitter.FixedStep {
+      // loop over sequence and split sequence if maximum length
+      // is reached or if value is NaN
+      for j := 0; j < splitter.ItemsPerSlot && i_to < len(sequence); i_to++ {
+        if math.IsNaN(sequence[i_to]) {
+          // split sequence if value is NaN
+          break
+        }
+        j++
       }
-      if i == len(seq) {
-        break
-      }
-      i_from := i
-      i_to   := i
-      if fixedStep {
-        // loop over sequence and split sequence if maximum length
-        // is reached or if value is NaN
-        for j := 0; j < itemsPerSlot && i_to < len(seq); i_to++ {
-          if math.IsNaN(seq[i_to]) {
-            // split sequence if value is NaN
-            break
-          }
+    } else {
+      // loop over sequence and count the number of valid data points
+      // (i.e. non-zero and not NaN)
+      for j := 0; j < splitter.ItemsPerSlot && i_to < len(sequence); i_to++ {
+        if sequence[i_to] != 0.0 && !math.IsNaN(sequence[i_to]) {
+          // increment number of valid data points
           j++
         }
-      } else {
-        // loop over sequence and count the number of valid data points
-        // (i.e. non-zero and not NaN)
-        for j := 0; j < itemsPerSlot && i_to < len(seq); i_to++ {
-          if seq[i_to] != 0.0 && !math.IsNaN(seq[i_to]) {
-            // increment number of valid data points
-            j++
-          }
-        }
       }
-      splitter.Channel <- BbiSequenceSplitterType{idx, i_from, i_to, seq[i_from:i_to]}
-      // update position
-      i = i_to
     }
+    splitter.Channel <- BbiSequenceSplitterType{i_from, i_to, sequence[i_from:i_to]}
+    // update position
+    i = i_to
   }
   return nil
 }
@@ -242,7 +240,16 @@ type BbiBlockEncoder struct {
   position  int
 }
 
-func NewBbiBlockEncoder(step, span int, fixedStep bool) *BbiBlockEncoder {
+func NewBbiBlockEncoder(step, span int, fixedStep bool) (*BbiBlockEncoder, error) {
+  if step <= 0 {
+    return nil, fmt.Errorf("invalid step parameter `%d'", step)
+  }
+  if span <= 0 {
+    return nil, fmt.Errorf("invalid span parameter `%d'", span)
+  }
+  if span > step {
+    return nil, fmt.Errorf("step parameter `%d' should be less or equal to span `%d'", step, span)
+  }
   writer := BbiBlockEncoder{}
   writer.Step = step
   writer.Span = span
@@ -253,7 +260,7 @@ func NewBbiBlockEncoder(step, span int, fixedStep bool) *BbiBlockEncoder {
     writer.Type = 2
     writer.tmp  = make([]byte, 8)
   }
-  return &writer
+  return &writer, nil
 }
 
 func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, values []float64) ([]byte, error) {
@@ -1063,51 +1070,60 @@ func (vertex *RVertex) Write(file *os.File) error {
 /* -------------------------------------------------------------------------- */
 
 type RVertexGenerator struct {
+  BlockSize    int
+  ItemsPerSlot int
+  FixedStep    bool
   Channel chan *RVertex
 }
 
-func NewRVertexGenerator(indices []int, sequences [][]float64, binsize, blockSize, itemsPerSlot int, fixedStep bool) (*RVertexGenerator, error) {
-  if len(indices) != len(sequences) {
-    return nil, fmt.Errorf("NewRVertexGenerator(): invalid arguments")
+func NewRVertexGenerator(blockSize, itemsPerSlot int, fixedStep bool) (*RVertexGenerator, error) {
+  if blockSize <= 0 {
+    return nil, fmt.Errorf("invalid block size `%d'", blockSize)
+  }
+  if itemsPerSlot <= 0 {
+    return nil, fmt.Errorf("invalid items per slot `%d'", itemsPerSlot)
   }
   generator := RVertexGenerator{}
-  generator.Channel = make(chan *RVertex)
-  go func() {
-    generator.fillChannel(indices, sequences, binsize, blockSize, itemsPerSlot, fixedStep)
-    close(generator.Channel)
-  }()
+  generator.BlockSize    = blockSize
+  generator.ItemsPerSlot = itemsPerSlot
+  generator.FixedStep    = fixedStep
   return &generator, nil
 }
 
-func (generator *RVertexGenerator) Read() <- chan *RVertex {
+func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize int) <- chan *RVertex {
+  generator.Channel = make(chan *RVertex)
+  go func() {
+    generator.fillChannel(idx, sequence, binsize)
+    close(generator.Channel)
+  }()
   return generator.Channel
 }
 
-func (generator *RVertexGenerator) fillChannel(indices []int, sequences [][]float64, binsize, blockSize, itemsPerSlot int, fixedStep bool) error {
-  splitter, err := NewBbiSequenceSplitter(indices, sequences, itemsPerSlot, fixedStep)
+func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, binsize int) error {
+  splitter, err := NewBbiSequenceSplitter(generator.ItemsPerSlot, generator.FixedStep)
   if err != nil {
     return err
   }
   v := new(RVertex)
   v.IsLeaf = 1
   // loop over sequence chunks
-  for chunk := range splitter.Read() {
-    if int(v.NChildren) == blockSize {
+  for chunk := range splitter.Split(sequence) {
+    if int(v.NChildren) == generator.BlockSize {
       // vertex is full
       generator.Channel <- v
       // create new emtpy vertex
       v = new(RVertex)
       v.IsLeaf = 1
     }
-    v.ChrIdxStart   = append(v.ChrIdxStart, uint32(chunk.Idx))
-    v.ChrIdxEnd     = append(v.ChrIdxEnd,   uint32(chunk.Idx))
-    v.BaseStart     = append(v.BaseStart,   uint32(chunk.From*binsize))
-    v.BaseEnd       = append(v.BaseEnd,     uint32(chunk.To  *binsize))
-    v.DataOffset    = append(v.DataOffset,  0)
-    v.Sizes         = append(v.Sizes,       0)
-    v.Sequence      = append(v.Sequence,    chunk.Sequence)
+    v.ChrIdxStart   = append(v.ChrIdxStart,   uint32(idx))
+    v.ChrIdxEnd     = append(v.ChrIdxEnd,     uint32(idx))
+    v.BaseStart     = append(v.BaseStart,     uint32(chunk.From*binsize))
+    v.BaseEnd       = append(v.BaseEnd,       uint32(chunk.To  *binsize))
+    v.DataOffset    = append(v.DataOffset,    0)
+    v.Sizes         = append(v.Sizes,         0)
+    v.Sequence      = append(v.Sequence,      chunk.Sequence)
     v.PtrDataOffset = append(v.PtrDataOffset, 0)
-    v.PtrSizes      = append(v.PtrSizes, 0)
+    v.PtrSizes      = append(v.PtrSizes,      0)
     v.NChildren++
   }
   if v.NChildren != 0 {

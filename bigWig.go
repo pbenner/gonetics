@@ -103,15 +103,6 @@ func (bwf *BigWigFile) Create(filename string) error {
   if err := bwf.Header.Write(bwf.Fptr); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
-  // write chromosome list
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", filename, err)
-  } else {
-    bwf.Header.CtOffset = uint64(offset)
-  }
-  if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", filename, err)
-  }
   // data starts here
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
@@ -124,6 +115,23 @@ func (bwf *BigWigFile) Create(filename string) error {
   }
   // write number of blocks (zero at the moment)
   if err := binary.Write(bwf.Fptr, binary.LittleEndian, uint64(0)); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BigWigFile) WriteChromList() error {
+  // write chromosome list
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.CtOffset = uint64(offset)
+  }
+  if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
+    return err
+  }
+  // update offsets
+  if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
     return err
   }
   return nil
@@ -179,6 +187,7 @@ type BigWigReader struct {
   Genome  Genome
   Channel chan BigWigReaderType
 }
+
 type BigWigReaderType struct {
   Block []byte
   Error error
@@ -241,5 +250,120 @@ func (reader *BigWigReader) fillChannel(vertex *RVertex) error {
       }
     }
   }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BigWigWriter struct {
+  Bwf        BigWigFile
+  Genome     Genome
+  Parameters BigWigParameters
+  Leaves     []*RVertex
+}
+
+type BigWigWriterType struct {
+  Seqname    string
+  Sequence []float64
+}
+
+func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWriter, error) {
+  bww := new(BigWigWriter)
+  bwf := NewBigWigFile()
+  // compress by default (this value is updated when writing blocks)
+  bwf.Header.UncompressBufSize = 1
+  // size of uint32
+  bwf.ChromData.ValueSize = 8
+  // open file
+  if err := bwf.Create(filename); err != nil {
+    return nil, err
+  }
+  bww.Bwf = *bwf
+  bww.Parameters = parameters
+
+  return bww, nil
+}
+
+func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
+  // index of the current sequence
+  var idx int
+  // generator for RTree vertices
+  var generator *RVertexGenerator
+  // data block encoder
+  var encoder   *BbiBlockEncoder
+  // add sequence name and length to the genome
+  if tmp, err := bww.Genome.AddSequence(seqname, len(sequence)*binsize); err != nil {
+    return err
+  } else {
+    idx = tmp
+  }
+  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot, bww.Parameters.FixedStep); err != nil {
+    return err
+  } else {
+    generator = tmp
+  }
+  if tmp, err := NewBbiBlockEncoder(binsize, binsize, bww.Parameters.FixedStep); err != nil {
+    return err
+  } else {
+    encoder = tmp
+  }
+  // split sequence into small blocks of data and write them to file
+  for leaf := range generator.Generate(idx, sequence, binsize) {
+    // write data to file
+    for i := 0; i < int(leaf.NChildren); i++ {
+      if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i]); err != nil {
+        return err
+      } else {
+        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
+          return err
+        }
+      }
+    }
+    // save leaf for tree construction
+    bww.Leaves = append(bww.Leaves, leaf)
+  }
+  return nil
+}
+
+func (bww *BigWigWriter) Close() error {
+  tree := NewRTree()
+  tree.BlockSize     = uint32(bww.Parameters.BlockSize)
+  tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
+  // construct index tree
+  if err := tree.BuildTree(bww.Leaves); err != nil {
+    return err
+  }
+  // write index to file
+  bww.Bwf.Index = *tree
+  if err := bww.Bwf.WriteIndex(); err != nil {
+    return err
+  }
+  // generate chromosome list
+  for _, name := range bww.Genome.Seqnames {
+    if bww.Bwf.ChromData.KeySize < uint32(len(name)+1) {
+      bww.Bwf.ChromData.KeySize = uint32(len(name)+1)
+    }
+  }
+  for _, name := range bww.Genome.Seqnames {
+    key   := make([]byte, bww.Bwf.ChromData.KeySize)
+    value := make([]byte, bww.Bwf.ChromData.ValueSize)
+    copy(key, name)
+    if idx, err := bww.Genome.GetIdx(name); err != nil {
+      // this should not happen
+      panic(err)
+    } else {
+      binary.LittleEndian.PutUint32(value[0:4], uint32(idx))
+      binary.LittleEndian.PutUint32(value[4:8], uint32(bww.Genome.Lengths[idx]))
+    }
+    if err := bww.Bwf.ChromData.Add(key, value); err != nil {
+      return err
+    }
+  }
+  // write chromosome list to file
+  if err := bww.Bwf.WriteChromList(); err != nil {
+    return err
+  }
+  bww.Bwf.Close()
+
   return nil
 }

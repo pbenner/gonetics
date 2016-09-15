@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "encoding/binary"
 
 /* -------------------------------------------------------------------------- */
 
@@ -82,52 +81,9 @@ func (track *Track) ReadBigWig(filename, name string) error {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) writeBigWig(bwf *BigWigFile, blockSize, itemsPerSlot int, fixedStep bool, genome Genome) error {
-  tree := NewRTree()
-  tree.BlockSize     = uint32(blockSize)
-  tree.NItemsPerSlot = uint32(itemsPerSlot)
-  // list of leaves
-  leaves := []*RVertex{}
-  // generate all leaves
-  indices   := []int{}
-  sequences := [][]float64{}
-  for idx := 0; idx < genome.Length(); idx++ {
-    name     := genome.Seqnames[idx]
-    indices   = append(indices, idx)
-    sequences = append(sequences, track.Data[name])
-  }
-  generator, _ := NewRVertexGenerator(indices, sequences, track.Binsize, blockSize, itemsPerSlot, fixedStep)
-  encoder      := NewBbiBlockEncoder(track.Binsize, track.Binsize, fixedStep)
-
-  for leaf := range generator.Read() {
-    // write data to file
-    for i := 0; i < int(leaf.NChildren); i++ {
-      if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i]); err != nil {
-        return err
-      } else {
-        if err := leaf.WriteBlock(&bwf.BbiFile, i, block); err != nil {
-          return err
-        }
-      }
-    }
-    // save leaf for tree construction
-    leaves = append(leaves, leaf)
-  }
-  if err := tree.BuildTree(leaves); err != nil {
-    return err
-  }
-  // write index to file
-  bwf.Index = *tree
-  bwf.WriteIndex()
-
-  return nil
-}
-
 func (track *Track) WriteBigWig(filename, description string, args... interface{}) error {
 
-  bwf        := NewBigWigFile()
   parameters := DefaultBigWigParameters()
-  genome     := Genome{}
 
   // parse arguments
   for i := 0; i < len(args); i++ {
@@ -137,36 +93,14 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
       fmt.Errorf("WriteBigWig(): invalid arguments")
     }
   }
-  // identify ChromData key size and sequence lengths
-  for name, seq := range track.Data {
-    if bwf.ChromData.KeySize < uint32(len(name)+1) {
-      bwf.ChromData.KeySize = uint32(len(name)+1)
-    }
-    genome = genome.AddSequence(name, len(seq)*track.Binsize)
-  }
-  // compress by default (this value is updated when writing blocks)
-  bwf.Header.UncompressBufSize = 1
-  // size of uint32
-  bwf.ChromData.ValueSize = 8
-  // fill ChromData
-  for name, _ := range track.Data {
-    key   := make([]byte, bwf.ChromData.KeySize)
-    value := make([]byte, bwf.ChromData.ValueSize)
-    copy(key, name)
-    if idx, err := genome.GetIdx(name); err != nil {
-      panic(err)
-    } else {
-      binary.LittleEndian.PutUint32(value[0:4], uint32(idx))
-      binary.LittleEndian.PutUint32(value[4:8], uint32(genome.Lengths[idx]))
-    }
-    if err := bwf.ChromData.Add(key, value); err != nil {
-      panic(err)
-    }
-  }
-  if err := bwf.Create(filename); err != nil {
+  writer, err := NewBigWigWriter(filename, parameters)
+  if err != nil {
     return err
   }
-  defer bwf.Close()
-  // write data and index tree
-  return track.writeBigWig(bwf, parameters.BlockSize, parameters.ItemsPerSlot, parameters.FixedStep, genome)
+  for name, sequence := range track.Data {
+    writer.Write(name, sequence, track.Binsize)
+  }
+  writer.Close()
+
+  return nil
 }

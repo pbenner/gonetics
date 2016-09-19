@@ -57,7 +57,7 @@ func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequenc
 // Export the track to wiggle format. If fixedStep is false, a value is
 // printed only if it is not zero. For sparse data this will significantly
 // reduce the size of the file.
-func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
+func (track Track) WriteWiggle(filename, description string) {
   f, err := os.Create(filename); check(err)
   defer f.Close()
 
@@ -66,13 +66,20 @@ func (track Track) WriteWiggle(filename, description string, fixedStep bool) {
 
   fmt.Fprintf(w, "track type=wiggle_0 name=\"%s\" description=\"%s\"\n", track.Name, description)
 
-  if fixedStep {
-    for seqname, sequence := range track.Data {
-      track.writeWiggle_fixedStep(w, seqname, sequence)
+  for seqname, sequence := range track.Data {
+    n := 0
+    // check if sequence is dense or sparse
+    for i := 0; i < len(sequence); i++ {
+      if math.IsNaN(sequence[i]) || sequence[i] == 0 {
+        n++
+      }
     }
-  } else {
-    for seqname, sequence := range track.Data {
+    if n >= len(sequence)/2 {
+      // sparse data track
       track.writeWiggle_variableStep(w, seqname, sequence)
+    } else {
+      // dense data track
+      track.writeWiggle_fixedStep(w, seqname, sequence)
     }
   }
 }

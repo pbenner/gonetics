@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import   "fmt"
+import   "fmt"
 import   "math"
 import   "testing"
 
@@ -85,52 +85,35 @@ func TestTrack2(t *testing.T) {
 
 func TestTrack3(t *testing.T) {
 
-  filename1 := "track_test.1.wig"
-  filename2 := "track_test.2.wig"
+  filename := "track_test.1.wig"
 
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
   track1 := AllocTrack("Test Track", genome, 10)
-  track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
+  track1.Data["test1"] = []float64{0.0,0.0,0.0,0.0,4.5,5.6,0.0,7.8,8.9,0.0}
   track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
 
-  track1.WriteWiggle(filename1, "test description", true)
-  track1.WriteWiggle(filename2, "test description", false)
+  track1.WriteWiggle(filename, "test description")
 
   track2 := AllocTrack("", genome, 10)
   track2.Map(func(x float64) float64 { return math.NaN() })
-  track3 := AllocTrack("", genome, 10)
-  track3.Map(func(x float64) float64 { return math.NaN() })
-  err1 := track2.ReadWiggle(filename1)
-  err2 := track3.ReadWiggle(filename2)
-  if err1 != nil {
-    t.Error(err1)
-  }
-  if err2 != nil {
-    t.Error(err2)
+  if err := track2.ReadWiggle(filename); err != nil {
+    t.Error(err)
   }
   if track1.Name != track2.Name {
     t.Error("TestTrack3 failed")
   }
-  if track1.Name != track3.Name {
-    t.Error("TestTrack3 failed")
-  }
   for name, seq1 := range track1.Data {
     seq2 := track2.Data[name]
-    seq3 := track3.Data[name]
     if seq2 == nil {
       t.Error("TestTrack3 failed")
     }
-    if seq3 == nil {
-      t.Error("TestTrack3 failed")
-    }
+    fmt.Println("seq1:",seq1)
+    fmt.Println("seq2:",seq2)
     for i := 0; i < len(seq1); i++ {
-      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) && math.IsNaN(seq3[i]) {
+      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
         continue
       }
       if seq1[i] != seq2[i] {
-        t.Error("TestTrack3 failed")
-      }
-      if seq1[i] != seq3[i] {
         t.Error("TestTrack3 failed")
       }
     }

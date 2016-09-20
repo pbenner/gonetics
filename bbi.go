@@ -162,7 +162,6 @@ func (reader *BbiBlockDecoder) Read() <- chan BbiBlockDecoderType {
 
 type BbiSequenceSplitter struct {
   ItemsPerSlot int
-  FixedStep    bool
   Channel      chan BbiSequenceSplitterType
 }
 
@@ -172,26 +171,25 @@ type BbiSequenceSplitterType struct {
   Sequence []float64
 }
 
-func NewBbiSequenceSplitter(itemsPerSlot int, fixedStep bool) (*BbiSequenceSplitter, error) {
+func NewBbiSequenceSplitter(itemsPerSlot int) (*BbiSequenceSplitter, error) {
   if itemsPerSlot <= 0 {
     return nil, fmt.Errorf("invalid ItemsPerSlot `%d' parameter", itemsPerSlot)
   }
   splitter := BbiSequenceSplitter{}
   splitter.ItemsPerSlot = itemsPerSlot
-  splitter.FixedStep    = fixedStep
   return &splitter, nil
 }
 
-func (splitter *BbiSequenceSplitter) Split(sequence []float64) <- chan BbiSequenceSplitterType {
+func (splitter *BbiSequenceSplitter) Split(sequence []float64, fixedStep bool) <- chan BbiSequenceSplitterType {
   splitter.Channel = make(chan BbiSequenceSplitterType)
   go func() {
-    splitter.fillChannel(sequence)
+    splitter.fillChannel(sequence, fixedStep)
     close(splitter.Channel)
   }()
   return splitter.Channel
 }
 
-func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64) error {
+func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64, fixedStep bool) error {
   for i := 0; i < len(sequence); {
     // skip NaN values
     for i < len(sequence) && math.IsNaN(sequence[i]) {
@@ -202,7 +200,7 @@ func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64) error {
     }
     i_from := i
     i_to   := i
-    if splitter.FixedStep {
+    if fixedStep {
       // loop over sequence and split sequence if maximum length
       // is reached or if value is NaN
       for j := 0; j < splitter.ItemsPerSlot && i_to < len(sequence); i_to++ {
@@ -234,13 +232,11 @@ func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64) error {
 type BbiBlockEncoder struct {
   Step      int
   Span      int
-  Type      int
-  FixedStep bool
   tmp       []byte
   position  int
 }
 
-func NewBbiBlockEncoder(step, span int, fixedStep bool) (*BbiBlockEncoder, error) {
+func NewBbiBlockEncoder(step, span int) (*BbiBlockEncoder, error) {
   if step <= 0 {
     return nil, fmt.Errorf("invalid step parameter `%d'", step)
   }
@@ -253,17 +249,11 @@ func NewBbiBlockEncoder(step, span int, fixedStep bool) (*BbiBlockEncoder, error
   writer := BbiBlockEncoder{}
   writer.Step = step
   writer.Span = span
-  if fixedStep {
-    writer.Type = 3
-    writer.tmp  = make([]byte, 4)
-  } else {
-    writer.Type = 2
-    writer.tmp  = make([]byte, 8)
-  }
+  writer.tmp  = make([]byte, 8)
   return &writer, nil
 }
 
-func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, values []float64) ([]byte, error) {
+func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64, fixedStep bool) ([]byte, error) {
   // create header for this block
   header := BbiDataHeader{}
   header.ChromId = uint32(chromid)
@@ -271,19 +261,23 @@ func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, values []float64) 
   header.End     = uint32(from)
   header.Step    = uint32(writer.Step)
   header.Span    = uint32(writer.Span)
-  header.Type    = byte(writer.Type)
+  if fixedStep {
+    header.Type = 3
+  } else {
+    header.Type = 2
+  }
   // new buffer
   var buffer bytes.Buffer
   // fill buffer with data
-  switch writer.Type {
+  switch header.Type {
   default:
     return nil, fmt.Errorf("unsupported block type")
   case 2:
     // variable step
-    for i := 0; i < len(values); i ++ {
-      if values[i] != 0.0 && !math.IsNaN(values[i]) {
+    for i := 0; i < len(sequence); i ++ {
+      if sequence[i] != 0.0 && !math.IsNaN(sequence[i]) {
         binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(header.End)))
-        binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(values[i])))
+        binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(sequence[i])))
         if _, err := buffer.Write(writer.tmp); err != nil {
           return nil, err
         }
@@ -293,9 +287,9 @@ func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, values []float64) 
     }
   case 3:
     // fixed step
-    for i := 0; i < len(values); i ++ {
-      binary.LittleEndian.PutUint32(writer.tmp, math.Float32bits(float32(values[i])))
-      if _, err := buffer.Write(writer.tmp); err != nil {
+    for i := 0; i < len(sequence); i ++ {
+      binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(sequence[i])))
+      if _, err := buffer.Write(writer.tmp[0:4]); err != nil {
         return nil, err
       }
       header.ItemCount++
@@ -1072,11 +1066,10 @@ func (vertex *RVertex) Write(file *os.File) error {
 type RVertexGenerator struct {
   BlockSize    int
   ItemsPerSlot int
-  FixedStep    bool
   Channel chan *RVertex
 }
 
-func NewRVertexGenerator(blockSize, itemsPerSlot int, fixedStep bool) (*RVertexGenerator, error) {
+func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error) {
   if blockSize <= 0 {
     return nil, fmt.Errorf("invalid block size `%d'", blockSize)
   }
@@ -1086,28 +1079,28 @@ func NewRVertexGenerator(blockSize, itemsPerSlot int, fixedStep bool) (*RVertexG
   generator := RVertexGenerator{}
   generator.BlockSize    = blockSize
   generator.ItemsPerSlot = itemsPerSlot
-  generator.FixedStep    = fixedStep
   return &generator, nil
 }
 
-func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize int) <- chan *RVertex {
+func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize int, fixedStep bool) <- chan *RVertex {
   generator.Channel = make(chan *RVertex)
   go func() {
-    generator.fillChannel(idx, sequence, binsize)
+    generator.fillChannel(idx, sequence, binsize, fixedStep)
     close(generator.Channel)
   }()
   return generator.Channel
 }
 
-func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, binsize int) error {
-  splitter, err := NewBbiSequenceSplitter(generator.ItemsPerSlot, generator.FixedStep)
+func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, binsize int, fixedStep bool) error {
+  splitter, err := NewBbiSequenceSplitter(generator.ItemsPerSlot)
   if err != nil {
     return err
   }
+  // create empty leaf
   v := new(RVertex)
   v.IsLeaf = 1
   // loop over sequence chunks
-  for chunk := range splitter.Split(sequence) {
+  for chunk := range splitter.Split(sequence, fixedStep) {
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
       generator.Channel <- v

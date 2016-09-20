@@ -54,9 +54,8 @@ func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequenc
   }
 }
 
-// Export the track to wiggle format. If fixedStep is false, a value is
-// printed only if it is not zero. For sparse data this will significantly
-// reduce the size of the file.
+// Export the track to wiggle format. For sparse tracks (more than half
+// of the values are zero), variable step formatting is used.
 func (track Track) WriteWiggle(filename, description string) {
   f, err := os.Create(filename); check(err)
   defer f.Close()

@@ -55,25 +55,28 @@ type BamAuxiliary struct {
 
 type BamReader struct {
   BgzfReader
-  Header BamHeader
-  Genome Genome
+  Header  BamHeader
+  Genome  Genome
+  Channel chan BamBlock
 }
 
 func NewBamReader(filename string) (*BamReader, error) {
   reader := new(BamReader)
   magic  := make([]byte, 4)
   genome := new(Genome)
+  file   := new(os.File)
   // temporary space for reading bytes
   var tmp []byte
 
   if f, err := os.Open(filename);  err != nil {
     return nil, err
   } else {
-    if tmp, err := NewBgzfReader(f); err != nil {
-      return nil, err
-    } else {
-      reader.BgzfReader = *tmp
-    }
+    file = f
+  }
+  if tmp, err := NewBgzfReader(file); err != nil {
+    return nil, err
+  } else {
+    reader.BgzfReader = *tmp
   }
   if _, err := reader.Read(magic); err != nil {
     return nil, err
@@ -114,7 +117,23 @@ func NewBamReader(filename string) (*BamReader, error) {
     }
     genome.AddSequence(string(tmp), int(lengthSeq))
   }
-  reader.Genome = *genome
+  reader.Genome  = *genome
+  reader.Channel = make(chan BamBlock)
+  // fill channel with blocks
+  go func() {
+    reader.fillChannel()
+    // close channel and file
+    close(reader.Channel)
+    file.Close()
+  }()
 
   return reader, nil
+}
+
+func (reader *BamReader) ReadBlocks() <- chan BamBlock {
+  return reader.Channel
+}
+
+func (reader *BamReader) fillChannel() {
+  
 }

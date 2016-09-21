@@ -25,7 +25,7 @@ import   "testing"
 
 func TestBam1(t *testing.T) {
 
-  reader, err := NewBamReader("toy.bam")
+  reader, err := NewBamReader("bam_test.bam")
 
   if err != nil {
     t.Error(err)

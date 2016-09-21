@@ -30,6 +30,27 @@ type BamHeader struct {
   NRef       int32
 }
 
+type BamBlock struct {
+  RefID        int32
+  Position     int32
+  BinMqNl      uint32
+  FlagNc       uint32
+  LSeq         int32
+  NextRefID    int32
+  NextPosition int32
+  TLength      int32
+  ReadName     string
+  Cigar        uint32
+  Seq          []byte
+  Qual         string
+}
+
+type BamAuxiliary struct {
+  Tag     [2]byte
+  ValType byte
+  Value   int
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BamReader struct {

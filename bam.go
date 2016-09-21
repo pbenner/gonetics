@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "bufio"
 import "encoding/binary"
 import "os"
 
@@ -168,9 +169,21 @@ func (reader *BamReader) fillChannel() error {
     if err := binary.Read(reader, binary.LittleEndian, &block.TLength); err != nil {
       return err
     }
+    // create a bufio reader for parsing the read name
+    r := bufio.NewReader(reader)
+    if tmp, err := r.ReadString('\000'); err != nil {
+      return err
+    } else {
+      block.ReadName = tmp
+    }
     if err := binary.Read(reader, binary.LittleEndian, &block.Cigar); err != nil {
       return err
     }
+    tmp := make([]byte, block.LSeq)
+    if _, err := reader.Read(tmp); err != nil {
+      return err
+    }
+    block.Qual = string(tmp)
     // send block to reading thread
     reader.Channel <- block
   }

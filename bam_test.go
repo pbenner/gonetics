@@ -33,4 +33,8 @@ func TestBam1(t *testing.T) {
   fmt.Printf("reader: %+v\n",reader.Header)
   fmt.Printf("reader: %+v\n",reader.Genome)
 
+  for block := range reader.ReadBlocks() {
+    fmt.Print("block: %+v\n", block)
+  }
+
 }

@@ -139,6 +139,6 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
 
 Export track to wig or bigWig:
 ```go
-  track.WriteWiggle("track.wig", "track description", true)
-  track.WriteBigWig("track.bw",  "track description", true)
+  track.WriteWiggle("track.wig", "track description")
+  track.WriteBigWig("track.bw",  "track description")
 ```

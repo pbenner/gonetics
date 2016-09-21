@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "math"
 import "encoding/binary"
 import "os"
 import "strings"
@@ -32,14 +33,12 @@ const BIGWIG_MAGIC = 0x888FFC26
 type BigWigParameters struct {
   BlockSize    int
   ItemsPerSlot int
-  FixedStep    bool
 }
 
 func DefaultBigWigParameters() BigWigParameters {
   return BigWigParameters{
     BlockSize: 256,
-    ItemsPerSlot: 1024,
-    FixedStep: true }
+    ItemsPerSlot: 1024 }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -281,6 +280,18 @@ func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWrite
   return bww, nil
 }
 
+func (bww *BigWigWriter) useFixedStep(sequence []float64) bool {
+  // number of zero or NaN values
+  n := 0
+  // check if sequence is dense or sparse
+  for i := 0; i < len(sequence); i++ {
+    if math.IsNaN(sequence[i]) || sequence[i] == 0 {
+      n++
+    }
+  }
+  return n < len(sequence)/2
+}
+
 func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
   // index of the current sequence
   var idx int
@@ -294,21 +305,22 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   } else {
     idx = tmp
   }
-  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot, bww.Parameters.FixedStep); err != nil {
+  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
     return err
   } else {
     generator = tmp
   }
-  if tmp, err := NewBbiBlockEncoder(binsize, binsize, bww.Parameters.FixedStep); err != nil {
+  if tmp, err := NewBbiBlockEncoder(binsize, binsize); err != nil {
     return err
   } else {
     encoder = tmp
   }
+  fixedStep := bww.useFixedStep(sequence)
   // split sequence into small blocks of data and write them to file
-  for leaf := range generator.Generate(idx, sequence, binsize) {
+  for leaf := range generator.Generate(idx, sequence, binsize, fixedStep) {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
-      if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i]); err != nil {
+      if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], fixedStep); err != nil {
         return err
       } else {
         if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {

@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
+//import   "fmt"
 import   "math"
 import   "testing"
 
@@ -89,7 +89,7 @@ func TestTrack3(t *testing.T) {
 
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
   track1 := AllocTrack("Test Track", genome, 10)
-  track1.Data["test1"] = []float64{0.0,0.0,0.0,0.0,4.5,5.6,0.0,7.8,8.9,0.0}
+  track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0}
   track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
 
   track1.WriteWiggle(filename, "test description")
@@ -107,8 +107,6 @@ func TestTrack3(t *testing.T) {
     if seq2 == nil {
       t.Error("TestTrack3 failed")
     }
-    fmt.Println("seq1:",seq1)
-    fmt.Println("seq2:",seq2)
     for i := 0; i < len(seq1); i++ {
       if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
         continue
@@ -253,6 +251,40 @@ func TestTrack9(t *testing.T) {
       }
       if math.Abs(seq1[i] - seq3[i]) > 1e-4 {
         t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
+      }
+    }
+  }
+}
+
+func TestTrack10(t *testing.T) {
+
+  filename := "track_test.1.wig"
+
+  genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
+  track1 := AllocTrack("Test Track", genome, 10)
+  track1.Data["test1"] = []float64{0.0,0.0,0.0,0.0,4.5,5.6,0.0,7.8,8.9,0.0}
+  track1.Data["test2"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,0,0,8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
+
+  track1.WriteWiggle(filename, "test description")
+
+  track2 := AllocTrack("", genome, 10)
+  if err := track2.ReadWiggle(filename); err != nil {
+    t.Error(err)
+  }
+  if track1.Name != track2.Name {
+    t.Error("TestTrack3 failed")
+  }
+  for name, seq1 := range track1.Data {
+    seq2 := track2.Data[name]
+    if seq2 == nil {
+      t.Error("TestTrack3 failed")
+    }
+    for i := 0; i < len(seq1); i++ {
+      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
+        continue
+      }
+      if seq1[i] != seq2[i] {
+        t.Error("TestTrack10 failed")
       }
     }
   }

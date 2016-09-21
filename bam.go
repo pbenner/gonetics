@@ -134,6 +134,44 @@ func (reader *BamReader) ReadBlocks() <- chan BamBlock {
   return reader.Channel
 }
 
-func (reader *BamReader) fillChannel() {
-  
+func (reader *BamReader) fillChannel() error {
+  var blockSize int32
+  for {
+    // read block size
+    if err := binary.Read(reader, binary.LittleEndian, &blockSize); err != nil {
+      return err
+    }
+    // allocate new block
+    block := BamBlock{}
+    // read block data
+    if err := binary.Read(reader, binary.LittleEndian, &block.RefID); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.Position); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.BinMqNl); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.FlagNc); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.NextRefID); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.NextPosition); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.TLength); err != nil {
+      return err
+    }
+    if err := binary.Read(reader, binary.LittleEndian, &block.Cigar); err != nil {
+      return err
+    }
+    // send block to reading thread
+    reader.Channel <- block
+  }
 }

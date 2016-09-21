@@ -56,6 +56,7 @@ type BamAuxiliary struct {
 
 type BamReader struct {
   BgzfReader
+  File    *os.File
   Header  BamHeader
   Genome  Genome
   Channel chan BamBlock
@@ -65,16 +66,15 @@ func NewBamReader(filename string) (*BamReader, error) {
   reader := new(BamReader)
   magic  := make([]byte, 4)
   genome := new(Genome)
-  file   := new(os.File)
   // temporary space for reading bytes
   var tmp []byte
 
   if f, err := os.Open(filename);  err != nil {
     return nil, err
   } else {
-    file = f
+    reader.File = f
   }
-  if tmp, err := NewBgzfReader(file); err != nil {
+  if tmp, err := NewBgzfReader(reader.File); err != nil {
     return nil, err
   } else {
     reader.BgzfReader = *tmp
@@ -125,7 +125,7 @@ func NewBamReader(filename string) (*BamReader, error) {
     reader.fillChannel()
     // close channel and file
     close(reader.Channel)
-    file.Close()
+    reader.File.Close()
   }()
 
   return reader, nil
@@ -142,6 +142,7 @@ func (reader *BamReader) fillChannel() error {
     if err := binary.Read(reader, binary.LittleEndian, &blockSize); err != nil {
       return err
     }
+    blockStart, _ := reader.File.Seek(0, 1)
     // allocate new block
     block := BamBlock{}
     // read block data
@@ -184,6 +185,14 @@ func (reader *BamReader) fillChannel() error {
       return err
     }
     block.Qual = string(tmp)
+    // read auxiliary data
+    for {
+      position, _ := reader.File.Seek(0, 1)
+      if int32(position - blockStart) >= blockSize {
+        break
+      }
+      // TODO
+    }
     // send block to reading thread
     reader.Channel <- block
   }

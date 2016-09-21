@@ -44,6 +44,7 @@ type BamBlock struct {
   Cigar        uint32
   Seq          []byte
   Qual         string
+  Auxiliary    []BamAuxiliary
 }
 
 type BamAuxiliary struct {
@@ -242,6 +243,7 @@ func (reader *BamReader) fillChannel() error {
       default:
         return fmt.Errorf("invalid auxiliary value type")
       }
+      block.Auxiliary = append(block.Auxiliary, aux)
     }
     // send block to reading thread
     reader.Channel <- block

@@ -191,7 +191,57 @@ func (reader *BamReader) fillChannel() error {
       if int32(position - blockStart) >= blockSize {
         break
       }
-      // TODO
+      aux := BamAuxiliary{}
+      // read data
+      if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[0]); err != nil {
+        return err
+      }
+      if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[1]); err != nil {
+        return err
+      }
+      if err := binary.Read(reader, binary.LittleEndian, &aux.ValType); err != nil {
+        return err
+      }
+      switch aux.ValType {
+      case 'c':
+        value := int8(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      case 'C':
+        value := uint8(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      case 's':
+        value := int16(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      case 'S':
+        value := uint16(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      case 'i':
+        value := int32(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      case 'I':
+        value := uint32(0)
+        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+          return err
+        }
+        aux.Value = int(value)
+      default:
+        return fmt.Errorf("invalid auxiliary value type")
+      }
     }
     // send block to reading thread
     reader.Channel <- block

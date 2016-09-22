@@ -111,6 +111,33 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
       return n, err
     }
     aux.Value = value; n += 4
+  case 'f':
+    value := float32(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 4
+  case 'd':
+    value := float64(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 8
+  case 'Z':
+  case 'H':
+    var b byte
+    var buffer bytes.Buffer
+    for {
+      if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
+        return n, err
+      }
+      n += 1
+      if b == 0 {
+        break
+      }
+      buffer.WriteByte(b)
+    }
+    aux.Value = buffer.String();
   case 'B':
     var t byte
     var k int32

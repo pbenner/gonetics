@@ -195,6 +195,18 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
 
 /* -------------------------------------------------------------------------- */
 
+type Flag uint16
+
+func (flag Flag) Bit(i uint) bool {
+  if (flag >> i) & 1 == 1 {
+    return true
+  } else {
+    return false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BamHeader struct {
   TextLength int32
   Text       string
@@ -207,7 +219,7 @@ type BamBlock struct {
   Bin          uint16
   MapQ         uint8
   RNLength     uint8
-  Flag         uint16
+  Flag         Flag
   NCigarOp     uint16
   LSeq         int32
   NextRefID    int32
@@ -312,6 +324,9 @@ func (reader *BamReader) fillChannel() {
     buf := bytes.NewBuffer([]byte{})
     // read block size
     if err := binary.Read(reader, binary.LittleEndian, &blockSize); err != nil {
+      if err == io.EOF {
+        return
+      }
       reader.Channel <- BamBlock{Error: err}
       return
     }
@@ -338,7 +353,7 @@ func (reader *BamReader) fillChannel() {
       return
     }
     // get Flag and NCigarOp from FlagNc
-    block.Flag     = uint16(flagNc >> 16)
+    block.Flag     = Flag(flagNc >> 16)
     block.NCigarOp = uint16(flagNc & 0xffff)
     if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
       reader.Channel <- BamBlock{Error: err}

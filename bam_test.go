@@ -34,5 +34,9 @@ func TestBam1(t *testing.T) {
   for block := range reader.ReadBlocks() {
     fmt.Printf("block: %+v\n", block)
   }
-
+  granges := GRanges{}
+  if err := granges.ReadBam("bam_test.bam"); err != nil {
+    t.Error(err)
+  }
+  fmt.Println(granges)
 }

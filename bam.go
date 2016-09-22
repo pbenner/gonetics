@@ -39,7 +39,9 @@ func (seq BamSeq) String() string {
     b1 := seq[i] >> 4
     b2 := seq[i] & 0xf
     fmt.Fprintf(writer, "%c", t[b1])
-    fmt.Fprintf(writer, "%c", t[b2])
+    if b2 != 0 {
+      fmt.Fprintf(writer, "%c", t[b2])
+    }
   }
   writer.Flush()
 

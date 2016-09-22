@@ -297,7 +297,7 @@ func NewBamReader(filename string) (*BamReader, error) {
     if err := binary.Read(reader, binary.LittleEndian, &lengthSeq); err != nil {
       return nil, err
     }
-    genome.AddSequence(string(tmp), int(lengthSeq))
+    genome.AddSequence(string(tmp[0:lengthName-1]), int(lengthSeq))
   }
   reader.Genome  = *genome
   reader.Channel = make(chan BamBlock)

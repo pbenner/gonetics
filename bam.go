@@ -264,15 +264,12 @@ func IsBamFile(filename string) (bool, error) {
     file = f
   }
   if tmp, err := NewBgzfReader(file); err != nil {
-    return false, err
+    return false, nil
   } else {
     reader.BgzfReader = *tmp
   }
   if _, err := reader.Read(magic); err != nil {
-    if err == io.EOF {
-      return false, nil
-    }
-    return false, err
+    return false, nil
   }
   if string(magic) != "BAM\001" {
     return false, nil

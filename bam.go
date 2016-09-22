@@ -237,9 +237,9 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
 
 /* -------------------------------------------------------------------------- */
 
-type Flag uint16
+type BamFlag uint16
 
-func (flag Flag) Bit(i uint) bool {
+func (flag BamFlag) Bit(i uint) bool {
   if (flag >> i) & 1 == 1 {
     return true
   } else {
@@ -249,9 +249,9 @@ func (flag Flag) Bit(i uint) bool {
 
 /* -------------------------------------------------------------------------- */
 
-type Cigar []uint32
+type BamCigar []uint32
 
-func (cigar Cigar) String() string {
+func (cigar BamCigar) String() string {
   var buffer bytes.Buffer
   writer := bufio.NewWriter(&buffer)
 
@@ -278,14 +278,14 @@ type BamBlock struct {
   Bin          uint16
   MapQ         uint8
   RNLength     uint8
-  Flag         Flag
+  Flag         BamFlag
   NCigarOp     uint16
   LSeq         int32
   NextRefID    int32
   NextPosition int32
   TLength      int32
   ReadName     string
-  Cigar        Cigar
+  Cigar        BamCigar
   Seq          BamSeq
   Qual         []byte
   Auxiliary    []BamAuxiliary
@@ -438,7 +438,7 @@ func (reader *BamReader) fillChannel() {
       return
     }
     // get Flag and NCigarOp from FlagNc
-    block.Flag     = Flag(flagNc >> 16)
+    block.Flag     = BamFlag(flagNc >> 16)
     block.NCigarOp = uint16(flagNc & 0xffff)
     if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
       reader.Channel <- BamBlock{Error: err}
@@ -470,7 +470,7 @@ func (reader *BamReader) fillChannel() {
       buf.WriteByte(b)
     }
     // parse cigar block
-    block.Cigar = make(Cigar, block.NCigarOp)
+    block.Cigar = make(BamCigar, block.NCigarOp)
     for i := 0; i < int(block.NCigarOp); i++ {
       if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
         reader.Channel <- BamBlock{Error: err}

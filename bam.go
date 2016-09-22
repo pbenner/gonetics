@@ -19,7 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "bufio"
+import "bytes"
 import "encoding/binary"
 import "os"
 
@@ -45,6 +45,7 @@ type BamBlock struct {
   Seq          []byte
   Qual         string
   Auxiliary    []BamAuxiliary
+  Error        error
 }
 
 type BamAuxiliary struct {
@@ -136,54 +137,72 @@ func (reader *BamReader) ReadBlocks() <- chan BamBlock {
   return reader.Channel
 }
 
-func (reader *BamReader) fillChannel() error {
+func (reader *BamReader) fillChannel() {
   var blockSize int32
   for {
+    buf := bytes.NewBuffer([]byte{})
     // read block size
     if err := binary.Read(reader, binary.LittleEndian, &blockSize); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     blockStart, _ := reader.File.Seek(0, 1)
     // allocate new block
     block := BamBlock{}
     // read block data
     if err := binary.Read(reader, binary.LittleEndian, &block.RefID); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.Position); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.BinMqNl); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.FlagNc); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.NextRefID); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.NextPosition); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.TLength); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     // create a bufio reader for parsing the read name
-    r := bufio.NewReader(reader)
-    if tmp, err := r.ReadString('\000'); err != nil {
-      return err
-    } else {
-      block.ReadName = tmp
+    var b byte
+    for {
+      if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
+        reader.Channel <- BamBlock{Error: err}
+        return
+      }
+      if b == 0 {
+        block.ReadName = buf.String()
+        break
+      }
+      buf.WriteByte(b)
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.Cigar); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     tmp := make([]byte, block.LSeq)
     if _, err := reader.Read(tmp); err != nil {
-      return err
+      reader.Channel <- BamBlock{Error: err}
+      return
     }
     block.Qual = string(tmp)
     // read auxiliary data
@@ -195,53 +214,63 @@ func (reader *BamReader) fillChannel() error {
       aux := BamAuxiliary{}
       // read data
       if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[0]); err != nil {
-        return err
+        reader.Channel <- BamBlock{Error: err}
+        return
       }
       if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[1]); err != nil {
-        return err
+        reader.Channel <- BamBlock{Error: err}
+        return
       }
       if err := binary.Read(reader, binary.LittleEndian, &aux.ValType); err != nil {
-        return err
+        reader.Channel <- BamBlock{Error: err}
+        return
       }
       switch aux.ValType {
       case 'c':
         value := int8(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       case 'C':
         value := uint8(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       case 's':
         value := int16(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       case 'S':
         value := uint16(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       case 'i':
         value := int32(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       case 'I':
         value := uint32(0)
         if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          return err
+          reader.Channel <- BamBlock{Error: err}
+          return
         }
         aux.Value = int(value)
       default:
-        return fmt.Errorf("invalid auxiliary value type")
+        reader.Channel <- BamBlock{Error: fmt.Errorf("invalid auxiliary value type")}
+        return
       }
       block.Auxiliary = append(block.Auxiliary, aux)
     }

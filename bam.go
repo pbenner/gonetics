@@ -254,6 +254,34 @@ type BamBlock struct {
 
 /* -------------------------------------------------------------------------- */
 
+func IsBamFile(filename string) (bool, error) {
+  file   := new(os.File)
+  reader := new(BamReader)
+  magic  := make([]byte, 4)
+  if f, err := os.Open(filename);  err != nil {
+    return false, err
+  } else {
+    file = f
+  }
+  if tmp, err := NewBgzfReader(file); err != nil {
+    return false, err
+  } else {
+    reader.BgzfReader = *tmp
+  }
+  if _, err := reader.Read(magic); err != nil {
+    if err == io.EOF {
+      return false, nil
+    }
+    return false, err
+  }
+  if string(magic) != "BAM\001" {
+    return false, nil
+  }
+  return true, nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BamReader struct {
   BgzfReader
   Header  BamHeader

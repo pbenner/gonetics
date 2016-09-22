@@ -129,6 +129,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 1
       }
+      aux.Value = tmp
     case 'C':
       tmp := make([]uint8, k)
       for i := 0; i < int(k); i++ {
@@ -137,6 +138,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 1
       }
+      aux.Value = tmp
     case 's':
       tmp := make([]int16, k)
       for i := 0; i < int(k); i++ {
@@ -145,6 +147,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 2
       }
+      aux.Value = tmp
     case 'S':
       tmp := make([]uint16, k)
       for i := 0; i < int(k); i++ {
@@ -153,6 +156,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 2
       }
+      aux.Value = tmp
     case 'i':
       tmp := make([]int32, k)
       for i := 0; i < int(k); i++ {
@@ -161,6 +165,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 4
       }
+      aux.Value = tmp
     case 'I':
       tmp := make([]uint32, k)
       for i := 0; i < int(k); i++ {
@@ -169,6 +174,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 4
       }
+      aux.Value = tmp
     case 'f':
       tmp := make([]float32, k)
       for i := 0; i < int(k); i++ {
@@ -177,6 +183,9 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         }
         n += 4
       }
+      aux.Value = tmp
+    default:
+      return n, fmt.Errorf("invalid auxiliary array value type `%v'", t)
     }
   default:
     return n, fmt.Errorf("invalid auxiliary value type `%v'", valueType)

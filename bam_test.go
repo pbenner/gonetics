@@ -30,8 +30,6 @@ func TestBam1(t *testing.T) {
   if err != nil {
     t.Error(err)
   }
-  fmt.Printf("reader: %+v\n",reader.Header)
-  fmt.Printf("reader: %+v\n",reader.Genome)
 
   for block := range reader.ReadBlocks() {
     fmt.Printf("block: %+v\n", block)

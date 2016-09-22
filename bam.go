@@ -393,9 +393,8 @@ func (reader *BamReader) fillChannel() {
         return
       }
     }
-    fmt.Printf("block: %+v\n", block)
     // read auxiliary data
-    position := 8 * 4 + int(block.RNLength) + int(block.NCigarOp) + int((block.LSeq + 1)/2) + int(block.LSeq)
+    position := 8*4 + int(block.RNLength) + 4*int(block.NCigarOp) + int((block.LSeq + 1)/2) + int(block.LSeq)
     for i := 0; position + i < int(blockSize); {
       aux := BamAuxiliary{}
       if n, err := aux.Read(reader); err != nil {

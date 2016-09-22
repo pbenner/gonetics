@@ -19,9 +19,31 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "bufio"
 import "bytes"
 import "encoding/binary"
 import "os"
+
+/* -------------------------------------------------------------------------- */
+
+type BamSeq []byte
+
+func (seq BamSeq) String() string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  t := []byte{'=', 'A', 'C', 'M', 'G', 'R', 'S', 'V', 'T', 'W', 'Y', 'H', 'K', 'D', 'B', 'N'}
+
+  for i := 0; i < len(seq); i++ {
+    b1 := seq[i] >> 4
+    b2 := seq[i] & 0xf
+    fmt.Fprintf(writer, "%c", t[b1])
+    fmt.Fprintf(writer, "%c", t[b2])
+  }
+  writer.Flush()
+
+  return buffer.String()
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -36,14 +58,16 @@ type BamBlock struct {
   Position     int32
   BinMqNl      uint32
   FlagNc       uint32
+  Flag         uint16
+  NCigarOp     uint16
   LSeq         int32
   NextRefID    int32
   NextPosition int32
   TLength      int32
   ReadName     string
-  Cigar        uint32
-  Seq          []byte
-  Qual         string
+  Cigar        []uint32
+  Seq          BamSeq
+  Qual         []byte
   Auxiliary    []BamAuxiliary
   Error        error
 }
@@ -139,6 +163,7 @@ func (reader *BamReader) ReadBlocks() <- chan BamBlock {
 
 func (reader *BamReader) fillChannel() {
   var blockSize int32
+  var flagNc    uint32
   for {
     buf := bytes.NewBuffer([]byte{})
     // read block size
@@ -162,10 +187,13 @@ func (reader *BamReader) fillChannel() {
       reader.Channel <- BamBlock{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.FlagNc); err != nil {
+    if err := binary.Read(reader, binary.LittleEndian, &flagNc); err != nil {
       reader.Channel <- BamBlock{Error: err}
       return
     }
+    // get Flag and NCigarOp from FlagNc
+    block.Flag     = uint16(flagNc >> 16)
+    block.NCigarOp = uint16(flagNc & 0xffff)
     if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
       reader.Channel <- BamBlock{Error: err}
       return
@@ -182,7 +210,7 @@ func (reader *BamReader) fillChannel() {
       reader.Channel <- BamBlock{Error: err}
       return
     }
-    // create a bufio reader for parsing the read name
+    // parse the read name
     var b byte
     for {
       if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
@@ -195,16 +223,31 @@ func (reader *BamReader) fillChannel() {
       }
       buf.WriteByte(b)
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.Cigar); err != nil {
-      reader.Channel <- BamBlock{Error: err}
-      return
+    // parse cigar block
+    block.Cigar = make([]uint32, block.NCigarOp)
+    for i := 0; i < int(block.NCigarOp); i++ {
+      if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
+        reader.Channel <- BamBlock{Error: err}
+        return
+      }
     }
-    tmp := make([]byte, block.LSeq)
-    if _, err := reader.Read(tmp); err != nil {
-      reader.Channel <- BamBlock{Error: err}
-      return
+    // parse seq
+    block.Seq = make([]byte, (block.LSeq+1)/2)
+    for i := 0; i < int((block.LSeq+1)/2); i++ {
+      if err := binary.Read(reader, binary.LittleEndian, &block.Seq[i]); err != nil {
+        reader.Channel <- BamBlock{Error: err}
+        return
+      }
     }
-    block.Qual = string(tmp)
+    // parse qual block
+    block.Qual = make([]byte, block.LSeq)
+    for i := 0; i < int(block.LSeq); i++ {
+      if err := binary.Read(reader, binary.LittleEndian, &block.Qual[i]); err != nil {
+        reader.Channel <- BamBlock{Error: err}
+        return
+      }
+    }
+    fmt.Printf("block: %+v\n", block)
     // read auxiliary data
     for {
       position, _ := reader.File.Seek(0, 1)
@@ -269,7 +312,7 @@ func (reader *BamReader) fillChannel() {
         }
         aux.Value = int(value)
       default:
-        reader.Channel <- BamBlock{Error: fmt.Errorf("invalid auxiliary value type")}
+        reader.Channel <- BamBlock{Error: fmt.Errorf("invalid auxiliary value type `%v'", aux.ValType)}
         return
       }
       block.Auxiliary = append(block.Auxiliary, aux)

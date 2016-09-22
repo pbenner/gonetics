@@ -56,8 +56,9 @@ type BamHeader struct {
 type BamBlock struct {
   RefID        int32
   Position     int32
-  BinMqNl      uint32
-  FlagNc       uint32
+  Bin          uint16
+  MapQ         uint8
+  RNLength     uint8
   Flag         uint16
   NCigarOp     uint16
   LSeq         int32
@@ -164,6 +165,7 @@ func (reader *BamReader) ReadBlocks() <- chan BamBlock {
 func (reader *BamReader) fillChannel() {
   var blockSize int32
   var flagNc    uint32
+  var binMqNl   uint32
   for {
     buf := bytes.NewBuffer([]byte{})
     // read block size
@@ -183,10 +185,13 @@ func (reader *BamReader) fillChannel() {
       reader.Channel <- BamBlock{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.BinMqNl); err != nil {
+    if err := binary.Read(reader, binary.LittleEndian, &binMqNl); err != nil {
       reader.Channel <- BamBlock{Error: err}
       return
     }
+    block.Bin      = uint16((binMqNl >> 16) & 0xffff)
+    block.MapQ     = uint8 ((binMqNl >>  8) & 0xff)
+    block.RNLength = uint8 ((binMqNl >>  0) & 0xff)
     if err := binary.Read(reader, binary.LittleEndian, &flagNc); err != nil {
       reader.Channel <- BamBlock{Error: err}
       return

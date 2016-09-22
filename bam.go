@@ -109,8 +109,77 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
       return n, err
     }
     aux.Value = value; n += 4
+  case 'B':
+    var t byte
+    var k int32
+    if err := binary.Read(reader, binary.LittleEndian, &t); err != nil {
+      return n, err
+    }
+    n += 1
+    if err := binary.Read(reader, binary.LittleEndian, &k); err != nil {
+      return n, err
+    }
+    n += 4
+    switch t {
+    case 'c':
+      tmp := make([]int8, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 1
+      }
+    case 'C':
+      tmp := make([]uint8, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 1
+      }
+    case 's':
+      tmp := make([]int16, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 2
+      }
+    case 'S':
+      tmp := make([]uint16, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 2
+      }
+    case 'i':
+      tmp := make([]int32, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 4
+      }
+    case 'I':
+      tmp := make([]uint32, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 4
+      }
+    case 'f':
+      tmp := make([]float32, k)
+      for i := 0; i < int(k); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &tmp[i]); err != nil {
+          return n, err
+        }
+        n += 4
+      }
+    }
   default:
-    return 0, fmt.Errorf("invalid auxiliary value type `%v'", valueType)
+    return n, fmt.Errorf("invalid auxiliary value type `%v'", valueType)
   }
   return n, nil
 }

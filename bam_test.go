@@ -25,15 +25,6 @@ import   "testing"
 
 func TestBam1(t *testing.T) {
 
-  reader, err := NewBamReader("bam_test.bam")
-
-  if err != nil {
-    t.Error(err)
-  }
-
-  for block := range reader.ReadBlocks() {
-    fmt.Printf("block: %+v\n", block)
-  }
   granges := GRanges{}
   if err := granges.ReadBam("bam_test.bam"); err != nil {
     t.Error(err)

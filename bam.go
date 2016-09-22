@@ -207,6 +207,23 @@ func (flag Flag) Bit(i uint) bool {
 
 /* -------------------------------------------------------------------------- */
 
+type Cigar []uint32
+
+func (cigar Cigar) String() string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  t := []byte{'M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'}
+
+  for i := 0; i < len(cigar); i++ {
+    fmt.Fprintf(writer, "%d%c", cigar[i] >> 4, t[cigar[i] & 0xf])
+  }
+  writer.Flush()
+  return buffer.String()
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BamHeader struct {
   TextLength int32
   Text       string
@@ -226,7 +243,7 @@ type BamBlock struct {
   NextPosition int32
   TLength      int32
   ReadName     string
-  Cigar        []uint32
+  Cigar        Cigar
   Seq          BamSeq
   Qual         []byte
   Auxiliary    []BamAuxiliary
@@ -385,7 +402,7 @@ func (reader *BamReader) fillChannel() {
       buf.WriteByte(b)
     }
     // parse cigar block
-    block.Cigar = make([]uint32, block.NCigarOp)
+    block.Cigar = make(Cigar, block.NCigarOp)
     for i := 0; i < int(block.NCigarOp); i++ {
       if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
         reader.Channel <- BamBlock{Error: err}

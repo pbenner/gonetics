@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
+//import   "fmt"
 import   "testing"
 
 /* -------------------------------------------------------------------------- */
@@ -29,5 +29,10 @@ func TestBam1(t *testing.T) {
   if err := granges.ReadBam("bam_test.bam"); err != nil {
     t.Error(err)
   }
-  fmt.Println(granges)
+  if granges.Length() != 12 {
+    t.Error("TestBam1 failed")
+  }
+  if granges.GetMetaStr("cigar")[3] != "6M14N1I5M" {
+    t.Error("TestBam1 failed")
+  }
 }

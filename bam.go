@@ -124,6 +124,7 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
     }
     aux.Value = value; n += 8
   case 'Z':
+    fallthrough
   case 'H':
     var b byte
     var buffer bytes.Buffer

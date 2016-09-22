@@ -124,8 +124,6 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
     }
     aux.Value = value; n += 8
   case 'Z':
-    fallthrough
-  case 'H':
     var b byte
     var buffer bytes.Buffer
     for {
@@ -137,6 +135,20 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
         break
       }
       buffer.WriteByte(b)
+    }
+    aux.Value = buffer.String();
+  case 'H':
+    var b byte
+    var buffer bytes.Buffer
+    for {
+      if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
+        return n, err
+      }
+      n += 1
+      if b == 0 {
+        break
+      }
+      fmt.Fprintf(&buffer, "%X", b)
     }
     aux.Value = buffer.String();
   case 'B':

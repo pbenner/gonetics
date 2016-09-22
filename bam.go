@@ -22,6 +22,7 @@ import "fmt"
 import "bufio"
 import "bytes"
 import "encoding/binary"
+import "io"
 import "os"
 
 /* -------------------------------------------------------------------------- */
@@ -43,6 +44,75 @@ func (seq BamSeq) String() string {
   writer.Flush()
 
   return buffer.String()
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BamAuxiliary struct {
+  Tag   [2]byte
+  Value interface{}
+}
+
+func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
+  var valueType byte
+  // number of read bytes
+  n := 0
+  // read data
+  if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[0]); err != nil {
+    return n, err
+  }
+  n += 1
+  if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[1]); err != nil {
+    return n, err
+  }
+  n += 1
+  if err := binary.Read(reader, binary.LittleEndian, &valueType); err != nil {
+    return n, err
+  }
+  // three bytes read so far
+  n += 1
+  // read value
+  switch valueType {
+  case 'c':
+    value := int8(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 1
+  case 'C':
+    value := uint8(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 1
+  case 's':
+    value := int16(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 2
+  case 'S':
+    value := uint16(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 2
+  case 'i':
+    value := int32(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 4
+  case 'I':
+    value := uint32(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 4
+  default:
+    return 0, fmt.Errorf("invalid auxiliary value type `%v'", valueType)
+  }
+  return n, nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -73,23 +143,17 @@ type BamBlock struct {
   Error        error
 }
 
-type BamAuxiliary struct {
-  Tag     [2]byte
-  ValType byte
-  Value   int
-}
-
 /* -------------------------------------------------------------------------- */
 
 type BamReader struct {
   BgzfReader
-  File    *os.File
   Header  BamHeader
   Genome  Genome
   Channel chan BamBlock
 }
 
 func NewBamReader(filename string) (*BamReader, error) {
+  file   := new(os.File)
   reader := new(BamReader)
   magic  := make([]byte, 4)
   genome := new(Genome)
@@ -99,9 +163,9 @@ func NewBamReader(filename string) (*BamReader, error) {
   if f, err := os.Open(filename);  err != nil {
     return nil, err
   } else {
-    reader.File = f
+    file = f
   }
-  if tmp, err := NewBgzfReader(reader.File); err != nil {
+  if tmp, err := NewBgzfReader(file); err != nil {
     return nil, err
   } else {
     reader.BgzfReader = *tmp
@@ -152,7 +216,7 @@ func NewBamReader(filename string) (*BamReader, error) {
     reader.fillChannel()
     // close channel and file
     close(reader.Channel)
-    reader.File.Close()
+    file.Close()
   }()
 
   return reader, nil
@@ -173,7 +237,6 @@ func (reader *BamReader) fillChannel() {
       reader.Channel <- BamBlock{Error: err}
       return
     }
-    blockStart, _ := reader.File.Seek(0, 1)
     // allocate new block
     block := BamBlock{}
     // read block data
@@ -254,71 +317,14 @@ func (reader *BamReader) fillChannel() {
     }
     fmt.Printf("block: %+v\n", block)
     // read auxiliary data
-    for {
-      position, _ := reader.File.Seek(0, 1)
-      if int32(position - blockStart) >= blockSize {
-        break
-      }
+    position := 8 * 4 + int(block.RNLength) + int(block.NCigarOp) + int((block.LSeq + 1)/2) + int(block.LSeq)
+    for i := 0; position + i < int(blockSize); {
       aux := BamAuxiliary{}
-      // read data
-      if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[0]); err != nil {
+      if n, err := aux.Read(reader); err != nil {
         reader.Channel <- BamBlock{Error: err}
         return
-      }
-      if err := binary.Read(reader, binary.LittleEndian, &aux.Tag[1]); err != nil {
-        reader.Channel <- BamBlock{Error: err}
-        return
-      }
-      if err := binary.Read(reader, binary.LittleEndian, &aux.ValType); err != nil {
-        reader.Channel <- BamBlock{Error: err}
-        return
-      }
-      switch aux.ValType {
-      case 'c':
-        value := int8(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      case 'C':
-        value := uint8(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      case 's':
-        value := int16(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      case 'S':
-        value := uint16(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      case 'i':
-        value := int32(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      case 'I':
-        value := uint32(0)
-        if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-          reader.Channel <- BamBlock{Error: err}
-          return
-        }
-        aux.Value = int(value)
-      default:
-        reader.Channel <- BamBlock{Error: fmt.Errorf("invalid auxiliary value type `%v'", aux.ValType)}
-        return
+      } else {
+        i += n
       }
       block.Auxiliary = append(block.Auxiliary, aux)
     }

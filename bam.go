@@ -263,6 +263,7 @@ func IsBamFile(filename string) (bool, error) {
   } else {
     file = f
   }
+  defer file.Close()
   if tmp, err := NewBgzfReader(file); err != nil {
     return false, nil
   } else {

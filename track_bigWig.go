@@ -54,7 +54,12 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
     return fmt.Errorf("sequence `%s' not vailable in track", seqname)
   } else {
     for t := range decoder.Read() {
-      seq[track.Index(t.From)] = t.Value
+      idx := track.Index(t.From)
+      if idx >= len(seq) {
+        return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but track has only `%d' bins", t.From, idx, len(seq))
+      } else {
+        seq[track.Index(t.From)] = t.Value
+      }
     }
   }
   return nil

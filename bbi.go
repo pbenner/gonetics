@@ -276,7 +276,7 @@ func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64
     // variable step
     for i := 0; i < len(sequence); i ++ {
       if sequence[i] != 0.0 && !math.IsNaN(sequence[i]) {
-        binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(header.End)))
+        binary.LittleEndian.PutUint32(writer.tmp[0:4], header.End)
         binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(sequence[i])))
         if _, err := buffer.Write(writer.tmp); err != nil {
           return nil, err

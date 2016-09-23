@@ -30,40 +30,54 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) {
+func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) error {
   for i, gap := 0, true; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) {
       if gap {
-        fmt.Fprintf(w, "fixedStep chrom=%s start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize)
+        if _, err := fmt.Fprintf(w, "fixedStep chrom=%s start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize); err != nil {
+          return err
+        }
         gap = false
       }
-      fmt.Fprintf(w, "%f\n", sequence[i])
+      if _, err := fmt.Fprintf(w, "%f\n", sequence[i]); err != nil {
+        return err
+      }
     } else {
       gap = true
     }
   }
+  return nil
 }
 
-func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) {
-  fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize)
-
+func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) error {
+  if _, err := fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize); err != nil {
+    return err
+  }
   for i := 0; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) && sequence[i] != 0.0 {
-      fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, sequence[i])
+      if _, err := fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, sequence[i]); err != nil {
+        return err
+      }
     }
   }
+  return nil
 }
 
 // Export the track to wiggle format. For sparse tracks (more than half
 // of the values are zero), variable step formatting is used.
-func (track Track) WriteWiggle(filename, description string) {
-  f, err := os.Create(filename); check(err)
+func (track Track) WriteWiggle(filename, description string) error {
+  f, err := os.Create(filename)
+  if err != nil {
+    return err
+  }
   defer f.Close()
 
   w := bufio.NewWriter(f)
   defer w.Flush()
 
-  fmt.Fprintf(w, "track type=wiggle_0 name=\"%s\" description=\"%s\"\n", track.Name, description)
+  if _, err := fmt.Fprintf(w, "track type=wiggle_0 name=\"%s\" description=\"%s\"\n", track.Name, description); err != nil {
+    return err
+  }
 
   for seqname, sequence := range track.Data {
     n := 0
@@ -75,12 +89,17 @@ func (track Track) WriteWiggle(filename, description string) {
     }
     if n >= len(sequence)/2 {
       // sparse data track
-      track.writeWiggle_variableStep(w, seqname, sequence)
+      if err := track.writeWiggle_variableStep(w, seqname, sequence); err != nil {
+        return err
+      }
     } else {
       // dense data track
-      track.writeWiggle_fixedStep(w, seqname, sequence)
+      if err := track.writeWiggle_fixedStep(w, seqname, sequence); err != nil {
+        return err
+      }
     }
   }
+  return nil
 }
 
 func readWiggle_header(scanner *bufio.Scanner, result *Track) error {

@@ -282,8 +282,8 @@ func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64
           return nil, err
         }
         header.ItemCount++
-        header.End += header.Step
       }
+      header.End += header.Step
     }
   case 3:
     // fixed step

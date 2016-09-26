@@ -45,6 +45,10 @@ func (granges *GRanges) ReadBam(filename string) error {
     if block.RefID == -1 {
       continue
     }
+    if block.Flag.Bit(2) {
+      // read is unmapped, skip...
+      continue
+    }
     if block.RefID < 0 || int(block.RefID) > len(reader.Genome.Seqnames) {
       return fmt.Errorf("bam file `%s' contains invalid RefID `%d'", filename, block.RefID)
     }

@@ -18,6 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+//import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
@@ -40,6 +41,9 @@ func (granges *GRanges) ReadBam(filename string) error {
   for block := range reader.ReadBlocks() {
     if block.Error != nil {
       return block.Error
+    }
+    if block.RefID == -1 {
+      continue
     }
     seqnames = append(seqnames, reader.Genome.Seqnames[block.RefID])
     from     = append(from,     int(block.Position))

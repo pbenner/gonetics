@@ -35,7 +35,7 @@ func TestGRanges1(t *testing.T) {
   if granges.Length() != 20 {
     t.Error("TestGRanges1 failed!")
   }
-  if granges.MetaLength() != 1 {
+  if granges.MetaLength() != 3 {
     t.Error("TestGRanges1 failed!")
   }
 
@@ -57,7 +57,7 @@ func TestGRanges2(t *testing.T) {
   if granges.Length() != 20 {
     t.Error("TestGRanges2 failed!")
   }
-  if granges.MetaLength() != 2 {
+  if granges.MetaLength() != 4 {
     t.Error("TestGRanges2 failed!")
   }
 }

@@ -156,6 +156,8 @@ func (g *GRanges) ReadBed6(filename string) error {
   seqnames := []string{}
   from     := []int{}
   to       := []int{}
+  name     := []string{}
+  score    := []int{}
   strand   := []byte{}
 
   for scanner.Scan() {
@@ -167,19 +169,27 @@ func (g *GRanges) ReadBed6(filename string) error {
       fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
-    t2, e2 := strconv.ParseInt(fields[2], 10, 64)
     if e1 != nil {
       return e1
     }
+    t2, e2 := strconv.ParseInt(fields[2], 10, 64)
     if e2 != nil {
       return e2
+    }
+    t3, e3 := strconv.ParseInt(fields[4], 10, 64)
+    if e3 != nil {
+      return e3
     }
     seqnames = append(seqnames, fields[0])
     from     = append(from,     int(t1))
     to       = append(to,       int(t2))
+    name     = append(name,     fields[3])
+    score    = append(score,    int(t3))
     strand   = append(strand,   fields[5][0])
   }
   *g = NewGRanges(seqnames, from, to, strand)
+  g.AddMeta("name",  name)
+  g.AddMeta("score", score)
 
   return nil
 }

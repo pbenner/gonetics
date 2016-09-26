@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
@@ -44,6 +44,9 @@ func (granges *GRanges) ReadBam(filename string) error {
     }
     if block.RefID == -1 {
       continue
+    }
+    if block.RefID < 0 || int(block.RefID) > len(reader.Genome.Seqnames) {
+      return fmt.Errorf("bam file `%s' contains invalid RefID `%d'", filename, block.RefID)
     }
     seqnames = append(seqnames, reader.Genome.Seqnames[block.RefID])
     from     = append(from,     int(block.Position))

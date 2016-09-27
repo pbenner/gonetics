@@ -75,6 +75,12 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
   n += 1
   // read value
   switch valueType {
+  case 'A':
+    value := byte(0)
+    if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
+      return n, err
+    }
+    aux.Value = value; n += 1
   case 'c':
     value := int8(0)
     if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
@@ -227,10 +233,10 @@ func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
       }
       aux.Value = tmp
     default:
-      return n, fmt.Errorf("invalid auxiliary array value type `%v'", t)
+      return n, fmt.Errorf("invalid auxiliary array value type `%c'", t)
     }
   default:
-    return n, fmt.Errorf("invalid auxiliary value type `%v'", valueType)
+    return n, fmt.Errorf("invalid auxiliary value type `%c'", valueType)
   }
   return n, nil
 }

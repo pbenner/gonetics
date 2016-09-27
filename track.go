@@ -183,7 +183,7 @@ func (track Track) GetSlice(r GRangesRow) ([]float64, error) {
 // Add reads to track. All reads are extended in 3' direction to have
 // a length of [d]. This is the same as the macs2 `extsize' parameter.
 // Reads are not extended if [d] is zero.
-func (track Track) AddReads(reads GRanges, d int) {
+func (track Track) AddReads(reads GRanges, d int) error {
   sum_reads_outside := 0
   for i := 0; i < reads.Length(); i++ {
     seq, ok := track.Data[reads.Seqnames[i]]
@@ -200,7 +200,7 @@ func (track Track) AddReads(reads GRanges, d int) {
         from = to - d + 1
         if from < 0 { from = 0 }
       } else {
-        panic("AddReads(): no strand information given!")
+        return fmt.Errorf("strand information is missing for read `%d'", i)
       }
     }
     for j := track.Index(from); j <= track.Index(to); j++ {
@@ -218,6 +218,7 @@ func (track Track) AddReads(reads GRanges, d int) {
     fmt.Fprintf(os.Stderr, "AddReads(): %d read(s) are outside the genome!\n",
       sum_reads_outside)
   }
+  return nil
 }
 
 // Combine treatment and control from a ChIP-seq experiment into a single track.
@@ -239,12 +240,15 @@ func NormalizedTrack(name string, treatment, control []GRanges, genome Genome, d
   return track1
 }
 
-func (treatment Track) Normalize(control Track, c1, c2 float64, logScale bool) {
+func (treatment Track) Normalize(control Track, c1, c2 float64, logScale bool) error {
+  if c1 <= 0.0 || c2 <= 0.0 {
+    return fmt.Errorf("pseudocounts must be strictly positive")
+  }
   for seqname, _ := range treatment.Data {
     seq1     := treatment.Data[seqname]
     seq2, ok := control  .Data[seqname]
     if !ok {
-      panic(fmt.Sprintf("Control has no reads on sequence `%s'!", seqname))
+      continue
     }
     for i := 0; i < len(seq1); i++ {
       if logScale {
@@ -254,6 +258,7 @@ func (treatment Track) Normalize(control Track, c1, c2 float64, logScale bool) {
       }
     }
   }
+  return nil
 }
 
 // Smoothen track data with an adaptive window method. For each region the smallest window

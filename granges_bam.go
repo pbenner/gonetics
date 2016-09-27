@@ -73,6 +73,6 @@ func (granges *GRanges) ReadBam(filename string) error {
   granges.AddMeta("sequence", sequence)
   granges.AddMeta("mapq", mapq)
   granges.AddMeta("cigar", cigar)
-
+  
   return nil
 }

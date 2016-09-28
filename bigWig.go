@@ -315,19 +315,21 @@ func (bww *BigWigWriter) useFixedStep(sequence []float64) bool {
   return n < len(sequence)/2
 }
 
-func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) error {
+func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, error) {
   // generator for RTree vertices
   var generator *RVertexGenerator
   // data block encoder
   var encoder   *BbiBlockEncoder
+  // number of blocks written
+  n := 0
 
   if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
-    return err
+    return n, err
   } else {
     generator = tmp
   }
   if tmp, err := NewBbiBlockEncoder(binsize, binsize); err != nil {
-    return err
+    return n, err
   } else {
     encoder = tmp
   }
@@ -337,17 +339,19 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) error {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
       if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], fixedStep); err != nil {
-        return err
+        return n, err
       } else {
         if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
-          return err
+          return n, err
         }
       }
+      // increment number of blocks
+      n++
     }
     // save leaf for tree construction
     bww.Leaves = append(bww.Leaves, leaf)
   }
-  return nil
+  return n, nil
 }
 
 func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
@@ -359,14 +363,24 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   } else {
     idx = tmp
   }
-  return bww.write(idx, sequence, binsize)
+  if n, err := bww.write(idx, sequence, binsize); err != nil {
+    return err
+  } else {
+    bww.Bwf.Header.NBlocks += uint64(n)
+    return bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr)
+  }
 }
 
-func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize int) error {
+func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, i int) error {
   if idx, err := bww.Genome.GetIdx(seqname); err != nil {
     return err
   } else {
-    return bww.write(idx, sequence, binsize)
+    if n, err := bww.write(idx, sequence, binsize); err != nil {
+      return err
+    } else {
+      bww.Bwf.Header.ZoomHeaders[i].NBlocks += uint32(n)
+      return bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.BbiFile.Fptr)
+    }
   }
 }
 
@@ -402,11 +416,15 @@ func (bww *BigWigWriter) WriteZoomIndex(i int) error {
   return nil
 }
 
-func (bww *BigWigWriter) MarkZoomDataOffset(i int) error {
+func (bww *BigWigWriter) StartZoomData(i int) error {
   if offset, err := bww.Bwf.Fptr.Seek(0, 1); err != nil {
     return err
   } else {
     bww.Bwf.Header.ZoomHeaders[i].DataOffset = uint64(offset)
+  }
+  // write NBlocks
+  if err := binary.Write(bww.Bwf.Fptr, binary.LittleEndian, bww.Bwf.Header.ZoomHeaders[i].NBlocks); err != nil {
+    return err
   }
   // update offsets
   if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Bwf.Fptr); err != nil {

@@ -1152,6 +1152,7 @@ type BbiHeaderZoom struct {
   Reserved          uint32
   DataOffset        uint64
   IndexOffset       uint64
+  NBlocks           uint32
   PtrDataOffset      int64
   PtrIndexOffset     int64
 }
@@ -1224,6 +1225,10 @@ func (zoomHeader *BbiHeaderZoom) WriteOffsets(file *os.File) error {
   return nil
 }
 
+func (zoomHeader *BbiHeaderZoom) WriteNBlocks(file *os.File) error {
+  return fileWriteAt(file, binary.LittleEndian, int64(zoomHeader.DataOffset), zoomHeader.NBlocks)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BbiHeader struct {
@@ -1245,6 +1250,7 @@ type BbiHeader struct {
   SumData           uint64
   SumSquared        uint64
   ZoomHeaders     []BbiHeaderZoom
+  NBlocks           uint64
   // offset positions
   PtrCtOffset          int64
   PtrDataOffset        int64
@@ -1513,6 +1519,10 @@ func (header *BbiHeader) Write(file *os.File) error {
   return nil
 }
 
+func (header *BbiHeader) WriteNBlocks(file *os.File) error {
+  return fileWriteAt(file, binary.LittleEndian, int64(header.DataOffset), header.NBlocks)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BbiFile struct {
@@ -1528,10 +1538,6 @@ func NewBbiFile() *BbiFile {
   bwf.Header    = *NewBbiHeader()
   bwf.ChromData = *NewBData()
   return bwf
-}
-
-func (bwf *BbiFile) WriteNBlocks(n int) error {
-  return fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(bwf.Header.DataOffset), uint64(n))
 }
 
 func (bwf *BbiFile) Close() error {

@@ -155,7 +155,9 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     binsize := track.Binsize*reductionLevels[i]
     // save current offset as the beginning of zoomed data for reduction
     // level i
-    writer.StartZoomData(i)
+    if err := writer.StartZoomData(i); err != nil {
+      return err
+    }
     for name, sequence := range track.Data {
       s := track.writeBigWig_zoomSequence(sequence, reductionLevels[i])
       if err := writer.WriteZoom(name, s, binsize, i); err != nil {

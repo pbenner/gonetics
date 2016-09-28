@@ -292,19 +292,12 @@ func (bww *BigWigWriter) useFixedStep(sequence []float64) bool {
   return n < len(sequence)/2
 }
 
-func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
-  // index of the current sequence
-  var idx int
+func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) error {
   // generator for RTree vertices
   var generator *RVertexGenerator
   // data block encoder
   var encoder   *BbiBlockEncoder
-  // add sequence name and length to the genome
-  if tmp, err := bww.Genome.AddSequence(seqname, len(sequence)*binsize); err != nil {
-    return err
-  } else {
-    idx = tmp
-  }
+
   if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
     return err
   } else {
@@ -334,7 +327,27 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   return nil
 }
 
-func (bww *BigWigWriter) Close() error {
+func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
+  // index of the current sequence
+  var idx int
+  // add sequence name and length to the genome
+  if tmp, err := bww.Genome.AddSequence(seqname, len(sequence)*binsize); err != nil {
+    return err
+  } else {
+    idx = tmp
+  }
+  return bww.write(idx, sequence, binsize)
+}
+
+func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize int) error {
+  if idx, err := bww.Genome.GetIdx(seqname); err != nil {
+    return err
+  } else {
+    return bww.write(idx, sequence, binsize)
+  }
+}
+
+func (bww *BigWigWriter) WriteIndex() error {
   tree := NewRTree()
   tree.BlockSize     = uint32(bww.Parameters.BlockSize)
   tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
@@ -347,6 +360,28 @@ func (bww *BigWigWriter) Close() error {
   if err := bww.Bwf.WriteIndex(); err != nil {
     return err
   }
+  return nil
+}
+
+func (bww *BigWigWriter) WriteZoomIndex(i int) error {
+  tree := NewRTree()
+  tree.BlockSize     = uint32(bww.Parameters.BlockSize)
+  tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
+  // construct index tree
+  if err := tree.BuildTree(bww.Leaves); err != nil {
+    return err
+  }
+  // write index to file
+  bww.Bwf.IndexZoom[i] = *tree
+  // TODO
+  // if err := bww.Bwf.WriteIndex(i int); err != nil {
+  //   return err
+  // }
+  return nil
+}
+
+func (bww *BigWigWriter) Close() error {
+  bww.WriteIndex()
   // generate chromosome list
   for _, name := range bww.Genome.Seqnames {
     if bww.Bwf.ChromData.KeySize < uint32(len(name)+1) {

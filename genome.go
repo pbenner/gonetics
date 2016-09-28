@@ -63,12 +63,12 @@ func (genome Genome) SeqLength(seqname string) (int, error) {
 }
 
 func (genome *Genome) AddSequence(seqname string, length int) (int, error) {
-  if _, err := genome.GetIdx(seqname); err != nil {
+  if idx, err := genome.GetIdx(seqname); err != nil {
     genome.Seqnames = append(genome.Seqnames, seqname)
     genome.Lengths  = append(genome.Lengths,  length)
     return genome.Length()-1, nil
   } else {
-    return 0, fmt.Errorf("sequence `%s' already exists", seqname)
+    return idx, fmt.Errorf("sequence `%s' already exists", seqname)
   }
 }
 
@@ -78,7 +78,7 @@ func (genome Genome) GetIdx(seqname string) (int, error) {
       return i, nil
     }
   }
-  return 0, fmt.Errorf("sequence `%s' not found in genome", seqname)
+  return -1, fmt.Errorf("sequence `%s' not found in genome", seqname)
 }
 
 /* convert to string

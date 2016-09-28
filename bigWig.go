@@ -144,11 +144,26 @@ func (bwf *BigWigFile) WriteIndex() error {
   if err := bwf.Index.Write(bwf.Fptr); err != nil {
     return err
   }
-  // update index size
-  bwf.Index.IdxSize = bwf.Header.DataOffset - bwf.Header.IndexOffset
-  bwf.Index.WriteSize(bwf.Fptr)
   // update offsets
   if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BigWigFile) WriteIndexZoom(i int) error {
+  // write data index offset
+  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.ZoomHeaders[i].IndexOffset = uint64(offset)
+  }
+  // write data index
+  if err := bwf.IndexZoom[i].Write(bwf.Fptr); err != nil {
+    return err
+  }
+  // update offsets
+  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(bwf.Fptr); err != nil {
     return err
   }
   return nil

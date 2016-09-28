@@ -741,6 +741,14 @@ func (tree *RTree) WriteSize(file *os.File) error {
 }
 
 func (tree *RTree) Write(file *os.File) error {
+  var offsetStart int64
+  var offsetEnd   int64
+  // get current offset
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    offsetStart = offset
+  }
   // magic number
   if err := binary.Write(file, binary.LittleEndian, uint32(IDX_MAGIC)); err != nil {
     return err
@@ -780,6 +788,15 @@ func (tree *RTree) Write(file *os.File) error {
     return err
   }
   tree.Root.Write(file)
+  // get current offset
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    offsetEnd = offset
+  }
+  // update index size
+  tree.IdxSize = uint64(offsetEnd-offsetStart)
+  tree.WriteSize(file)
 
   return nil
 }

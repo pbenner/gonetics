@@ -114,7 +114,7 @@ func (track *Track) writeBigWig_zoomSequence(sequence []float64, reductionLevel 
   result := make([]float64, divIntUp(len(sequence), reductionLevel))
   for i := 0; i < len(sequence); i += reductionLevel {
     // compute mean value
-    for j := 0; j < reductionLevel; j++ {
+    for j := 0; j < reductionLevel && i+j < len(sequence); j++ {
       result[i/reductionLevel] += sequence[i+j]
     }
     result[i/reductionLevel] /= float64(reductionLevel)

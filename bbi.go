@@ -1527,7 +1527,6 @@ func NewBbiFile() *BbiFile {
   bwf := new(BbiFile)
   bwf.Header    = *NewBbiHeader()
   bwf.ChromData = *NewBData()
-  bwf.Index     = *NewRTree()
   return bwf
 }
 

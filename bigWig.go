@@ -287,6 +287,8 @@ func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigPa
       BbiHeaderZoom{ReductionLevel: uint32(reductionLevels[i])})
   }
   bwf.Header.ZoomLevels = uint16(len(reductionLevels))
+  // allocate space for zoom indices
+  bwf.IndexZoom = make([]RTree, len(reductionLevels))
   // compress by default (this value is updated when writing blocks)
   bwf.Header.UncompressBufSize = 1
   // size of uint32

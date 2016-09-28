@@ -392,6 +392,8 @@ func (bww *BigWigWriter) WriteIndex() error {
   if err := tree.BuildTree(bww.Leaves); err != nil {
     return err
   }
+  // delete leaves
+  bww.Leaves = []*RVertex{}
   // write index to file
   bww.Bwf.Index = *tree
   if err := bww.Bwf.WriteIndex(); err != nil {
@@ -408,6 +410,8 @@ func (bww *BigWigWriter) WriteZoomIndex(i int) error {
   if err := tree.BuildTree(bww.Leaves); err != nil {
     return err
   }
+  // delete leaves
+  bww.Leaves = []*RVertex{}
   // write index to file
   bww.Bwf.IndexZoom[i] = *tree
   if err := bww.Bwf.WriteIndexZoom(i); err != nil {

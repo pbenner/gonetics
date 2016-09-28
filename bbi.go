@@ -1479,10 +1479,11 @@ func (header *BbiHeader) Write(file *os.File) error {
 /* -------------------------------------------------------------------------- */
 
 type BbiFile struct {
-  Header    BbiHeader
-  ChromData BData
-  Index     RTree
-  Fptr      *os.File
+  Header      BbiHeader
+  ChromData   BData
+  Index       RTree
+  IndexZoom []RTree
+  Fptr       *os.File
 }
 
 func NewBbiFile() *BbiFile {

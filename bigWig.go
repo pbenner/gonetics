@@ -363,7 +363,7 @@ func (bww *BigWigWriter) WriteIndex() error {
   return nil
 }
 
-func (bww *BigWigWriter) WriteZoomIndex() error {
+func (bww *BigWigWriter) WriteZoomIndex(i int) error {
   tree := NewRTree()
   tree.BlockSize     = uint32(bww.Parameters.BlockSize)
   tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
@@ -372,10 +372,11 @@ func (bww *BigWigWriter) WriteZoomIndex() error {
     return err
   }
   // write index to file
-  bww.Bwf.Index = *tree
-  if err := bww.Bwf.WriteIndex(); err != nil {
-    return err
-  }
+  bww.Bwf.IndexZoom[i] = *tree
+  // TODO
+  // if err := bww.Bwf.WriteIndex(i int); err != nil {
+  //   return err
+  // }
   return nil
 }
 

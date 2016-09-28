@@ -1132,6 +1132,8 @@ type BbiHeaderZoom struct {
   Reserved          uint32
   DataOffset        uint64
   IndexOffset       uint64
+  PtrDataOffset      int64
+  PtrIndexOffset     int64
 }
 
 func (zoomHeader *BbiHeaderZoom) Read(file *os.File) error {
@@ -1142,8 +1144,18 @@ func (zoomHeader *BbiHeaderZoom) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    zoomHeader.PtrDataOffset = offset
+  }
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
     return err
+  }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    zoomHeader.PtrIndexOffset = offset
   }
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
     return err
@@ -1159,10 +1171,30 @@ func (zoomHeader *BbiHeaderZoom) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, zoomHeader.Reserved); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    zoomHeader.PtrDataOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, zoomHeader.DataOffset); err != nil {
     return err
   }
+  if offset, err := file.Seek(0, 1); err != nil {
+    return err
+  } else {
+    zoomHeader.PtrIndexOffset = offset
+  }
   if err := binary.Write(file, binary.LittleEndian, zoomHeader.IndexOffset); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (zoomHeader *BbiHeaderZoom) WriteOffsets(file *os.File) error {
+  if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
+    return err
+  }
+  if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrIndexOffset, zoomHeader.IndexOffset); err != nil {
     return err
   }
   return nil

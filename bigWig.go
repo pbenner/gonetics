@@ -388,10 +388,9 @@ func (bww *BigWigWriter) WriteZoomIndex(i int) error {
   }
   // write index to file
   bww.Bwf.IndexZoom[i] = *tree
-  // TODO
-  // if err := bww.Bwf.WriteIndex(i int); err != nil {
-  //   return err
-  // }
+  if err := bww.Bwf.WriteIndexZoom(i); err != nil {
+    return err
+  }
   return nil
 }
 

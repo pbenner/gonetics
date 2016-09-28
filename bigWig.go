@@ -101,7 +101,7 @@ func (bwf *BigWigFile) Create(filename string) error {
   }
   // data starts here
   if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", filename, err)
+    return err
   } else {
     bwf.Header.DataOffset = uint64(offset)
   }
@@ -278,9 +278,15 @@ type BigWigWriterType struct {
   Sequence []float64
 }
 
-func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWriter, error) {
+func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigParameters) (*BigWigWriter, error) {
   bww := new(BigWigWriter)
   bwf := NewBigWigFile()
+  // add zoom headers
+  for i := 0; i < len(reductionLevels); i++ {
+    bwf.Header.ZoomHeaders = append(bwf.Header.ZoomHeaders,
+      BbiHeaderZoom{ReductionLevel: uint32(reductionLevels[i])})
+  }
+  bwf.Header.ZoomLevels = uint16(len(reductionLevels))
   // compress by default (this value is updated when writing blocks)
   bwf.Header.UncompressBufSize = 1
   // size of uint32
@@ -394,8 +400,20 @@ func (bww *BigWigWriter) WriteZoomIndex(i int) error {
   return nil
 }
 
+func (bww *BigWigWriter) MarkZoomDataOffset(i int) error {
+  if offset, err := bww.Bwf.Fptr.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bww.Bwf.Header.ZoomHeaders[i].DataOffset = uint64(offset)
+  }
+  // update offsets
+  if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Bwf.Fptr); err != nil {
+    return err
+  }
+  return nil
+}
+
 func (bww *BigWigWriter) Close() error {
-  bww.WriteIndex()
   // generate chromosome list
   for _, name := range bww.Genome.Seqnames {
     if bww.Bwf.ChromData.KeySize < uint32(len(name)+1) {

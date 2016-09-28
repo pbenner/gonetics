@@ -86,6 +86,42 @@ func (track *Track) ReadBigWig(filename, name string) error {
 
 /* -------------------------------------------------------------------------- */
 
+func (track *Track) writeBigWig_reductionLevels(parameters BigWigParameters) []int {
+  // reduction levels
+  n := []int{}
+  // length of the longest track
+  l := 0
+  // get length of longest track
+  for _, sequence := range track.Data {
+    if len(sequence) > l {
+      l = len(sequence)
+    }
+  }
+  // compute number of zoom levels
+  for i, r := 0, BbiResIncrement; i <= BbiMaxZoomLevels; i++ {
+    if l > parameters.ItemsPerSlot {
+      l = l/BbiResIncrement
+      n = append(n, r)
+      r = r*BbiResIncrement
+    } else {
+      break
+    }
+  }
+  return n
+}
+
+func (track *Track) writeBigWig_zoomSequence(sequence []float64, reductionLevel int) []float64 {
+  result := make([]float64, divIntUp(len(sequence), reductionLevel))
+  for i := 0; i < len(sequence); i += reductionLevel {
+    // compute mean value
+    for j := 0; j < reductionLevel; j++ {
+      result[i/reductionLevel] += sequence[i+j]
+    }
+    result[i/reductionLevel] /= float64(reductionLevel)
+  }
+  return result
+}
+
 func (track *Track) WriteBigWig(filename, description string, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
@@ -98,12 +134,38 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
       fmt.Errorf("WriteBigWig(): invalid arguments")
     }
   }
-  writer, err := NewBigWigWriter(filename, parameters)
+  // get reduction levels for zoomed data
+  reductionLevels := track.writeBigWig_reductionLevels(parameters)
+  // create new bigWig writer
+  writer, err := NewBigWigWriter(filename, reductionLevels, parameters)
   if err != nil {
     return err
   }
+  // write data
   for name, sequence := range track.Data {
-    writer.Write(name, sequence, track.Binsize)
+    if err := writer.Write(name, sequence, track.Binsize); err != nil {
+      return err
+    }
+  }
+  if err := writer.WriteIndex(); err != nil {
+    return err
+  }
+  // write zoomed data
+  for i := 0; i < len(reductionLevels); i++ {
+    binsize := track.Binsize*reductionLevels[i]
+    // save current offset as the beginning of zoomed data for reduction
+    // level i
+    writer.MarkZoomDataOffset(i)
+    for name, sequence := range track.Data {
+      s := track.writeBigWig_zoomSequence(sequence, reductionLevels[i])
+      if err := writer.WriteZoom(name, s, binsize); err != nil {
+        return err
+      }
+    }
+    // write index for this reduction level
+    if err := writer.WriteZoomIndex(i); err != nil {
+      return err
+    }
   }
   writer.Close()
 

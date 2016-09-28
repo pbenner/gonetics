@@ -36,6 +36,9 @@ import "os"
 const CIRTREE_MAGIC = 0x78ca8c91
 const     IDX_MAGIC = 0x2468ace0
 
+const BbiMaxZoomLevels = 10 /* Max number of zoom levels */
+const BbiResIncrement  =  4 /* Amount to reduce at each zoom level */
+
 /* -------------------------------------------------------------------------- */
 
 func fileReadAt(file *os.File, order binary.ByteOrder, offset int64, data interface{}) error {
@@ -1208,11 +1211,15 @@ func (zoomHeader *BbiHeaderZoom) Write(file *os.File) error {
 }
 
 func (zoomHeader *BbiHeaderZoom) WriteOffsets(file *os.File) error {
-  if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
-    return err
+  if zoomHeader.PtrDataOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
+      return err
+    }
   }
-  if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrIndexOffset, zoomHeader.IndexOffset); err != nil {
-    return err
+  if zoomHeader.PtrIndexOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrIndexOffset, zoomHeader.IndexOffset); err != nil {
+      return err
+    }
   }
   return nil
 }
@@ -1360,26 +1367,39 @@ func (header *BbiHeader) Read(file *os.File) error {
 }
 
 func (header *BbiHeader) WriteOffsets(file *os.File) error {
-  if err := fileWriteAt(file, binary.LittleEndian, header.PtrCtOffset, header.CtOffset); err != nil {
-    return err
+  if header.PtrCtOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, header.PtrCtOffset, header.CtOffset); err != nil {
+      return err
+    }
   }
-  if err := fileWriteAt(file, binary.LittleEndian, header.PtrDataOffset, header.DataOffset); err != nil {
-    return err
+  if header.PtrDataOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, header.PtrDataOffset, header.DataOffset); err != nil {
+      return err
+    }
   }
-  if err := fileWriteAt(file, binary.LittleEndian, header.PtrIndexOffset, header.IndexOffset); err != nil {
-    return err
+  if header.PtrIndexOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, header.PtrIndexOffset, header.IndexOffset); err != nil {
+      return err
+    }
   }
-  if err := fileWriteAt(file, binary.LittleEndian, header.PtrSqlOffset, header.SqlOffset); err != nil {
-    return err
+  if header.PtrSqlOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, header.PtrSqlOffset, header.SqlOffset); err != nil {
+      return err
+    }
   }
-  if err := fileWriteAt(file, binary.LittleEndian, header.PtrExtensionOffset, header.ExtensionOffset); err != nil {
-    return err
+  if header.PtrExtensionOffset != 0 {
+    if err := fileWriteAt(file, binary.LittleEndian, header.PtrExtensionOffset, header.ExtensionOffset); err != nil {
+      return err
+    }
   }
   return nil
 }
 
 func (header *BbiHeader) WriteUncompressBufSize(file *os.File) error {
-  return fileWriteAt(file, binary.LittleEndian, header.PtrUncompressBufSize, header.UncompressBufSize)
+  if header.PtrUncompressBufSize != 0 {
+    return fileWriteAt(file, binary.LittleEndian, header.PtrUncompressBufSize, header.UncompressBufSize)
+  }
+  return nil
 }
 
 func (header *BbiHeader) Write(file *os.File) error {

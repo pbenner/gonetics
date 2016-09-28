@@ -334,7 +334,7 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   return nil
 }
 
-func (bww *BigWigWriter) Close() error {
+func (bww *BigWigWriter) WriteIndex() error {
   tree := NewRTree()
   tree.BlockSize     = uint32(bww.Parameters.BlockSize)
   tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
@@ -347,6 +347,11 @@ func (bww *BigWigWriter) Close() error {
   if err := bww.Bwf.WriteIndex(); err != nil {
     return err
   }
+  return nil
+}
+
+func (bww *BigWigWriter) Close() error {
+  bww.WriteIndex()
   // generate chromosome list
   for _, name := range bww.Genome.Seqnames {
     if bww.Bwf.ChromData.KeySize < uint32(len(name)+1) {

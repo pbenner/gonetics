@@ -271,7 +271,6 @@ type BigWigWriter struct {
   Genome     Genome
   Parameters BigWigParameters
   generator  *RVertexGenerator
-  encoder    *BbiBlockEncoder
   Leaves     []*RVertex
 }
 
@@ -288,12 +287,6 @@ func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigPa
     return nil, err
   } else {
     bww.generator = tmp
-  }
-  // create block encoder
-  if tmp, err := NewBbiBlockEncoder(); err != nil {
-    return nil, err
-  } else {
-    bww.encoder = tmp
   }
   // add zoom headers
   for i := 0; i < len(reductionLevels); i++ {
@@ -336,15 +329,11 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
   // (this is false if data is sparse)
   fixedStep := bww.useFixedStep(sequence)
   // split sequence into small blocks of data and write them to file
-  for leaf := range bww.generator.Generate(idx, sequence, binsize, fixedStep) {
+  for leaf := range bww.generator.Generate(idx, sequence, binsize, 0, fixedStep) {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
-      if block, err := bww.encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, binsize, fixedStep); err != nil {
+      if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, leaf.Blocks[i]); err != nil {
         return n, err
-      } else {
-        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
-          return n, err
-        }
       }
       // increment number of blocks
       n++
@@ -376,15 +365,11 @@ func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reducti
   // number of blocks written
   n := 0
   // split sequence into small blocks of data and write them to file
-  for leaf := range bww.generator.Generate(idx, sequence, binsize, true) {
+  for leaf := range bww.generator.Generate(idx, sequence, binsize, reductionLevel, true) {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
-      if block, err := bww.encoder.EncodeBlockZoom(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, reductionLevel); err != nil {
+      if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, leaf.Blocks[i]); err != nil {
         return n, err
-      } else {
-        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
-          return n, err
-        }
       }
       // increment number of blocks
       n++

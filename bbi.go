@@ -289,6 +289,15 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
   }
 }
 
+func (writer *BbiBlockEncoder) encodeVariable(buffer []byte, position uint32, value float64) {
+  binary.LittleEndian.PutUint32(buffer[0:4], position)
+  binary.LittleEndian.PutUint32(buffer[4:8], math.Float32bits(float32(value)))
+}
+
+func (writer *BbiBlockEncoder) encodeFixed(buffer []byte, value float64) {
+  binary.LittleEndian.PutUint32(buffer[0:4], math.Float32bits(float32(value)))
+}
+
 func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, binsize int, fixedStep bool) {
   // beginning of region covered by a single block
   f := 0
@@ -318,8 +327,7 @@ func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, bins
       // variable step
       for ; i < len(sequence); i++ {
         if sequence[i] != 0.0 && !math.IsNaN(sequence[i]) {
-          binary.LittleEndian.PutUint32(writer.tmp[0:4], header.End)
-          binary.LittleEndian.PutUint32(writer.tmp[4:8], math.Float32bits(float32(sequence[i])))
+          writer.encodeVariable(writer.tmp, header.End, sequence[i])
           if _, err := buffer.Write(writer.tmp); err != nil {
             writer.Channel <- BbiBlockEncoderType{Error: err}
             return
@@ -335,7 +343,7 @@ func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, bins
     case 3:
       // fixed step
       for ; i < len(sequence); i++ {
-        binary.LittleEndian.PutUint32(writer.tmp[0:4], math.Float32bits(float32(sequence[i])))
+          writer.encodeFixed(writer.tmp, sequence[i])
         if _, err := buffer.Write(writer.tmp[0:4]); err != nil {
           writer.Channel <- BbiBlockEncoderType{Error: err}
           return

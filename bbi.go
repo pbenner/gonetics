@@ -276,25 +276,11 @@ func (record BbiZoomRecord) Write(writer io.Writer) error {
 /* -------------------------------------------------------------------------- */
 
 type BbiBlockEncoder struct {
-  Step      int
-  Span      int
-  tmp       []byte
-  position  int
+  tmp []byte
 }
 
-func NewBbiBlockEncoder(step, span int) (*BbiBlockEncoder, error) {
-  if step <= 0 {
-    return nil, fmt.Errorf("invalid step parameter `%d'", step)
-  }
-  if span <= 0 {
-    return nil, fmt.Errorf("invalid span parameter `%d'", span)
-  }
-  if span > step {
-    return nil, fmt.Errorf("step parameter `%d' should be less or equal to span `%d'", step, span)
-  }
+func NewBbiBlockEncoder() (*BbiBlockEncoder, error) {
   writer := BbiBlockEncoder{}
-  writer.Step = step
-  writer.Span = span
   writer.tmp  = make([]byte, 8)
   return &writer, nil
 }
@@ -311,9 +297,13 @@ func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []flo
     record := BbiZoomRecord{
       ChromId: uint32(chromid),
       Start  : uint32(from + p),
-      End    : uint32(from + p),
+      End    : uint32(from + p + reductionLevel),
       Min    :  math.MaxFloat32,
       Max    : -math.MaxFloat32 }
+    // crop record end if it is longer than the actual sequence
+    if record.End > binsize*len(sequence) {
+      record.End = binsize*len(sequence)
+    }
     // compute mean value
     for j := 0; j < n && i+j < len(sequence); j++ {
       if record.Min > float32(sequence[i+j]) {
@@ -322,7 +312,6 @@ func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []flo
       if record.Max < float32(sequence[i+j]) {
         record.Max = float32(sequence[i+j])
       }
-      record.End        += uint32(binsize)
       record.Valid      += 1
       record.Sum        += float32(sequence[i+j])
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])
@@ -336,14 +325,23 @@ func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []flo
   return b.Bytes(), nil
 }
 
-func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64, fixedStep bool) ([]byte, error) {
+func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64, step, span int, fixedStep bool) ([]byte, error) {
+  if step <= 0 {
+    return nil, fmt.Errorf("invalid step parameter `%d'", step)
+  }
+  if span <= 0 {
+    return nil, fmt.Errorf("invalid span parameter `%d'", span)
+  }
+  if span > step {
+    return nil, fmt.Errorf("step parameter `%d' should be less or equal to span `%d'", step, span)
+  }
   // create header for this block
   header := BbiDataHeader{}
   header.ChromId = uint32(chromid)
   header.Start   = uint32(from)
   header.End     = uint32(from)
-  header.Step    = uint32(writer.Step)
-  header.Span    = uint32(writer.Span)
+  header.Step    = uint32(step)
+  header.Span    = uint32(span)
   if fixedStep {
     header.Type = 3
   } else {

@@ -23,11 +23,13 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "bufio"
 import "bytes"
 import "compress/zlib"
 import "fmt"
 import "math"
 import "encoding/binary"
+import "io"
 import "io/ioutil"
 import "os"
 
@@ -232,6 +234,47 @@ func (splitter *BbiSequenceSplitter) fillChannel(sequence []float64, fixedStep b
 
 /* -------------------------------------------------------------------------- */
 
+type BbiZoomRecord struct {
+  ChromId    uint32
+  Start      uint32
+  End        uint32
+  Valid      uint32
+  Min        float32
+  Max        float32
+  Sum        float32
+  SumSquares float32
+}
+
+func (record BbiZoomRecord) Write(writer io.Writer) error {
+  if err := binary.Write(writer, binary.LittleEndian, record.ChromId); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Start); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.End); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Valid); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Min); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Max); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Sum); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.SumSquares); err != nil {
+    return err
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiBlockEncoder struct {
   Step      int
   Span      int
@@ -254,6 +297,41 @@ func NewBbiBlockEncoder(step, span int) (*BbiBlockEncoder, error) {
   writer.Span = span
   writer.tmp  = make([]byte, 8)
   return &writer, nil
+}
+
+func (writer *BbiBlockEncoder) EncodeZoomBlock(chromid, from int, sequence []float64, binsize, reductionLevel int) ([]byte, error) {
+  b := new(bytes.Buffer)
+  w := bufio.NewWriter(b)
+  for i := 0; i < len(sequence); i += reductionLevel {
+    record := BbiZoomRecord{
+      ChromId: uint32(chromid),
+      Start  : uint32(from + i*binsize),
+      End    : uint32(from + i*binsize),
+      Min    :  math.MaxFloat32,
+      Max    : -math.MaxFloat32 }
+    // compute mean value
+    for j := 0; i+j < len(sequence); j++ {
+      if j > divIntUp(reductionLevel, binsize) {
+        break
+      }
+      if record.Min > float32(sequence[i+j]) {
+        record.Min = float32(sequence[i+j])
+      }
+      if record.Max < float32(sequence[i+j]) {
+        record.Max = float32(sequence[i+j])
+      }
+      record.End        += uint32(binsize)
+      record.Valid      += uint32(binsize)
+      record.Sum        += float32(sequence[i+j])
+      record.SumSquares += float32(sequence[i+j]*sequence[i+j])
+    }
+    if err := record.Write(w); err != nil {
+      return nil, err
+    }
+  }
+  w.Flush()
+
+  return b.Bytes(), nil
 }
 
 func (writer *BbiBlockEncoder) EncodeBlock(chromid, from int, sequence []float64, fixedStep bool) ([]byte, error) {

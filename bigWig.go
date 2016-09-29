@@ -354,6 +354,44 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
   return n, nil
 }
 
+func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reductionLevel int) (int, error) {
+  // generator for RTree vertices
+  var generator *RVertexGenerator
+  // data block encoder
+  var encoder   *BbiBlockEncoder
+  // number of blocks written
+  n := 0
+
+  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
+    return n, err
+  } else {
+    generator = tmp
+  }
+  if tmp, err := NewBbiBlockEncoder(binsize, binsize); err != nil {
+    return n, err
+  } else {
+    encoder = tmp
+  }
+  // split sequence into small blocks of data and write them to file
+  for leaf := range generator.Generate(idx, sequence, binsize, false) {
+    // write data to file
+    for i := 0; i < int(leaf.NChildren); i++ {
+      if block, err := encoder.EncodeZoomBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, reductionLevel); err != nil {
+        return n, err
+      } else {
+        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
+          return n, err
+        }
+      }
+      // increment number of blocks
+      n++
+    }
+    // save leaf for tree construction
+    bww.Leaves = append(bww.Leaves, leaf)
+  }
+  return n, nil
+}
+
 func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
   // index of the current sequence
   var idx int
@@ -371,11 +409,11 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   }
 }
 
-func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, i int) error {
+func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, reductionLevel, i int) error {
   if idx, err := bww.Genome.GetIdx(seqname); err != nil {
     return err
   } else {
-    if n, err := bww.write(idx, sequence, binsize); err != nil {
+    if n, err := bww.writeZoom(idx, sequence, binsize, reductionLevel); err != nil {
       return err
     } else {
       bww.Bwf.Header.ZoomHeaders[i].NBlocks += uint32(n)

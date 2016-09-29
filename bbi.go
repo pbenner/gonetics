@@ -302,25 +302,26 @@ func NewBbiBlockEncoder(step, span int) (*BbiBlockEncoder, error) {
 func (writer *BbiBlockEncoder) EncodeZoomBlock(chromid, from int, sequence []float64, binsize, reductionLevel int) ([]byte, error) {
   b := new(bytes.Buffer)
   w := bufio.NewWriter(b)
-  for i := 0; i < len(sequence); i += reductionLevel {
+  n := divIntUp(reductionLevel, binsize)
+  for p := 0; p < binsize*len(sequence); p += reductionLevel {
+    // p: position in base pairs
+    // i: position in bins
+    i := p/binsize
+    // create a new record
     record := BbiZoomRecord{
       ChromId: uint32(chromid),
-      Start  : uint32(from + i*binsize),
-      End    : uint32(from + i*binsize),
+      Start  : uint32(from + p),
+      End    : uint32(from + p + reductionLevel),
       Min    :  math.MaxFloat32,
       Max    : -math.MaxFloat32 }
     // compute mean value
-    for j := 0; i+j < len(sequence); j++ {
-      if j > divIntUp(reductionLevel, binsize) {
-        break
-      }
+    for j := 0; j < n && i+j < len(sequence); j++ {
       if record.Min > float32(sequence[i+j]) {
         record.Min = float32(sequence[i+j])
       }
       if record.Max < float32(sequence[i+j]) {
         record.Max = float32(sequence[i+j])
       }
-      record.End        += uint32(binsize)
       record.Valid      += uint32(binsize)
       record.Sum        += float32(sequence[i+j])
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])

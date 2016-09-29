@@ -140,7 +140,6 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     return err
   }
   // write zoomed data
-  fmt.Println("reduction levels: ", reductionLevels)
   for i := 0; i < len(reductionLevels); i++ {
     // save current offset as the beginning of zoomed data for reduction
     // level i

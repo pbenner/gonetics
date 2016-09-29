@@ -301,8 +301,8 @@ func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []flo
       Min    :  math.MaxFloat32,
       Max    : -math.MaxFloat32 }
     // crop record end if it is longer than the actual sequence
-    if record.End > binsize*len(sequence) {
-      record.End = binsize*len(sequence)
+    if record.End > uint32(binsize*len(sequence)) {
+      record.End = uint32(binsize*len(sequence))
     }
     // compute mean value
     for j := 0; j < n && i+j < len(sequence); j++ {
@@ -316,8 +316,10 @@ func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []flo
       record.Sum        += float32(sequence[i+j])
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])
     }
-    if err := record.Write(w); err != nil {
-      return nil, err
+    if record.Sum > 0 {
+      if err := record.Write(w); err != nil {
+        return nil, err
+      }
     }
   }
   w.Flush()

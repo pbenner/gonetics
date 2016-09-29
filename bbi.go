@@ -299,7 +299,7 @@ func NewBbiBlockEncoder(step, span int) (*BbiBlockEncoder, error) {
   return &writer, nil
 }
 
-func (writer *BbiBlockEncoder) EncodeZoomBlock(chromid, from int, sequence []float64, binsize, reductionLevel int) ([]byte, error) {
+func (writer *BbiBlockEncoder) EncodeBlockZoom(chromid, from int, sequence []float64, binsize, reductionLevel int) ([]byte, error) {
   b := new(bytes.Buffer)
   w := bufio.NewWriter(b)
   n := divIntUp(reductionLevel, binsize)

@@ -333,50 +333,14 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
   } else {
     encoder = tmp
   }
+  // determine if fixed step sizes should be used
+  // (this is false if data is sparse)
   fixedStep := bww.useFixedStep(sequence)
   // split sequence into small blocks of data and write them to file
   for leaf := range generator.Generate(idx, sequence, binsize, fixedStep) {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
       if block, err := encoder.EncodeBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], fixedStep); err != nil {
-        return n, err
-      } else {
-        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
-          return n, err
-        }
-      }
-      // increment number of blocks
-      n++
-    }
-    // save leaf for tree construction
-    bww.Leaves = append(bww.Leaves, leaf)
-  }
-  return n, nil
-}
-
-func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reductionLevel int) (int, error) {
-  // generator for RTree vertices
-  var generator *RVertexGenerator
-  // data block encoder
-  var encoder   *BbiBlockEncoder
-  // number of blocks written
-  n := 0
-
-  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
-    return n, err
-  } else {
-    generator = tmp
-  }
-  if tmp, err := NewBbiBlockEncoder(binsize, binsize); err != nil {
-    return n, err
-  } else {
-    encoder = tmp
-  }
-  // split sequence into small blocks of data and write them to file
-  for leaf := range generator.Generate(idx, sequence, binsize, true) {
-    // write data to file
-    for i := 0; i < int(leaf.NChildren); i++ {
-      if block, err := encoder.EncodeZoomBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, reductionLevel); err != nil {
         return n, err
       } else {
         if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
@@ -407,6 +371,44 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
     bww.Bwf.Header.NBlocks += uint64(n)
     return bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr)
   }
+}
+
+func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reductionLevel int) (int, error) {
+  // generator for RTree vertices
+  var generator *RVertexGenerator
+  // data block encoder
+  var encoder   *BbiBlockEncoder
+  // number of blocks written
+  n := 0
+
+  if tmp, err := NewRVertexGenerator(bww.Parameters.BlockSize, bww.Parameters.ItemsPerSlot); err != nil {
+    return n, err
+  } else {
+    generator = tmp
+  }
+  if tmp, err := NewBbiBlockEncoder(binsize, binsize); err != nil {
+    return n, err
+  } else {
+    encoder = tmp
+  }
+  // split sequence into small blocks of data and write them to file
+  for leaf := range generator.Generate(idx, sequence, binsize, true) {
+    // write data to file
+    for i := 0; i < int(leaf.NChildren); i++ {
+      if block, err := encoder.EncodeBlockZoom(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, reductionLevel); err != nil {
+        return n, err
+      } else {
+        if err := leaf.WriteBlock(&bww.Bwf.BbiFile, i, block); err != nil {
+          return n, err
+        }
+      }
+      // increment number of blocks
+      n++
+    }
+    // save leaf for tree construction
+    bww.Leaves = append(bww.Leaves, leaf)
+  }
+  return n, nil
 }
 
 func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, reductionLevel, i int) error {

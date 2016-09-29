@@ -98,10 +98,11 @@ func (track *Track) writeBigWig_reductionLevels(parameters BigWigParameters) []i
       l = len(sequence)
     }
   }
+  // initial zoom level
+  r := iMax(100, c)
   // compute number of zoom levels
-  for i, r := 0, c; i <= BbiMaxZoomLevels; i++ {
-    if l > parameters.ItemsPerSlot {
-      l = l/c
+  for len(n) <= BbiMaxZoomLevels {
+    if l/r > parameters.ItemsPerSlot {
       n = append(n, r)
       r = r*c
     } else {

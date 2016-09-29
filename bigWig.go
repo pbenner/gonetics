@@ -373,7 +373,7 @@ func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reducti
     encoder = tmp
   }
   // split sequence into small blocks of data and write them to file
-  for leaf := range generator.Generate(idx, sequence, binsize, false) {
+  for leaf := range generator.Generate(idx, sequence, binsize, true) {
     // write data to file
     for i := 0; i < int(leaf.NChildren); i++ {
       if block, err := encoder.EncodeZoomBlock(int(leaf.ChrIdxStart[i]), int(leaf.BaseStart[i]), leaf.Sequence[i], binsize, reductionLevel); err != nil {

@@ -311,7 +311,7 @@ func (writer *BbiBlockEncoder) EncodeZoomBlock(chromid, from int, sequence []flo
     record := BbiZoomRecord{
       ChromId: uint32(chromid),
       Start  : uint32(from + p),
-      End    : uint32(from + p + reductionLevel),
+      End    : uint32(from + p),
       Min    :  math.MaxFloat32,
       Max    : -math.MaxFloat32 }
     // compute mean value
@@ -322,7 +322,8 @@ func (writer *BbiBlockEncoder) EncodeZoomBlock(chromid, from int, sequence []flo
       if record.Max < float32(sequence[i+j]) {
         record.Max = float32(sequence[i+j])
       }
-      record.Valid      += uint32(binsize)
+      record.End        += uint32(binsize)
+      record.Valid      += 1
       record.Sum        += float32(sequence[i+j])
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])
     }

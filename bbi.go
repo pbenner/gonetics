@@ -343,7 +343,7 @@ func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, bins
     case 3:
       // fixed step
       for ; i < len(sequence); i++ {
-          writer.encodeFixed(writer.tmp, sequence[i])
+        writer.encodeFixed(writer.tmp, sequence[i])
         if _, err := buffer.Write(writer.tmp[0:4]); err != nil {
           writer.Channel <- BbiBlockEncoderType{Error: err}
           return
@@ -1208,6 +1208,9 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
   v.IsLeaf = 1
   // loop over sequence chunks
   for chunk := range encoder.EncodeBlock(idx, sequence, binsize, reductionLevel, fixedStep) {
+    if chunk.Error != nil {
+      return chunk.Error
+    }
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
       generator.Channel <- v

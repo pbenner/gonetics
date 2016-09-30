@@ -263,13 +263,17 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
       record.Sum        += float32(sequence[i+j])
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])
     }
-    if record.Sum > 0 {
+    // check if there was some non-zero data
+    if !(record.Min == 0 && record.Min == record.Max) {
+      // if yes, save record
       if err := record.Write(w); err != nil {
         writer.Channel <- BbiBlockEncoderType{Error: err}
         return
       }
       m += 1
     }
+    // check if block is full or if the end of the
+    // sequence is reached
     if m == writer.ItemsPerSlot || p + reductionLevel >= binsize*len(sequence) {
       w.Flush()
       if tmp := b.Bytes(); len(tmp) > 0 {
@@ -299,15 +303,13 @@ func (writer *BbiBlockEncoder) encodeFixed(buffer []byte, value float64) {
 }
 
 func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, binsize int, fixedStep bool) {
-  // beginning of region covered by a single block
-  f := 0
   // loop over sequence and generate records
-  for i := 0; i < len(sequence); {  
+  for i := 0; i < len(sequence); {
     // create header for this block
     header := BbiDataHeader{}
     header.ChromId = uint32(chromid)
-    header.Start   = uint32(f)
-    header.End     = uint32(f)
+    header.Start   = uint32(i*binsize)
+    header.End     = uint32(i*binsize)
     header.Step    = uint32(binsize)
     header.Span    = uint32(binsize)
     if fixedStep {
@@ -363,12 +365,10 @@ func (writer *BbiBlockEncoder) encodeBlock(chromid int, sequence []float64, bins
       block = append(block, tmp...)
       // send result through channel
       writer.Channel <- BbiBlockEncoderType{
-        From : f,
+        From : int(header.Start),
         To   : int(header.End),
         Block: block }
     }
-    // mark beginning of the next block
-    f = int(header.End)
   }
 }
 

@@ -232,7 +232,7 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
   // number of bins covered by each record
   n := divIntUp(reductionLevel, binsize)
   // beginning of region covered by a single block
-  f := 0
+  f := -1
   // number of records written to block
   m := 0
   // loop over sequence and generate records
@@ -253,10 +253,10 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
     }
     // compute mean value
     for j := 0; j < n && i+j < len(sequence); j++ {
-      if record.Min > float32(sequence[i+j]) {
+      if record.Min > -float32(sequence[i+j]) {
         record.Min = float32(sequence[i+j])
       }
-      if record.Max < float32(sequence[i+j]) {
+      if record.Max < -float32(sequence[i+j]) {
         record.Max = float32(sequence[i+j])
       }
       record.Valid      += 1
@@ -264,11 +264,16 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
       record.SumSquares += float32(sequence[i+j]*sequence[i+j])
     }
     // check if there was some non-zero data
-    if !(record.Min == 0 && record.Min == record.Max) {
+    if !(record.Min == 0 && record.Max == 0) {
       // if yes, save record
       if err := record.Write(w); err != nil {
         writer.Channel <- BbiBlockEncoderType{Error: err}
         return
+      }
+      // if this is the first record in a block
+      if f == -1 {
+        // save position
+        f = int(record.Start)
       }
       m += 1
     }
@@ -277,6 +282,10 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
     if m == writer.ItemsPerSlot || p + reductionLevel >= binsize*len(sequence) {
       w.Flush()
       if tmp := b.Bytes(); len(tmp) > 0 {
+        if f == -1 {
+          // this shouldn't happen
+          panic("internal error")
+        }
         // send block over channel
         writer.Channel <- BbiBlockEncoderType{
           From : f,
@@ -284,10 +293,9 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
           Block: tmp }
         // reset buffer
         b.Reset()
-        // reset number of records written to buffer
-        m = 0
-        // mark beginning of the next block
-        f = int(record.End)
+        // reset variables
+        m =  0
+        f = -1
       }
     }
   }

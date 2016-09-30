@@ -22,6 +22,7 @@ import "fmt"
 import "math"
 import "encoding/binary"
 import "os"
+import "sort"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
@@ -271,7 +272,7 @@ type BigWigWriter struct {
   Genome     Genome
   Parameters BigWigParameters
   generator  *RVertexGenerator
-  Leaves     []*RVertex
+  Leaves     map[int][]*RVertex
 }
 
 type BigWigWriterType struct {
@@ -282,6 +283,8 @@ type BigWigWriterType struct {
 func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigParameters) (*BigWigWriter, error) {
   bww := new(BigWigWriter)
   bwf := NewBigWigFile()
+  // create new leaf map
+  bww.resetLeafMap()
   // create vertex generator
   if tmp, err := NewRVertexGenerator(parameters.BlockSize, parameters.ItemsPerSlot); err != nil {
     return nil, err
@@ -339,7 +342,7 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
       n++
     }
     // save leaf for tree construction
-    bww.Leaves = append(bww.Leaves, leaf)
+    bww.Leaves[idx] = append(bww.Leaves[idx], leaf)
   }
   return n, nil
 }
@@ -375,7 +378,7 @@ func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reducti
       n++
     }
     // save leaf for tree construction
-    bww.Leaves = append(bww.Leaves, leaf)
+    bww.Leaves[idx] = append(bww.Leaves[idx], leaf)
   }
   return n, nil
 }
@@ -393,16 +396,36 @@ func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, 
   }
 }
 
+func (bww *BigWigWriter) getLeavesSorted() []*RVertex {
+  var indices []int
+  var leaves  []*RVertex
+  for k := range bww.Leaves {
+    indices = append(indices, k)
+  }
+  sort.Ints(indices)
+
+  for idx := range indices {
+    leaves = append(leaves, bww.Leaves[idx]...)
+  }
+  return leaves
+}
+
+func (bww *BigWigWriter) resetLeafMap() {
+  bww.Leaves = make(map[int][]*RVertex)
+}
+
 func (bww *BigWigWriter) WriteIndex() error {
   tree := NewRTree()
   tree.BlockSize     = uint32(bww.Parameters.BlockSize)
   tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
+  // get a sorted list of leaves
+  leaves := bww.getLeavesSorted()
   // construct index tree
-  if err := tree.BuildTree(bww.Leaves); err != nil {
+  if err := tree.BuildTree(leaves); err != nil {
     return err
   }
   // delete leaves
-  bww.Leaves = []*RVertex{}
+  bww.resetLeafMap()
   // write index to file
   bww.Bwf.Index = *tree
   if err := bww.Bwf.WriteIndex(); err != nil {
@@ -411,16 +434,18 @@ func (bww *BigWigWriter) WriteIndex() error {
   return nil
 }
 
-func (bww *BigWigWriter) WriteZoomIndex(i int) error {
+func (bww *BigWigWriter) WriteIndexZoom(i int) error {
   tree := NewRTree()
   tree.BlockSize     = uint32(bww.Parameters.BlockSize)
   tree.NItemsPerSlot = uint32(bww.Parameters.ItemsPerSlot)
+  // get a sorted list of leaves
+  leaves := bww.getLeavesSorted()
   // construct index tree
-  if err := tree.BuildTree(bww.Leaves); err != nil {
+  if err := tree.BuildTree(leaves); err != nil {
     return err
   }
   // delete leaves
-  bww.Leaves = []*RVertex{}
+  bww.resetLeafMap()
   // write index to file
   bww.Bwf.IndexZoom[i] = *tree
   if err := bww.Bwf.WriteIndexZoom(i); err != nil {

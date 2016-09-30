@@ -153,7 +153,7 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
       }
     }
     // write index for this reduction level
-    if err := writer.WriteZoomIndex(i); err != nil {
+    if err := writer.WriteIndexZoom(i); err != nil {
       return err
     }
   }

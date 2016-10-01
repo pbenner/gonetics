@@ -292,7 +292,8 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(chromid int, sequence []float64, 
           To   : int(record.End),
           Block: tmp }
         // reset buffer
-        b.Reset()
+        b = new(bytes.Buffer)
+        w = bufio.NewWriter(b)
         // reset variables
         m =  0
         f = -1

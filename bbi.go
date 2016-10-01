@@ -963,7 +963,6 @@ type RVertex struct {
   BaseEnd     []uint32
   DataOffset  []uint64
   Sizes       []uint64
-  Blocks    [][]byte
   Children    []*RVertex
   // positions of DataOffset and Sizes values in file
   PtrDataOffset []int64
@@ -1179,7 +1178,12 @@ func (vertex *RVertex) Write(file *os.File) error {
 type RVertexGenerator struct {
   BlockSize    int
   ItemsPerSlot int
-  Channel chan *RVertex
+  Channel      chan RVertexGeneratorType
+}
+
+type RVertexGeneratorType struct {
+  Vertex *RVertex
+  Blocks [][]byte
 }
 
 func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error) {
@@ -1195,8 +1199,8 @@ func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error)
   return &generator, nil
 }
 
-func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) <- chan *RVertex {
-  generator.Channel = make(chan *RVertex)
+func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) <- chan RVertexGeneratorType {
+  generator.Channel = make(chan RVertexGeneratorType)
   go func() {
     generator.fillChannel(idx, sequence, binsize, reductionLevel, fixedStep)
     close(generator.Channel)
@@ -1215,6 +1219,8 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
   // create empty leaf
   v := new(RVertex)
   v.IsLeaf = 1
+  // empty list of blocks
+  b := [][]byte{}
   // loop over sequence chunks
   for chunk := range encoder.EncodeBlock(idx, sequence, binsize, reductionLevel, fixedStep) {
     if chunk.Error != nil {
@@ -1222,10 +1228,13 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
     }
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
-      generator.Channel <- v
+      generator.Channel <- RVertexGeneratorType{
+        Vertex: v,
+        Blocks: b }
       // create new emtpy vertex
       v = new(RVertex)
       v.IsLeaf = 1
+      b = [][]byte{}
     }
     v.ChrIdxStart   = append(v.ChrIdxStart,   uint32(idx))
     v.ChrIdxEnd     = append(v.ChrIdxEnd,     uint32(idx))
@@ -1235,11 +1244,13 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
     v.Sizes         = append(v.Sizes,         0)
     v.PtrDataOffset = append(v.PtrDataOffset, 0)
     v.PtrSizes      = append(v.PtrSizes,      0)
-    v.Blocks        = append(v.Blocks,        chunk.Block)
     v.NChildren++
+    b = append(b, chunk.Block)
   }
   if v.NChildren != 0 {
-    generator.Channel <- v
+    generator.Channel <- RVertexGeneratorType{
+      Vertex: v,
+      Blocks: b }
   }
   return nil
 }

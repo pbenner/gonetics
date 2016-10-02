@@ -29,8 +29,15 @@ func TestGenesExpr1(t *testing.T) {
 //  genes := ImportGenesFromUCSC("hg19", "ensGene")
 //  genes.WriteTable("Data/hg19.ensGene.txt.gz", false, true)
 
-  genes := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
-  genes.ReadGTFExpr("genesExpr_test.gtf.gz", "transcript_id", "FPKM")
+  genes, err1 := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
+  if err1 != nil {
+    t.Error("TestGenesExpr1 failed!")
+  }
+
+  err2 := genes.ReadGTFExpr("genesExpr_test.gtf.gz", "transcript_id", "FPKM")
+  if err2 != nil {
+    t.Error("TestGenesExpr1 failed!")
+  }
 
   if len(genes.GetMetaFloat("expr")) != 204940 {
     t.Error("TestGenesExpr1 failed!")

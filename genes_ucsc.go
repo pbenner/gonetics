@@ -20,7 +20,6 @@ package gonetics
 
 import "bufio"
 import "fmt"
-import "log"
 import "compress/gzip"
 import "database/sql"
 import "os"
@@ -35,16 +34,21 @@ import _ "github.com/go-sql-driver/mysql"
 // Import genes from UCSC text files. The format is a whitespace separated
 // table with columns: Name, Seqname, TranscriptStart, TranscriptEnd,
 // CodingStart, CodingEnd, and Strand.
-func ReadUCSCGenes(filename string) Genes {
+func ReadUCSCGenes(filename string) (Genes, error) {
+  var genes Genes
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return genes, err
+  }
   defer f.Close()
   // check if file is gzipped
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    check(err)
+    if err != nil {
+      return genes, err
+    }
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -63,19 +67,31 @@ func ReadUCSCGenes(filename string) Genes {
   for scanner.Scan() {
     err = scanner.Err()
     if err != nil {
-      panic(err)
+      return genes, err
     }
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
     }
     if len(fields) != 7 {
-      panic("File must have seven columns!")
+      return genes, fmt.Errorf("file must have seven columns")
     }
-    t1, e := strconv.ParseInt(fields[3], 10, 64); check(e)
-    t2, e := strconv.ParseInt(fields[4], 10, 64); check(e)
-    t3, e := strconv.ParseInt(fields[5], 10, 64); check(e)
-    t4, e := strconv.ParseInt(fields[6], 10, 64); check(e)
+    t1, e := strconv.ParseInt(fields[3], 10, 64)
+    if e != nil {
+      return genes, e
+    }
+    t2, e := strconv.ParseInt(fields[4], 10, 64)
+    if e != nil {
+      return genes, e
+    }
+    t3, e := strconv.ParseInt(fields[5], 10, 64)
+    if e != nil {
+      return genes, e
+    }
+    t4, e := strconv.ParseInt(fields[6], 10, 64)
+    if e != nil {
+      return genes, e
+    }
     names    = append(names,    fields[0])
     seqnames = append(seqnames, fields[1])
     txFrom   = append(txFrom,   int(t1))
@@ -87,7 +103,8 @@ func ReadUCSCGenes(filename string) Genes {
   return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
 }
 
-func ImportGenesFromUCSC(genome, table string) Genes {
+func ImportGenesFromUCSC(genome, table string) (Genes, error) {
+  genes := Genes{}
   /* variables for storing a single database row */
   var i_name, i_seqname, i_strand string
   var i_txFrom, i_txTo, i_cdsFrom, i_cdsTo int
@@ -104,26 +121,26 @@ func ImportGenesFromUCSC(genome, table string) Genes {
   db, err := sql.Open("mysql",
 		fmt.Sprintf("genome@tcp(genome-mysql.cse.ucsc.edu:3306)/%s", genome))
 	if err != nil {
-		log.Fatal(err)
+		return genes, err
 	}
 	defer db.Close()
 
   err = db.Ping()
   if err != nil {
-    log.Fatal(err)
+    return genes,err
   }
 
   /* receive data */
   rows, err := db.Query(
     fmt.Sprintf("SELECT name, chrom, strand, txStart, txEnd, cdsStart, cdsEnd FROM %s", table))
   if err != nil {
-    log.Fatal(err)
+    return genes, err
   }
   defer rows.Close()
   for rows.Next() {
     err := rows.Scan(&i_name, &i_seqname, &i_strand, &i_txFrom, &i_txTo, &i_cdsFrom, &i_cdsTo)
     if err != nil {
-      log.Fatal(err)
+      return genes, err
     }
     names    = append(names,    i_name)
     seqnames = append(seqnames, i_seqname)

@@ -30,14 +30,6 @@ import "unicode"
 
 /* -------------------------------------------------------------------------- */
 
-func check(e error) {
-  if e != nil {
-    panic(e)
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-
 func removeDuplicatesInt(s []int) []int {
   m := map[int]bool{}
   r := []int{}
@@ -99,12 +91,16 @@ func writeFile(filename string, r io.Reader, compress bool) error {
 func isGzip(filename string) bool {
 
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return false
+  }
   defer f.Close()
 
   b := make([]byte, 2)
   n, err := f.Read(b)
-  check(err)
+  if err != nil {
+    return false
+  }
 
   if n == 2 && b[0] == 31 && b[1] == 139 {
     return true

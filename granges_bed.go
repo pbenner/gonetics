@@ -166,7 +166,7 @@ func (g *GRanges) ReadBed6(filename string) error {
       continue
     }
     if len(fields) < 6 {
-      fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
+      return fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
     if e1 != nil {

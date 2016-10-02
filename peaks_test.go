@@ -25,10 +25,13 @@ import   "testing"
 
 func TestGPeaks1(t *testing.T) {
 
-  peaks := ReadXlsPeaks("peaks_test.xls")
+  peaks, err := ReadXlsPeaks("peaks_test.xls")
 
   //fmt.Println(peaks)
 
+  if err != nil {
+    t.Error("TestGPeaks1 failed!")
+  }
   if peaks.Length() != 16 {
     t.Error("TestGPeaks1 failed!")
   }

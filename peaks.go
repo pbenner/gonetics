@@ -18,13 +18,11 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 import "bufio"
 import "os"
 import "strconv"
 import "strings"
-
-import . "github.com/pbenner/pshape/Utility"
 
 /* -------------------------------------------------------------------------- */
 
@@ -70,10 +68,14 @@ func (p GPeaks) Qvalue() []float64 {
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ReadXlsPeaks(filename string) GPeaks {
+func ReadXlsPeaks(filename string) (GPeaks, error) {
+
+  var gpeaks GPeaks
 
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return gpeaks, err
+  }
   defer f.Close()
   // check if we already saw the header
   header := false
@@ -97,26 +99,47 @@ func ReadXlsPeaks(filename string) GPeaks {
       continue
     }
     if len(fields) != 10 {
-      panic("Invalid peaks xls file!")
+      return gpeaks, fmt.Errorf("invalid peaks xls file")
     }
     if header == false {
       // first line is the header
       if fields[0] != "chr"             || fields[1] != "start"  || fields[2] != "end" ||
         (fields[4] != "abs_summit"      || fields[5] != "pileup" || fields[6] != "-log10(pvalue)") ||
         (fields[7] != "fold_enrichment" || fields[8] != "-log10(qvalue)") {
-        panic("Invalid Xls header!")
+        return gpeaks, fmt.Errorf("Invalid Xls header!")
       }
       header = true
       continue
     }
-    t1, e1 := strconv.ParseInt(fields[1], 10, 64) // from
-    t2, e2 := strconv.ParseInt(fields[2], 10, 64) // to
-    t3, e3 := strconv.ParseInt(fields[4], 10, 64) // abs_summit
-    t4, e4 := strconv.ParseFloat(fields[5], 64)   // pileup
-    t5, e5 := strconv.ParseFloat(fields[6], 64)   // pvalue
-    t6, e6 := strconv.ParseFloat(fields[7], 64)   // fold_enrichment
-    t7, e7 := strconv.ParseFloat(fields[8], 64)   // qvalue
-    check(e1); Check(e2); Check(e3); Check(e4); Check(e5); Check(e6); Check(e7)
+    t1, e := strconv.ParseInt(fields[1], 10, 64) // from
+    if e != nil {
+      return gpeaks, e
+    }
+    t2, e := strconv.ParseInt(fields[2], 10, 64) // to
+    if e != nil {
+      return gpeaks, e
+    }
+    t3, e := strconv.ParseInt(fields[4], 10, 64) // abs_summit
+    if e != nil {
+      return gpeaks, e
+    }
+    t4, e := strconv.ParseFloat(fields[5], 64)   // pileup
+    if e != nil {
+      return gpeaks, e
+    }
+    t5, e := strconv.ParseFloat(fields[6], 64)   // pvalue
+    if e != nil {
+      return gpeaks, e
+    }
+    t6, e := strconv.ParseFloat(fields[7], 64)   // fold_enrichment
+    if e != nil {
+      return gpeaks, e
+    }
+    t7, e := strconv.ParseFloat(fields[8], 64)   // qvalue
+    if e != nil {
+      return gpeaks, e
+    }
+
 
     seqnames       = append(seqnames,       fields[0])
     from           = append(from,           int(t1))
@@ -127,5 +150,7 @@ func ReadXlsPeaks(filename string) GPeaks {
     foldEnrichment = append(foldEnrichment, float64(t6))
     qvalue         = append(qvalue,         float64(t7))
   }
-  return NewGPeaks(seqnames, from, to, absSummit, pileup, pvalue, foldEnrichment, qvalue)
+  gpeaks = NewGPeaks(seqnames, from, to, absSummit, pileup, pvalue, foldEnrichment, qvalue)
+
+  return gpeaks, nil
 }

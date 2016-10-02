@@ -61,16 +61,20 @@ func (genes *Genes) ReadGTFExpr(filename, geneIdName, exprIdName string) error {
 
 // Import expression data from cufflinks. The data is added to the gene
 // list as a meta column named "expr".
-func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
+func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) error {
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return err
+  }
   defer f.Close()
   // check if file is gzipped
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    check(err)
+    if err != nil {
+      return err
+    }
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -80,28 +84,34 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
 
   // parse header
   scanner.Scan();
-  check(scanner.Err())
+  if err := scanner.Err(); err != nil {
+    return err
+  }
   header := strings.Fields(scanner.Text())
   if len(header) != 13 || header[0] != "tracking_id" ||
     (header[9] != "FPKM" && header[9] != "RPKM") {
-    panic("Invalid header!")
+    return fmt.Errorf("invalid header")
   }
   // parse data
   for scanner.Scan() {
-    check(scanner.Err())
-
+    if err := scanner.Err(); err != nil {
+      return err
+    }
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
     }
     if len(fields) != 13 {
-      panic("File must have 13 columns!")
+      return fmt.Errorf("file must have 13 columns")
     }
     if fields[12] == "OK" {
       geneStr := fields[0]
       exprStr := fields[9]
       if i, ok := genes.FindGene(geneStr); ok {
-        t, err := strconv.ParseFloat(exprStr, 64); check(err)
+        t, err := strconv.ParseFloat(exprStr, 64)
+        if err != nil {
+          return err
+        }
         expr[i] += t
       } else {
         if verbose {
@@ -111,4 +121,6 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) {
     }
   }
   genes.AddMeta("expr", expr)
+
+  return nil
 }

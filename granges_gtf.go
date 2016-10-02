@@ -101,12 +101,16 @@ func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) er
   var scanner *bufio.Scanner
   // open file
   f, err := os.Open(filename)
-  check(err)
+  if err != nil {
+    return err
+  }
   defer f.Close()
   // check if file is gzipped
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
-    check(err)
+    if err != nil {
+      return err
+    }
     defer g.Close()
     scanner = bufio.NewScanner(g)
   } else {
@@ -148,7 +152,7 @@ func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) er
       continue
     }
     if len(fields) < 8 {
-      panic("File must have at least eight columns!")
+      return fmt.Errorf("file must have at least eight columns")
     }
     seqname = append(seqname, fields[0])
     source  = append(source,  fields[1])
@@ -208,8 +212,11 @@ func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) er
 // Export GRanges as GTF file. Required GTF fields should be provided
 // as meta columns named sources, features, scores, and frames. All other
 // meta columns are exported as optional fields.
-func (granges GRanges) WriteGTF(filename string) {
-  f, err := os.Create(filename); check(err)
+func (granges GRanges) WriteGTF(filename string) error {
+  f, err := os.Create(filename)
+  if err != nil {
+    return err
+  }
   defer f.Close()
 
   w := bufio.NewWriter(f)
@@ -311,4 +318,5 @@ func (granges GRanges) WriteGTF(filename string) {
     }
     w.WriteString("\n")
   }
+  return nil
 }

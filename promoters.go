@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
@@ -60,7 +60,7 @@ func mergeDuplicates(r GRanges) GRanges {
 // and offset2 determine the size of the window starting from the TSS
 // in 5' and 3' direction respectively. Genomic bounds are not
 // checked. (This is required by the GRanges ImportTrack() method!)
-func Promoters(genes Genes, offset1, offset2 int) GRanges {
+func Promoters(genes Genes, offset1, offset2 int) (GRanges, error) {
   result := GRanges{}
   names  := []string{}
   // fill matrix
@@ -73,7 +73,7 @@ func Promoters(genes Genes, offset1, offset2 int) GRanges {
       from = genes.Tx[i].To - 1 - offset2
       to   = genes.Tx[i].To - 1 + offset1 + 1
     } else {
-      panic("gene has no strand information!")
+      return result, fmt.Errorf("gene `%d' has no strand information", i)
     }
     result.Seqnames = append(result.Seqnames, genes.Seqnames[i])
     result.Ranges   = append(result.Ranges,   NewRange(from, to))
@@ -84,5 +84,5 @@ func Promoters(genes Genes, offset1, offset2 int) GRanges {
   // add names as a meta column
   result.Meta = genes.Meta.Clone()
   result.AddMeta("names", names)
-  return mergeDuplicates(result)
+  return mergeDuplicates(result), nil
 }

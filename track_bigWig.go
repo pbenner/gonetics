@@ -121,7 +121,7 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     switch v := args[i].(type) {
     case BigWigParameters: parameters = v
     default:
-      fmt.Errorf("WriteBigWig(): invalid arguments")
+      return fmt.Errorf("WriteBigWig(): invalid arguments")
     }
   }
   // get reduction levels for zoomed data

@@ -28,9 +28,12 @@ func TestGenes1(t *testing.T) {
 //  genes := ImportGenesFromUCSC("hg19", "knownGene")
 //  genes.WriteTable("Data/hg19.knownGene.txt.gz", false, true)
 
-  genes := ReadUCSCGenes("Data/hg19.knownGene.txt.gz")
+  genes, err := ReadUCSCGenes("Data/hg19.knownGene.txt.gz")
   //genes := ReadUCSCGenes("Data/hg19.ensGene.txt.gz")
 
+  if err != nil {
+    t.Error("TestGenes1 failed!")
+  }
   if genes.Length() != 82960 {
     t.Error("TestGenes1 failed!")
   }

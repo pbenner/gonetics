@@ -18,6 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "fmt"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
@@ -37,11 +38,12 @@ type Genes struct {
 /* constructors
  * -------------------------------------------------------------------------- */
 
-func newGenes(names, seqnames []string, tx, cds []Range, strand []byte) Genes {
+func newGenes(names, seqnames []string, tx, cds []Range, strand []byte) (Genes, error) {
+  var genes Genes
   n := len(names)
   if len(tx)       != n || len(cds)    != n  ||
     (len(seqnames) != n || len(strand) != n) {
-    panic("NewGenes(): invalid arguments!")
+    return genes, fmt.Errorf("NewGenes(): invalid arguments!")
   }
   index := map[string]int{}
   for i := 0; i < n; i++ {
@@ -51,10 +53,12 @@ func newGenes(names, seqnames []string, tx, cds []Range, strand []byte) Genes {
     }
     index[names[i]] = i
   }
-  return Genes{names, seqnames, tx, cds, strand, index, Meta{}}
+  genes = Genes{names, seqnames, tx, cds, strand, index, Meta{}}
+
+  return genes, nil
 }
 
-func NewGenes(names, seqnames []string, txFrom, txTo, cdsFrom, cdsTo []int, strand []byte) Genes {
+func NewGenes(names, seqnames []string, txFrom, txTo, cdsFrom, cdsTo []int, strand []byte) (Genes, error) {
   n := len(names)
   if len(txFrom)   != n || len(txTo)   != n  ||
     (len(cdsFrom)  != n || len(cdsTo)  != n) ||
@@ -83,7 +87,7 @@ func (g *Genes) Clone() Genes {
   copy(cds,      g.Cds)
   copy(tx,       g.Tx)
   copy(strand,   g.Strand)
-  result := newGenes(names, seqnames, cds, tx, strand)
+  result, _ := newGenes(names, seqnames, cds, tx, strand)
   result.Meta = g.Meta.Clone()
   return result
 }
@@ -108,7 +112,7 @@ func (g1 Genes) Append(g2 Genes) Genes {
   tx       := append(g1.Tx,       g2.Tx...)
   strand   := append(g1.Strand,   g2.Strand...)
 
-  result := newGenes(names, seqnames, cds, tx, strand)
+  result, _ := newGenes(names, seqnames, cds, tx, strand)
   result.Meta = g1.Meta.Append(g2.Meta)
 
   return result
@@ -161,7 +165,7 @@ func (g Genes) Subset(indices []int) Genes {
     cdsTo   [i] = g.Cds     [indices[i]].To
     strand  [i] = g.Strand  [indices[i]]
   }
-  result := NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
+  result, _ := NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
   result.Meta = g.Meta.Subset(indices)
 
   return result
@@ -188,7 +192,7 @@ func (g Genes) Slice(ifrom, ito int) Genes {
     cdsTo   [i-ifrom] = g.Cds     [i].To
     strand  [i-ifrom] = g.Strand  [i]
   }
-  result := NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
+  result, _ := NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
   result.Meta = g.Meta.Slice(ifrom, ito)
 
   return result

@@ -32,8 +32,9 @@ const BIGWIG_MAGIC = 0x888FFC26
 /* -------------------------------------------------------------------------- */
 
 type BigWigParameters struct {
-  BlockSize    int
-  ItemsPerSlot int
+  BlockSize         int
+  ItemsPerSlot      int
+  ReductionLevels []int
 }
 
 func DefaultBigWigParameters() BigWigParameters {
@@ -280,7 +281,7 @@ type BigWigWriterType struct {
   Sequence []float64
 }
 
-func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigParameters) (*BigWigWriter, error) {
+func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWriter, error) {
   bww := new(BigWigWriter)
   bwf := NewBigWigFile()
   // create new leaf map
@@ -292,13 +293,13 @@ func NewBigWigWriter(filename string, reductionLevels []int, parameters BigWigPa
     bww.generator = tmp
   }
   // add zoom headers
-  for i := 0; i < len(reductionLevels); i++ {
+  for i := 0; i < len(parameters.ReductionLevels); i++ {
     bwf.Header.ZoomHeaders = append(bwf.Header.ZoomHeaders,
-      BbiHeaderZoom{ReductionLevel: uint32(reductionLevels[i])})
+      BbiHeaderZoom{ReductionLevel: uint32(parameters.ReductionLevels[i])})
   }
-  bwf.Header.ZoomLevels = uint16(len(reductionLevels))
+  bwf.Header.ZoomLevels = uint16(len(parameters.ReductionLevels))
   // allocate space for zoom indices
-  bwf.IndexZoom = make([]RTree, len(reductionLevels))
+  bwf.IndexZoom = make([]RTree, len(parameters.ReductionLevels))
   // compress by default (this value is updated when writing blocks)
   bwf.Header.UncompressBufSize = 1
   // size of uint32

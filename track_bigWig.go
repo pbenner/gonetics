@@ -119,15 +119,16 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
   // parse arguments
   for i := 0; i < len(args); i++ {
     switch v := args[i].(type) {
-    case BigWigParameters: parameters = v
+    case BigWigParameters:
+      parameters = v
     default:
       return fmt.Errorf("WriteBigWig(): invalid arguments")
     }
   }
   // get reduction levels for zoomed data
-  reductionLevels := track.writeBigWig_reductionLevels(parameters)
+  parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
   // create new bigWig writer
-  writer, err := NewBigWigWriter(filename, reductionLevels, parameters)
+  writer, err := NewBigWigWriter(filename, parameters)
   if err != nil {
     return err
   }
@@ -141,14 +142,14 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     return err
   }
   // write zoomed data
-  for i := 0; i < len(reductionLevels); i++ {
+  for i, reductionLevel := range parameters.ReductionLevels {
     // save current offset as the beginning of zoomed data for reduction
     // level i
     if err := writer.StartZoomData(i); err != nil {
       return err
     }
     for name, sequence := range track.Data {
-      if err := writer.WriteZoom(name, sequence, track.Binsize, reductionLevels[i], i); err != nil {
+      if err := writer.WriteZoom(name, sequence, track.Binsize, reductionLevel, i); err != nil {
         return err
       }
     }

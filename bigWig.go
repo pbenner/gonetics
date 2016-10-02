@@ -39,8 +39,9 @@ type BigWigParameters struct {
 
 func DefaultBigWigParameters() BigWigParameters {
   return BigWigParameters{
-    BlockSize: 256,
-    ItemsPerSlot: 1024 }
+    BlockSize      : 256,
+    ItemsPerSlot   : 1024,
+    ReductionLevels: nil }
 }
 
 /* -------------------------------------------------------------------------- */

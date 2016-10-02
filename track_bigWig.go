@@ -126,7 +126,9 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     }
   }
   // get reduction levels for zoomed data
-  parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
+  if parameters.ReductionLevels == nil {
+    parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
+  }
   // create new bigWig writer
   writer, err := NewBigWigWriter(filename, parameters)
   if err != nil {

@@ -22,10 +22,10 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (granges *GRanges) ReadBam(filename string) error {
+func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
   var reader *BamReader
 
-  if r, err := NewBamReader(filename); err != nil {
+  if r, err := NewBamReader(filename, args...); err != nil {
     return err
   } else {
     reader = r
@@ -65,8 +65,8 @@ func (granges *GRanges) ReadBam(filename string) error {
         strand = append(strand,   '+')
       }
     }
-    sequence = append(sequence, block.Seq.String())
     mapq     = append(mapq,     int(block.MapQ))
+    sequence = append(sequence, block.Seq.String())
     cigar    = append(cigar,    block.Cigar.String())
   }
   *granges = NewGRanges(seqnames, from, to, strand)

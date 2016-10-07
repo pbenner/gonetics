@@ -23,6 +23,7 @@ import "bufio"
 import "bytes"
 import "encoding/binary"
 import "io"
+import "io/ioutil"
 import "os"
 
 /* -------------------------------------------------------------------------- */
@@ -326,18 +327,41 @@ func IsBamFile(filename string) (bool, error) {
 
 /* -------------------------------------------------------------------------- */
 
+type BamReaderOptions struct {
+  ReadName      bool
+  ReadCigar     bool
+  ReadSequence  bool
+  ReadAuxiliary bool
+  ReadQual      bool
+}
+
 type BamReader struct {
   BgzfReader
+  Options BamReaderOptions
   Header  BamHeader
   Genome  Genome
   Channel chan BamBlock
 }
 
-func NewBamReader(filename string) (*BamReader, error) {
+func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
   file   := new(os.File)
   reader := new(BamReader)
   magic  := make([]byte, 4)
-  genome := new(Genome)
+  // default options
+  reader.Options.ReadName      = true
+  reader.Options.ReadCigar     = true
+  reader.Options.ReadSequence  = true
+  reader.Options.ReadAuxiliary = true
+  reader.Options.ReadQual      = true
+  // parse optional arguments
+  for _, arg := range args {
+    switch a := arg.(type) {
+    default:
+      return nil, fmt.Errorf("invalid optional argument")
+    case BamReaderOptions:
+      reader.Options = a
+    }
+  }
   // temporary space for reading bytes
   var tmp []byte
 
@@ -388,9 +412,8 @@ func NewBamReader(filename string) (*BamReader, error) {
     if err := binary.Read(reader, binary.LittleEndian, &lengthSeq); err != nil {
       return nil, err
     }
-    genome.AddSequence(string(tmp[0:lengthName-1]), int(lengthSeq))
+    reader.Genome.AddSequence(string(tmp[0:lengthName-1]), int(lengthSeq))
   }
-  reader.Genome  = *genome
   reader.Channel = make(chan BamBlock)
   // fill channel with blocks
   go func() {
@@ -476,40 +499,70 @@ func (reader *BamReader) fillChannel() {
       buf.WriteByte(b)
     }
     // parse cigar block
-    block.Cigar = make(BamCigar, block.NCigarOp)
-    for i := 0; i < int(block.NCigarOp); i++ {
-      if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
-        reader.Channel <- BamBlock{Error: err}
-        return
+    if reader.Options.ReadCigar {
+      block.Cigar = make(BamCigar, block.NCigarOp)
+      for i := 0; i < int(block.NCigarOp); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
+          reader.Channel <- BamBlock{Error: err}
+          return
+        }
+      }
+    } else {
+      for i := 0; i < int(block.NCigarOp); i++ {
+        if _, err := io.CopyN(ioutil.Discard, reader, 4); err != nil {
+          reader.Channel <- BamBlock{Error: err}
+          return
+        }
       }
     }
     // parse seq
-    block.Seq = make([]byte, (block.LSeq+1)/2)
-    for i := 0; i < int((block.LSeq+1)/2); i++ {
-      if err := binary.Read(reader, binary.LittleEndian, &block.Seq[i]); err != nil {
+    if reader.Options.ReadSequence {
+      block.Seq = make([]byte, (block.LSeq+1)/2)
+      for i := 0; i < int((block.LSeq+1)/2); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &block.Seq[i]); err != nil {
+          reader.Channel <- BamBlock{Error: err}
+          return
+        }
+      }
+    } else {
+      if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq+1)/2); err != nil {
         reader.Channel <- BamBlock{Error: err}
         return
       }
     }
     // parse qual block
-    block.Qual = make([]byte, block.LSeq)
-    for i := 0; i < int(block.LSeq); i++ {
-      if err := binary.Read(reader, binary.LittleEndian, &block.Qual[i]); err != nil {
+    if reader.Options.ReadQual {
+      block.Qual = make([]byte, block.LSeq)
+      for i := 0; i < int(block.LSeq); i++ {
+        if err := binary.Read(reader, binary.LittleEndian, &block.Qual[i]); err != nil {
+          reader.Channel <- BamBlock{Error: err}
+          return
+        }
+      }
+    } else {
+      if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq)); err != nil {
         reader.Channel <- BamBlock{Error: err}
         return
       }
     }
     // read auxiliary data
     position := 8*4 + int(block.RNLength) + 4*int(block.NCigarOp) + int((block.LSeq + 1)/2) + int(block.LSeq)
-    for i := 0; position + i < int(blockSize); {
-      aux := BamAuxiliary{}
-      if n, err := aux.Read(reader); err != nil {
+    if reader.Options.ReadAuxiliary {
+      for i := 0; position + i < int(blockSize); {
+        aux := BamAuxiliary{}
+        if n, err := aux.Read(reader); err != nil {
+          reader.Channel <- BamBlock{Error: err}
+          return
+        } else {
+          i += n
+        }
+        block.Auxiliary = append(block.Auxiliary, aux)
+      }
+    } else {
+      if _, err := io.CopyN(ioutil.Discard, reader, int64(blockSize) - int64(position)); err != nil {
         reader.Channel <- BamBlock{Error: err}
         return
-      } else {
-        i += n
-      }
-      block.Auxiliary = append(block.Auxiliary, aux)
+      }      
     }
     // send block to reading thread
     reader.Channel <- block

@@ -125,6 +125,21 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
   switch reader.Header.Type {
   default:
     return nil, fmt.Errorf("unsupported block type")
+  case 1:
+    if len(buffer) % 12 != 0 {
+      return nil, fmt.Errorf("bedGraph data block has invalid length")
+    }
+    go func() {
+      for i := 0; i < len(buffer); i += 12 {
+        r := BbiBlockDecoderType{}
+        r.Idx   = i
+        r.From  = int(binary.LittleEndian.Uint32(buffer[i+0:i+4]))
+        r.To    = int(binary.LittleEndian.Uint32(buffer[i+4:i+8]))
+        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i+8:i+12])))
+        reader.Channel <- r
+      }
+      close(reader.Channel)
+    }()
   case 2:
     if len(buffer) % 8 != 0 {
       return nil, fmt.Errorf("variable step data block has invalid length")

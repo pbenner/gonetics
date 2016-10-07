@@ -185,7 +185,11 @@ func (g *GRanges) ReadBed6(filename string) error {
     to       = append(to,       int(t2))
     name     = append(name,     fields[3])
     score    = append(score,    int(t3))
-    strand   = append(strand,   fields[5][0])
+    if fields[5][0] == '.' {
+      strand   = append(strand, '*')
+    } else {
+      strand   = append(strand, fields[5][0])
+    }
   }
   *g = NewGRanges(seqnames, from, to, strand)
   g.AddMeta("name",  name)

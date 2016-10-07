@@ -340,7 +340,7 @@ type BamReader struct {
   Options BamReaderOptions
   Header  BamHeader
   Genome  Genome
-  Channel chan BamBlock
+  Channel chan *BamBlock
 }
 
 func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
@@ -414,7 +414,7 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
     }
     reader.Genome.AddSequence(string(tmp[0:lengthName-1]), int(lengthSeq))
   }
-  reader.Channel = make(chan BamBlock)
+  reader.Channel = make(chan *BamBlock)
   // fill channel with blocks
   go func() {
     reader.fillChannel()
@@ -426,7 +426,7 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
   return reader, nil
 }
 
-func (reader *BamReader) ReadBlocks() <- chan BamBlock {
+func (reader *BamReader) ReadBlocks() <- chan *BamBlock {
   return reader.Channel
 }
 
@@ -434,6 +434,9 @@ func (reader *BamReader) fillChannel() {
   var blockSize int32
   var flagNc    uint32
   var binMqNl   uint32
+  // allocate two blocks for sending and reading
+  block        := new(BamBlock)
+  blockReserve := new(BamBlock)
   for {
     buf := bytes.NewBuffer([]byte{})
     // read block size
@@ -441,55 +444,53 @@ func (reader *BamReader) fillChannel() {
       if err == io.EOF {
         return
       }
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
-    // allocate new block
-    block := BamBlock{}
     // read block data
     if err := binary.Read(reader, binary.LittleEndian, &block.RefID); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.Position); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     if err := binary.Read(reader, binary.LittleEndian, &binMqNl); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     block.Bin      = uint16((binMqNl >> 16) & 0xffff)
     block.MapQ     = uint8 ((binMqNl >>  8) & 0xff)
     block.RNLength = uint8 ((binMqNl >>  0) & 0xff)
     if err := binary.Read(reader, binary.LittleEndian, &flagNc); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     // get Flag and NCigarOp from FlagNc
     block.Flag     = BamFlag(flagNc >> 16)
     block.NCigarOp = uint16(flagNc & 0xffff)
     if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.NextRefID); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.NextPosition); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     if err := binary.Read(reader, binary.LittleEndian, &block.TLength); err != nil {
-      reader.Channel <- BamBlock{Error: err}
+      reader.Channel <- &BamBlock{Error: err}
       return
     }
     // parse the read name
     var b byte
     for {
       if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
-        reader.Channel <- BamBlock{Error: err}
+        reader.Channel <- &BamBlock{Error: err}
         return
       }
       if b == 0 {
@@ -503,14 +504,14 @@ func (reader *BamReader) fillChannel() {
       block.Cigar = make(BamCigar, block.NCigarOp)
       for i := 0; i < int(block.NCigarOp); i++ {
         if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
-          reader.Channel <- BamBlock{Error: err}
+          reader.Channel <- &BamBlock{Error: err}
           return
         }
       }
     } else {
       for i := 0; i < int(block.NCigarOp); i++ {
         if _, err := io.CopyN(ioutil.Discard, reader, 4); err != nil {
-          reader.Channel <- BamBlock{Error: err}
+          reader.Channel <- &BamBlock{Error: err}
           return
         }
       }
@@ -520,13 +521,13 @@ func (reader *BamReader) fillChannel() {
       block.Seq = make([]byte, (block.LSeq+1)/2)
       for i := 0; i < int((block.LSeq+1)/2); i++ {
         if err := binary.Read(reader, binary.LittleEndian, &block.Seq[i]); err != nil {
-          reader.Channel <- BamBlock{Error: err}
+          reader.Channel <- &BamBlock{Error: err}
           return
         }
       }
     } else {
       if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq+1)/2); err != nil {
-        reader.Channel <- BamBlock{Error: err}
+        reader.Channel <- &BamBlock{Error: err}
         return
       }
     }
@@ -535,13 +536,13 @@ func (reader *BamReader) fillChannel() {
       block.Qual = make([]byte, block.LSeq)
       for i := 0; i < int(block.LSeq); i++ {
         if err := binary.Read(reader, binary.LittleEndian, &block.Qual[i]); err != nil {
-          reader.Channel <- BamBlock{Error: err}
+          reader.Channel <- &BamBlock{Error: err}
           return
         }
       }
     } else {
       if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq)); err != nil {
-        reader.Channel <- BamBlock{Error: err}
+        reader.Channel <- &BamBlock{Error: err}
         return
       }
     }
@@ -551,7 +552,7 @@ func (reader *BamReader) fillChannel() {
       for i := 0; position + i < int(blockSize); {
         aux := BamAuxiliary{}
         if n, err := aux.Read(reader); err != nil {
-          reader.Channel <- BamBlock{Error: err}
+          reader.Channel <- &BamBlock{Error: err}
           return
         } else {
           i += n
@@ -560,11 +561,13 @@ func (reader *BamReader) fillChannel() {
       }
     } else {
       if _, err := io.CopyN(ioutil.Discard, reader, int64(blockSize) - int64(position)); err != nil {
-        reader.Channel <- BamBlock{Error: err}
+        reader.Channel <- &BamBlock{Error: err}
         return
       }      
     }
     // send block to reading thread
     reader.Channel <- block
+    // swap blocks
+    block, blockReserve = blockReserve, block
   }
 }

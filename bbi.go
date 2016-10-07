@@ -101,7 +101,7 @@ func compressSlice(data []byte) ([]byte, error) {
 
 type BbiBlockDecoder struct {
   Header  BbiDataHeader
-  Channel chan BbiBlockDecoderType
+  Buffer  []byte
 }
 
 type BbiBlockDecoderType struct {
@@ -109,6 +109,7 @@ type BbiBlockDecoderType struct {
   From  int
   To    int
   Value float64
+  Error error
 }
 
 func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
@@ -116,66 +117,72 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
     return nil, fmt.Errorf("block length is shorter than 24 bytes")
   }
   reader := BbiBlockDecoder{}
-  reader.Channel = make(chan BbiBlockDecoderType)
   // parse header
   reader.Header.ReadBuffer(buffer)
   // crop header from buffer
-  buffer = buffer[24:]
+  reader.Buffer = buffer[24:]
 
   switch reader.Header.Type {
   default:
     return nil, fmt.Errorf("unsupported block type")
   case 1:
-    if len(buffer) % 12 != 0 {
+    if len(reader.Buffer) % 12 != 0 {
       return nil, fmt.Errorf("bedGraph data block has invalid length")
     }
-    go func() {
-      for i := 0; i < len(buffer); i += 12 {
-        r := BbiBlockDecoderType{}
-        r.Idx   = i
-        r.From  = int(binary.LittleEndian.Uint32(buffer[i+0:i+4]))
-        r.To    = int(binary.LittleEndian.Uint32(buffer[i+4:i+8]))
-        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i+8:i+12])))
-        reader.Channel <- r
-      }
-      close(reader.Channel)
-    }()
   case 2:
     if len(buffer) % 8 != 0 {
       return nil, fmt.Errorf("variable step data block has invalid length")
     }
-    go func() {
-      for i := 0; i < len(buffer); i += 8 {
-        r := BbiBlockDecoderType{}
-        r.Idx   = i
-        r.From  = int(binary.LittleEndian.Uint32(buffer[i+0:i+4]))
-        r.To    = r.From + int(reader.Header.Span)
-        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i+4:i+8])))
-        reader.Channel <- r
-      }
-      close(reader.Channel)
-    }()
   case 3:
     if len(buffer) % 4 != 0 {
       return nil, fmt.Errorf("fixed step data block has invalid length")
     }
-    go func() {
-      for i := 0; i < len(buffer); i += 4 {
-        r := BbiBlockDecoderType{}
-        r.Idx   = i
-        r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
-        r.To    = r.From + int(reader.Header.Span)
-        r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(buffer[i:i+4])))
-        reader.Channel <- r
-      }
-      close(reader.Channel)
-    }()
   }
   return &reader, nil
 }
 
-func (reader *BbiBlockDecoder) Read() <- chan BbiBlockDecoderType {
-  return reader.Channel
+func (reader *BbiBlockDecoder) fillChannelBlocks(channel chan BbiBlockDecoderType) {
+  switch reader.Header.Type {
+  default:
+    // this shouldn't happen
+    panic("internal error (unsupported block type)")
+  case 1:
+    for i := 0; i < len(reader.Buffer); i += 12 {
+      r := BbiBlockDecoderType{}
+      r.Idx   = i
+      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+      r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
+      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+      channel <- r
+    }
+  case 2:
+    for i := 0; i < len(reader.Buffer); i += 8 {
+      r := BbiBlockDecoderType{}
+      r.Idx   = i
+      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+      r.To    = r.From + int(reader.Header.Span)
+      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+      channel <- r
+    }
+  case 3:
+    for i := 0; i < len(reader.Buffer); i += 4 {
+      r := BbiBlockDecoderType{}
+      r.Idx   = i
+      r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
+      r.To    = r.From + int(reader.Header.Span)
+      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+      channel <- r
+    }
+  }
+}
+
+func (reader *BbiBlockDecoder) DecodeBlocks() <- chan BbiBlockDecoderType {
+  channel := make(chan BbiBlockDecoderType)
+  go func() {
+    reader.fillChannelBlocks(channel)
+    close(channel)
+  }()
+  return channel
 }
 
 /* -------------------------------------------------------------------------- */

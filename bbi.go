@@ -141,7 +141,7 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
   return &reader, nil
 }
 
-func (reader *BbiBlockDecoder) fillChannelBlocks(channel chan BbiBlockDecoderType) {
+func (reader *BbiBlockDecoder) fillChannel(channel chan BbiBlockDecoderType) {
   switch reader.Header.Type {
   default:
     // this shouldn't happen
@@ -176,10 +176,10 @@ func (reader *BbiBlockDecoder) fillChannelBlocks(channel chan BbiBlockDecoderTyp
   }
 }
 
-func (reader *BbiBlockDecoder) DecodeBlocks() <- chan BbiBlockDecoderType {
+func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
   channel := make(chan BbiBlockDecoderType)
   go func() {
-    reader.fillChannelBlocks(channel)
+    reader.fillChannel(channel)
     close(channel)
   }()
   return channel

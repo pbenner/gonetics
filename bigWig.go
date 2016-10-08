@@ -282,7 +282,7 @@ type BigWigWriterType struct {
   Sequence []float64
 }
 
-func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWriter, error) {
+func NewBigWigWriter(filename string, genome Genome, parameters BigWigParameters) (*BigWigWriter, error) {
   bww := new(BigWigWriter)
   bwf := NewBigWigFile()
   // create new leaf map
@@ -311,6 +311,7 @@ func NewBigWigWriter(filename string, parameters BigWigParameters) (*BigWigWrite
   }
   bww.Bwf = *bwf
   bww.Parameters = parameters
+  bww.Genome = genome
 
   return bww, nil
 }
@@ -350,19 +351,15 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
 }
 
 func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
-  // index of the current sequence
-  var idx int
-  // add sequence name and length to the genome
-  if tmp, err := bww.Genome.AddSequence(seqname, len(sequence)*binsize); err != nil {
+  if idx, err := bww.Genome.GetIdx(seqname); err != nil {
     return err
   } else {
-    idx = tmp
-  }
-  if n, err := bww.write(idx, sequence, binsize); err != nil {
-    return err
-  } else {
-    bww.Bwf.Header.NBlocks += uint64(n)
-    return bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr)
+    if n, err := bww.write(idx, sequence, binsize); err != nil {
+      return err
+    } else {
+      bww.Bwf.Header.NBlocks += uint64(n)
+      return bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr)
+    }
   }
 }
 

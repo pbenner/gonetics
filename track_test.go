@@ -179,10 +179,13 @@ func TestTrack7(t *testing.T) {
 
   track := Track{}
 
+  genome := Genome{}
+  genome.ReadFile("track_test.1.genome")
+
   if err := track.ReadBigWig("track_test.1.bw", ""); err != nil {
     t.Error(err)
   }
-  if err := track.WriteBigWig("track_test.1.bw.tmp", ""); err != nil {
+  if err := track.WriteBigWig("track_test.1.bw.tmp", "", genome); err != nil {
     t.Error(err)
   }
   // reset track and read file again
@@ -197,10 +200,13 @@ func TestTrack8(t *testing.T) {
   track1 := Track{}
   track2 := Track{}
 
+  genome := Genome{}
+  genome.ReadFile("track_test.3.genome")
+
   if err := track1.ReadBigWig("track_test.3.bw", ""); err != nil {
     t.Error(err)
   }
-  if err := track1.WriteBigWig("track_test.3.bw.tmp", ""); err != nil {
+  if err := track1.WriteBigWig("track_test.3.bw.tmp", "", genome); err != nil {
     t.Error(err)
   }
   if err := track2.ReadBigWig("track_test.3.bw.tmp", ""); err != nil {
@@ -210,46 +216,31 @@ func TestTrack8(t *testing.T) {
 
 func TestTrack9(t *testing.T) {
 
-  filename1 := "track_test.4.bw"
-  filename2 := "track_test.5.bw"
+  filename := "track_test.4.bw"
 
   genome := NewGenome([]string{"test1", "test2"}, []int{100, 200})
   track1 := AllocTrack("Test Track", genome, 10)
   track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
   track1.Data["test2"] = []float64{math.NaN(),1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,math.NaN()}
 
-  track1.WriteBigWig(filename1, "test description", true)
-  track1.WriteBigWig(filename2, "test description", false)
+  track1.WriteBigWig(filename, "test description", genome)
 
   track2 := AllocTrack("", genome, 10)
   track2.Map(func(x float64) float64 { return math.NaN() })
-  track3 := AllocTrack("", genome, 10)
-  track3.Map(func(x float64) float64 { return math.NaN() })
-  err1 := track2.ReadBigWig(filename1, "")
-  err2 := track3.ReadBigWig(filename2, "")
+  err1 := track2.ReadBigWig(filename, "")
   if err1 != nil {
     t.Error(err1)
   }
-  if err2 != nil {
-    t.Error(err2)
-  }
   for name, seq1 := range track1.Data {
     seq2 := track2.Data[name]
-    seq3 := track3.Data[name]
     if seq2 == nil {
       t.Error("TestTrack3 failed")
     }
-    if seq3 == nil {
-      t.Error("TestTrack3 failed")
-    }
     for i := 0; i < len(seq1); i++ {
-      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) && math.IsNaN(seq3[i]) {
+      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
         continue
       }
       if math.Abs(seq1[i] - seq2[i]) > 1e-4 {
-        t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
-      }
-      if math.Abs(seq1[i] - seq3[i]) > 1e-4 {
         t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
       }
     }

@@ -113,7 +113,7 @@ func (track *Track) writeBigWig_reductionLevels(parameters BigWigParameters) []i
   return n
 }
 
-func (track *Track) WriteBigWig(filename, description string, args... interface{}) error {
+func (track *Track) WriteBigWig(filename, description string, genome Genome, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
 
@@ -131,7 +131,7 @@ func (track *Track) WriteBigWig(filename, description string, args... interface{
     parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
   }
   // create new bigWig writer
-  writer, err := NewBigWigWriter(filename, parameters)
+  writer, err := NewBigWigWriter(filename, genome, parameters)
   if err != nil {
     return err
   }

@@ -34,8 +34,17 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   seqname := genome.Seqnames[int(decoder.Header.ChromId)]
 
   // allocate track if this is the first buffer
-  if len(track.Data) == 0 && track.Binsize == 0 {
-    *track = AllocTrack("", genome, int(decoder.Header.Span))
+  if len(track.Data) == 0 {
+    switch decoder.Header.Type {
+    case 1:
+      if track.Binsize == 0 {
+        return fmt.Errorf("binsize is required for bedGraph tracks")
+      }
+      *track = AllocTrack("", genome, track.Binsize)
+    case 2: fallthrough
+    case 3:
+      *track = AllocTrack("", genome, int(decoder.Header.Span))
+    }
   }
   switch decoder.Header.Type {
   case 2:

@@ -25,6 +25,7 @@ import "encoding/binary"
 import "io"
 import "io/ioutil"
 import "os"
+import "strings"
 
 /* -------------------------------------------------------------------------- */
 
@@ -386,8 +387,13 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
   } else {
     tmp = make([]byte, reader.Header.TextLength)
 
-    if _, err := reader.Read(tmp); err != nil {
-      return nil, err
+    // number of bytes read
+    for n := 0; n < int(reader.Header.TextLength); {
+      if m, err := reader.Read(tmp[n:]); err != nil {
+        return nil, err
+      } else {
+        n += m
+      }
     }
     reader.Header.Text = string(tmp)
   }
@@ -412,7 +418,7 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
     if err := binary.Read(reader, binary.LittleEndian, &lengthSeq); err != nil {
       return nil, err
     }
-    reader.Genome.AddSequence(string(tmp[0:lengthName-1]), int(lengthSeq))
+    reader.Genome.AddSequence(strings.Trim(string(tmp), "\n\000"), int(lengthSeq))
   }
   reader.Channel = make(chan *BamBlock)
   // fill channel with blocks

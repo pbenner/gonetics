@@ -255,6 +255,18 @@ func (flag BamFlag) Bit(i uint) bool {
   }
 }
 
+func (flag BamFlag) Unmapped() bool {
+  return flag.Bit(2)
+}
+
+func (flag BamFlag) Revcomp() bool {
+  return flag.Bit(4)
+}
+
+func (flag BamFlag) Duplicate() bool {
+  return flag.Bit(10)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BamCigar []uint32

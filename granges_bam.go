@@ -37,6 +37,7 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
   sequence := []string{}
   mapq     := []int{}
   cigar    := []string{}
+  flag     := []int{}
 
   for block := range reader.ReadBlocks() {
     if block.Error != nil {
@@ -45,7 +46,7 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
     if block.RefID == -1 {
       continue
     }
-    if block.Flag.Bit(2) {
+    if block.Flag.Unmapped() {
       // read is unmapped, skip...
       continue
     }
@@ -56,21 +57,19 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
     from     = append(from,     int(block.Position))
     to       = append(to,       int(block.Position + block.LSeq))
     // check if read is unmapped
-    if block.Flag.Bit(2) {
-      strand = append(strand,   '*')
+    if block.Flag.Revcomp() {
+      strand = append(strand,   '-')
     } else {
-      if block.Flag.Bit(4) {
-        strand = append(strand,   '-')
-      } else {
-        strand = append(strand,   '+')
-      }
+      strand = append(strand,   '+')
     }
     mapq     = append(mapq,     int(block.MapQ))
+    flag     = append(flag,     int(block.Flag))
     sequence = append(sequence, block.Seq.String())
     cigar    = append(cigar,    block.Cigar.String())
   }
   *granges = NewGRanges(seqnames, from, to, strand)
   granges.AddMeta("sequence", sequence)
+  granges.AddMeta("flag", flag)
   granges.AddMeta("mapq", mapq)
   granges.AddMeta("cigar", cigar)
   

@@ -411,8 +411,12 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
     // allocate memory for reading the name
     tmp = make([]byte, lengthName)
     // read sequence name
-    if _, err := reader.Read(tmp); err != nil {
-      return nil, err
+    for n := 0; n < int(lengthName); {
+      if m, err := reader.Read(tmp[n:]); err != nil {
+        return nil, err
+      } else {
+        n += m
+      }
     }
     // read sequence length
     if err := binary.Read(reader, binary.LittleEndian, &lengthSeq); err != nil {

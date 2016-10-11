@@ -33,7 +33,10 @@ func (genes Genes) PrettyPrint(n int) string {
 
   // pretty print meta data and create a scanner reading
   // the resulting string
-  metaStr     := genes.Meta.PrettyPrint(n)
+  meta        := genes.Meta.Clone()
+  meta.DeleteMeta("names")
+  meta.DeleteMeta("cds")
+  metaStr     := meta.PrettyPrint(n)
   metaReader  := strings.NewReader(metaStr)
   metaScanner := bufio.NewScanner(metaReader)
 

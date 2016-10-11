@@ -57,15 +57,18 @@ func (meta Meta) PrettyPrint(n int) string {
   printCell := func(writer io.Writer, widths []int, i, j int) int {
     length := 0
     switch v := meta.MetaData[j].(type) {
-    case []string :
+    case []string:
       format := fmt.Sprintf(" %%%ds", widths[j]-1)
       length, _ = fmt.Fprintf(writer, format, v[i])
     case []float64:
       format := fmt.Sprintf(" %%%df", widths[j]-1)
       length, _ = fmt.Fprintf(writer, format, v[i])
-    case []int    :
+    case []int:
       format := fmt.Sprintf(" %%%dd", widths[j]-1)
       length, _ = fmt.Fprintf(writer, format, v[i])
+    case []Range:
+      format := fmt.Sprintf(" [ %%d, %%d ]")
+      length, _ = fmt.Fprintf(writer, format, v[i].From, v[i].To)
     default:
       length += printCellSlice(writer, widths, i, j, v)
     }

@@ -65,7 +65,10 @@ func (granges GRanges) WriteTable(filename string, header, strand, compress bool
 }
 
 func (granges *GRanges) ReadTable(filename string, names, types []string) error {
-  hasStrand := false
+  colSeqname := -1
+  colFrom    := -1
+  colTo      := -1
+  colStrand  := -1
 
   var scanner *bufio.Scanner
   // open file
@@ -90,37 +93,61 @@ func (granges *GRanges) ReadTable(filename string, names, types []string) error 
   // scan header
   if scanner.Scan() {
     fields := strings.Fields(scanner.Text())
-    // get number of columns
-    if len(fields) < 4 {
-      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
-    }
-    if fields[0] != "seqnames" || fields[1] != "from" || fields[2] != "to" {
-      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
-    }
-    if fields[3] == "strand" {
-      hasStrand = true
+    for i := 0; i < len(fields); i++ {
+      switch fields[i] {
+      case "seqnames":
+        colSeqname = i
+      case "from":
+        colFrom = i
+      case "to":
+        colTo = i
+      case "strand":
+        colStrand = i
+      }
     }
   }
+  if colSeqname == -1 {
+    return fmt.Errorf("ReadTable(): table `%s' is missing a seqname column", filename)
+  }
+  if colFrom == -1 {
+    return fmt.Errorf("ReadTable(): table `%s' is missing a from column", filename)
+  }
+  if colTo == -1 {
+    return fmt.Errorf("ReadTable(): table `%s' is missing a to column", filename)
+  }
+  // scan data
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
     }
-    if len(fields) < 4 {
+    // parse seqname
+    if len(fields) < colSeqname {
       return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
     }
-    v1, err := strconv.ParseInt(fields[1], 10, 64)
+    // parse from
+    if len(fields) < colFrom {
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
+    }
+    v1, err := strconv.ParseInt(fields[colFrom], 10, 64)
     if err != nil {
       return err
     }
-    v2, err := strconv.ParseInt(fields[2], 10, 64)
+    // parse to
+    if len(fields) < colTo {
+      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
+    }
+    v2, err := strconv.ParseInt(fields[colTo], 10, 64)
     if err != nil {
       return err
     }
-    granges.Seqnames = append(granges.Seqnames, fields[0])
+    granges.Seqnames = append(granges.Seqnames, fields[colSeqname])
     granges.Ranges   = append(granges.Ranges,   NewRange(int(v1), int(v2)))
-    if hasStrand {
-      granges.Strand = append(granges.Strand,   fields[3][0])
+    if colStrand != -1 {
+      if len(fields) < colStrand {
+        return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
+      }
+      granges.Strand = append(granges.Strand,   fields[colStrand][0])
     } else {
       granges.Strand = append(granges.Strand,   '*')
     }

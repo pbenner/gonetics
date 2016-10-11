@@ -302,6 +302,13 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
   return r
 }
 
+/* convert to gene object
+ * -------------------------------------------------------------------------- */
+
+func (granges GRanges) Genes() Genes {
+  return newGenes(granges)
+}
+
 /* convert to string
  * -------------------------------------------------------------------------- */
 

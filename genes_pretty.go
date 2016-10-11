@@ -49,8 +49,8 @@ func (genes Genes) PrettyPrint(n int) string {
     updateMaxWidth("%d", widths, 0, i+1)
     updateMaxWidth("%s", widths, 1, genes.Names[i])
     updateMaxWidth("%s", widths, 2, genes.Seqnames[i])
-    updateMaxWidth("%d", widths, 3, genes.Tx[i].From)
-    updateMaxWidth("%d", widths, 4, genes.Tx[i].To)
+    updateMaxWidth("%d", widths, 3, genes.Ranges[i].From)
+    updateMaxWidth("%d", widths, 4, genes.Ranges[i].To)
     updateMaxWidth("%d", widths, 5, genes.Cds[i].From)
     updateMaxWidth("%d", widths, 6, genes.Cds[i].To)
     updateMaxWidth("%c", widths, 7, genes.Strand[i])
@@ -76,8 +76,8 @@ func (genes Genes) PrettyPrint(n int) string {
       i+1,
       genes.Names[i],
       genes.Seqnames[i],
-      genes.Tx[i].From,
-      genes.Tx[i].To,
+      genes.Ranges[i].From,
+      genes.Ranges[i].To,
       genes.Cds[i].From,
       genes.Cds[i].To,
       genes.Strand[i])

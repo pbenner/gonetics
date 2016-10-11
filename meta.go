@@ -83,6 +83,10 @@ func (m *Meta) Clone() Meta {
       r := make([]int, len(v))
       copy(r, v)
       result.AddMeta(m.MetaName[i], r)
+    case []Range:
+      r := make([]Range, len(v))
+      copy(r, v)
+      result.AddMeta(m.MetaName[i], r)
     default: panic("AddMeta(): invalid type!")
     }
   }
@@ -115,6 +119,7 @@ func (m *Meta) AddMeta(name string, meta interface{}) {
     case   []float64: if len(v) != m.rows { goto lengthErr }
     case [][]int:     if len(v) != m.rows { goto lengthErr }
     case   []int:     if len(v) != m.rows { goto lengthErr }
+    case   []Range:   if len(v) != m.rows { goto lengthErr }
     default: panic("AddMeta(): invalid type!")
     }
   } else {
@@ -126,6 +131,7 @@ func (m *Meta) AddMeta(name string, meta interface{}) {
     case   []float64: m.rows = len(v)
     case [][]int:     m.rows = len(v)
     case   []int:     m.rows = len(v)
+    case   []Range:   m.rows = len(v)
     default: panic("AddMeta(): invalid type!")
     }
   }
@@ -193,6 +199,14 @@ func (m Meta) GetMetaInt(name string) []int {
   return []int{}
 }
 
+func (m Meta) GetMetaRange(name string) []Range {
+  r := m.GetMeta(name)
+  if r != nil {
+    return r.([]Range)
+  }
+  return []Range{}
+}
+
 func (meta1 Meta) Append(meta2 Meta) Meta {
   result := Meta{}
 
@@ -216,6 +230,7 @@ func (meta1 Meta) Append(meta2 Meta) Meta {
       case   []string:  t = append(v, dat2.(  []string)...)
       case   []int:     t = append(v, dat2.(  []int)...)
       case   []float64: t = append(v, dat2.(  []float64)...)
+      case   []Range:   t = append(v, dat2.(  []Range)...)
       }
       result.AddMeta(name, t)
     }
@@ -261,7 +276,7 @@ func (meta Meta) Subset(indices []int) Meta {
         l[i] = v[indices[i]]
       }
       data = append(data, l)
-    case []string :
+    case []string:
       l := make([]string, n)
       for i := 0; i < n; i++ {
         l[i] = v[indices[i]]
@@ -279,14 +294,20 @@ func (meta Meta) Subset(indices []int) Meta {
         l[i] = v[indices[i]]
       }
       data = append(data, l)
-    case []int    :
+    case []int:
       l := make([]int, n)
       for i := 0; i < n; i++ {
         l[i] = v[indices[i]]
       }
       data = append(data, l)
-    case [][]int    :
+    case [][]int:
       l := make([][]int, n)
+      for i := 0; i < n; i++ {
+        l[i] = v[indices[i]]
+      }
+      data = append(data, l)
+    case []Range:
+      l := make([]Range, n)
       for i := 0; i < n; i++ {
         l[i] = v[indices[i]]
       }
@@ -311,7 +332,7 @@ func (meta Meta) Slice(ifrom, ito int) Meta {
         l[i-ifrom] = v[i]
       }
       data = append(data, l)
-    case []string :
+    case []string:
       l := make([]string, n)
       for i := ifrom; i < ito; i++ {
         l[i-ifrom] = v[i]
@@ -329,14 +350,20 @@ func (meta Meta) Slice(ifrom, ito int) Meta {
         l[i-ifrom] = v[i]
       }
       data = append(data, l)
-    case []int    :
+    case []int:
       l := make([]int, n)
       for i := ifrom; i < ito; i++ {
         l[i-ifrom] = v[i]
       }
       data = append(data, l)
-    case [][]int    :
+    case [][]int:
       l := make([][]int, n)
+      for i := ifrom; i < ito; i++ {
+        l[i-ifrom] = v[i]
+      }
+      data = append(data, l)
+    case []Range:
+      l := make([]Range, n)
       for i := ifrom; i < ito; i++ {
         l[i-ifrom] = v[i]
       }
@@ -369,7 +396,7 @@ func (meta Meta) Merge(indices []int) Meta {
 
   for j := 0; j < m; j++ {
     switch v := meta.MetaData[j].(type) {
-    case []string :
+    case []string:
       l := make([][]string, n)
       for i := 0; i < len(v); i++ {
         l[indices[i]] = append(l[indices[i]], v[i])
@@ -381,7 +408,7 @@ func (meta Meta) Merge(indices []int) Meta {
         l[indices[i]] = append(l[indices[i]], v[i])
       }
       data = append(data, l)
-    case []int    :
+    case []int:
       l := make([][]int, n)
       for i := 0; i < len(v); i++ {
         l[indices[i]] = append(l[indices[i]], v[i])
@@ -390,6 +417,7 @@ func (meta Meta) Merge(indices []int) Meta {
     case [][]string : panic("cannot merge [][]string")
     case [][]int    : panic("cannot merge [][]int")
     case [][]float64: panic("cannot merge [][]float64")
+    case []Range    : panic("cannot merge []Range")
     }
   }
   return NewMeta(meta.MetaName, data)

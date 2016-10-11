@@ -100,7 +100,7 @@ func ReadUCSCGenes(filename string) (Genes, error) {
     cdsTo    = append(cdsTo,    int(t4))
     strand   = append(strand,   fields[2][0])
   }
-  return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
+  return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand), nil
 }
 
 func ImportGenesFromUCSC(genome, table string) (Genes, error) {
@@ -150,5 +150,5 @@ func ImportGenesFromUCSC(genome, table string) (Genes, error) {
     cdsTo    = append(cdsTo,    i_cdsTo)
     strand   = append(strand,   i_strand[0])
   }
-  return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand)
+  return NewGenes(names, seqnames, txFrom, txTo, cdsFrom, cdsTo, strand), nil
 }

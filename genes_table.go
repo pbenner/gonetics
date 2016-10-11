@@ -29,6 +29,9 @@ func (genes Genes) WriteTable(filename string, header, compress bool) {
 
   w := bufio.NewWriter(&buffer)
 
+  names   := genes.GetMetaStr("names")
+  cdsFrom := genes.GetMetaInt("cdsFrom")
+  cdsTo   := genes.GetMetaInt("cdsTo")
   // print header
   if header {
     fmt.Fprintf(w, "%16s %10s %6s %10s %10s %10s %10s",
@@ -38,13 +41,13 @@ func (genes Genes) WriteTable(filename string, header, compress bool) {
   }
   // print data
   for i := 0; i < genes.Length(); i++ {
-    fmt.Fprintf(w,  "%16s", genes.Names[i])
+    fmt.Fprintf(w,  "%16s", names[i])
     fmt.Fprintf(w, " %10s", genes.Seqnames[i])
     fmt.Fprintf(w, " %6c",  genes.Strand[i])
-    fmt.Fprintf(w, " %10d", genes.Tx[i].From)
-    fmt.Fprintf(w, " %10d", genes.Tx[i].To)
-    fmt.Fprintf(w, " %10d", genes.Cds[i].From)
-    fmt.Fprintf(w, " %10d", genes.Cds[i].To)
+    fmt.Fprintf(w, " %10d", genes.Ranges[i].From)
+    fmt.Fprintf(w, " %10d", genes.Ranges[i].To)
+    fmt.Fprintf(w, " %10d", cdsFrom[i])
+    fmt.Fprintf(w, " %10d", cdsTo[i])
     genes.Meta.WriteTableRow(w, i)
     fmt.Fprintf(w, "\n")
   }

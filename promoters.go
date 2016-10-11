@@ -67,11 +67,11 @@ func Promoters(genes Genes, offset1, offset2 int) (GRanges, error) {
   for i := 0; i < genes.Length(); i++ {
     from, to := 0,0
     if genes.Strand[i] == '+' {
-      from = genes.Tx[i].From - offset1
-      to   = genes.Tx[i].From + offset2 + 1
+      from = genes.Ranges[i].From - offset1
+      to   = genes.Ranges[i].From + offset2 + 1
     } else if genes.Strand[i] == '-' {
-      from = genes.Tx[i].To - 1 - offset2
-      to   = genes.Tx[i].To - 1 + offset1 + 1
+      from = genes.Ranges[i].To - 1 - offset2
+      to   = genes.Ranges[i].To - 1 + offset1 + 1
     } else {
       return result, fmt.Errorf("gene `%d' has no strand information", i)
     }
@@ -83,6 +83,7 @@ func Promoters(genes Genes, offset1, offset2 int) (GRanges, error) {
   }
   // add names as a meta column
   result.Meta = genes.Meta.Clone()
+  result.DeleteMeta("cds")
   result.AddMeta("names", names)
   return mergeDuplicates(result), nil
 }

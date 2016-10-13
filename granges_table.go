@@ -116,7 +116,7 @@ func (granges *GRanges) ReadTable(filename string, names, types []string) error 
     return fmt.Errorf("ReadTable(): table `%s' is missing a to column", filename)
   }
   // scan data
-  for scanner.Scan() {
+  for i:= 2; scanner.Scan(); i++ {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
@@ -131,7 +131,7 @@ func (granges *GRanges) ReadTable(filename string, names, types []string) error 
     }
     v1, err := strconv.ParseInt(fields[colFrom], 10, 64)
     if err != nil {
-      return err
+      return fmt.Errorf("parsing `from' column `%d' failed at line `%d': %v", colFrom+1, i, err)
     }
     // parse to
     if len(fields) < colTo {
@@ -139,7 +139,7 @@ func (granges *GRanges) ReadTable(filename string, names, types []string) error 
     }
     v2, err := strconv.ParseInt(fields[colTo], 10, 64)
     if err != nil {
-      return err
+      return fmt.Errorf("parsing `to' column `%d' failed at line `%d': %v", colTo+1, i, err)
     }
     granges.Seqnames = append(granges.Seqnames, fields[colSeqname])
     granges.Ranges   = append(granges.Ranges,   NewRange(int(v1), int(v2)))

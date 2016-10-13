@@ -131,7 +131,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
       }
     }
   }
-  for scanner.Scan() {
+  for i := 2; scanner.Scan(); i++ {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
@@ -151,14 +151,14 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
       case []int:
         v, err := strconv.ParseInt(fields[idx], 10, 64)
         if err != nil {
-          return err
+          return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
         }
         entry = append(entry, int(v))
         metaMap[name] = entry
       case []float64:
         v, err := strconv.ParseFloat(fields[idx], 64)
         if err != nil {
-          return err
+          return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
         }
         entry = append(entry, v)
         metaMap[name] = entry
@@ -173,7 +173,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
           for i := 0; i < len(data); i++ {
             v, err := strconv.ParseInt(data[i], 10, 64)
             if err != nil {
-              return err
+              return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
             }
             entry[len(entry)-1][i] = int(v)
           }
@@ -190,7 +190,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
           for i := 0; i < len(data); i++ {
             v, err := strconv.ParseFloat(data[i], 64)
             if err != nil {
-              return err
+              return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
             }
             entry[len(entry)-1][i] = v
           }

@@ -37,7 +37,13 @@ type Genes struct {
 
 func newGenes(granges GRanges) Genes {
   names := granges.GetMetaStr("names")
-  cds   := granges.GetMetaRange("cds")
+  if len(names) == 0 {
+    panic("NewGenes(): names column is missing")
+  }
+  cds := granges.GetMetaRange("cds")
+  if len(cds) == 0 {
+    panic("NewGenes(): cds column is missing")
+  }
   index := map[string]int{}
   for i := 0; i < granges.Length(); i++ {
     // check if strand is valid

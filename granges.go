@@ -159,6 +159,20 @@ func (r GRanges) Subset(indices []int) GRanges {
 }
 
 func (r GRanges) Slice(ifrom, ito int) GRanges {
+  // check parameters
+  if ifrom < 0 {
+    ifrom = 0
+  }
+  if ifrom > r.Length() {
+    ifrom = r.Length()
+  }
+  if ito < ifrom {
+    ito = ifrom
+  }
+  if ito > r.Length() {
+    ito = r.Length()
+  }
+
   n := ito-ifrom
   seqnames := make([]string, n)
   from     := make([]int, n)

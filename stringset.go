@@ -67,6 +67,34 @@ func (s StringSet) GetSlice(name string, r Range) ([]byte, error) {
 
 /* -------------------------------------------------------------------------- */
 
+func (s StringSet) Scan(query []byte) GRanges {
+  if len(s) == 0 {
+    return GRanges{}
+  }
+  seqnames := []string{}
+  from     := []int{}
+  to       := []int{}
+  strand   := []byte{}
+  for name, sequence := range s {
+    for i := 0; i+len(s)-1 < len(sequence); i++ {
+      match := true
+      for j := 0; j < len(query); j++ {
+        if sequence[i+j] != query[j] {
+          match = false; break
+        }
+      }
+      if match {
+        seqnames = append(seqnames, name)
+        from     = append(from, i)
+        to       = append(from, i+len(query))
+      }
+    }
+  }
+  return NewGRanges(seqnames, from, to, strand)
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (s StringSet) ReadFasta(filename string) error {
 
   var scanner *bufio.Scanner

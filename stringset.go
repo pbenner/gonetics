@@ -79,14 +79,14 @@ func (s StringSet) Scan(query []byte) GRanges {
     for i := 0; i+len(s)-1 < len(sequence); i++ {
       match := true
       for j := 0; j < len(query); j++ {
-        if sequence[i+j] != query[j] {
+        if unicode.ToLower(rune(sequence[i+j])) != unicode.ToLower(rune(query[j])) {
           match = false; break
         }
       }
       if match {
         seqnames = append(seqnames, name)
         from     = append(from, i)
-        to       = append(from, i+len(query))
+        to       = append(to,   i+len(query))
       }
     }
   }

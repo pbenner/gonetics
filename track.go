@@ -321,6 +321,23 @@ func (track *Track) Map(f func(float64) float64) {
   }
 }
 
+func (track1 *Track) Map2(f func(float64, float64) float64, track2 Track) error {
+  if track1.Binsize != track2.Binsize {
+    return fmt.Errorf("binsizes do not match")
+  }
+  for name, seq1 := range track1.Data {
+    if seq2, ok := track2.Data[name]; ok {
+      if len(seq1) != len(seq2) {
+        return fmt.Errorf("sequence `%s' has different lengths (`%d' and `%d')", name, len(seq1), len(seq2))
+      }
+      for i := 0; i < len(seq1); i++ {
+        seq1[i] = f(seq1[i], seq2[i])
+      }
+    }
+  }
+  return nil
+}
+
 func (track *Track) Reduce(f func(float64, float64) float64, x0 float64) map[string]float64 {
   result := make(map[string]float64)
 

@@ -199,7 +199,6 @@ func IsBigWigFile(filename string) (bool, error) {
 type BigWigReader struct {
   Bwf     BigWigFile
   Genome  Genome
-  Channel chan BigWigReaderType
 }
 
 type BigWigReaderType struct {
@@ -230,41 +229,58 @@ func NewBigWigReader(filename string) (*BigWigReader, error) {
     lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
   }
   bwr.Genome = NewGenome(seqnames, lengths)
-  // create new channel
-  bwr.Channel = make(chan BigWigReaderType)
-  // fill channel with blocks
-  go func() {
-    bwr.fillChannel(bwf.Index.Root)
-    // close channel and file
-    close(bwr.Channel)
-    bwr.Bwf.Close()
-  }()
 
   return bwr, nil
 }
 
 func (reader *BigWigReader) ReadBlocks() <- chan BigWigReaderType {
-  return reader.Channel
+  // create new channel
+  channel := make(chan BigWigReaderType)
+  // fill channel with blocks
+  go func() {
+    reader.fillChannel(channel, reader.Bwf.Index.Root)
+    // close channel and file
+    close(channel)
+  }()
+  return channel
 }
 
-func (reader *BigWigReader) fillChannel(vertex *RVertex) error {
+func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *RVertex) error {
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
       if block, err := vertex.ReadBlock(&reader.Bwf.BbiFile, i); err != nil {
-        reader.Channel <- BigWigReaderType{nil, err}
+        channel <- BigWigReaderType{nil, err}
       } else {
-        reader.Channel <- BigWigReaderType{block, nil}
+        channel <- BigWigReaderType{block, nil}
       }
     }
   } else {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if err := reader.fillChannel(vertex.Children[i]); err != nil {
-        reader.Channel <- BigWigReaderType{nil, err}
+      if err := reader.fillChannel(channel, vertex.Children[i]); err != nil {
+        channel <- BigWigReaderType{nil, err}
       }
     }
   }
   return nil
+}
+
+func (reader *BigWigReader) QueryRaw(r GRangesRow) ([]float64, error) {
+  seqname := r.Seqname
+  from    := r.Range.From
+  to      := r.Range.To
+  idx     := 0
+
+  if i, err := reader.Genome.GetIdx(seqname); err != nil {
+    return nil, err
+  } else {
+    idx = i
+  }
+  return reader.Bwf.QueryRaw(idx, from, to)
+}
+
+func (reader *BigWigReader) Close() {
+  reader.Bwf.Close()
 }
 
 /* -------------------------------------------------------------------------- */

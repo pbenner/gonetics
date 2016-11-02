@@ -1026,6 +1026,58 @@ func (tree *RTree) BuildTree(leaves []*RVertex) error {
 
 /* -------------------------------------------------------------------------- */
 
+type RTreeTraverser struct {
+  Tree *RTree
+}
+
+type RTreeTraverserType struct {
+  Vertex *RVertex
+  Idx    int
+}
+
+func NewRTreeTraverser(tree *RTree) RTreeTraverser {
+  return RTreeTraverser{tree}
+}
+
+func (traverser RTreeTraverser) queryVertices(channel chan RTreeTraverserType, vertex *RVertex, idx, from, to int) {
+  for i := 0; i < int(vertex.NChildren); i++ {
+    // check if this is the correct chromosome
+    if idx >= int(vertex.ChrIdxStart[i]) && idx <= int(vertex.ChrIdxEnd[i]) {
+      // check region on chromosome
+      if to <= int(vertex.BaseEnd[i]) {
+        // query region is still ahead
+        continue
+      }
+      if from >= int(vertex.BaseEnd[i]) {
+        // already past the query region
+        break
+      }
+      // found a match
+      if vertex.IsLeaf == 0 {
+        traverser.queryVertices(channel, vertex.Children[i], idx, from, to)
+      } else {
+        channel <- RTreeTraverserType{vertex, i}
+      }
+    }
+    // indices are sorted, hence stop searching if idx is larger than the
+    // curent index end
+    if idx > int(vertex.ChrIdxEnd[i]) {
+      break
+    }
+  }
+}
+
+func (traverser RTreeTraverser) QueryVertices(idx, from, to int) <- chan RTreeTraverserType {
+  channel := make(chan RTreeTraverserType)
+  go func() {
+    traverser.queryVertices(channel, traverser.Tree.Root, idx, from, to)
+    close(channel)
+  }()
+  return channel
+}
+
+/* -------------------------------------------------------------------------- */
+
 type RVertex struct {
   IsLeaf        uint8
   NChildren     uint16
@@ -1724,4 +1776,29 @@ func NewBbiFile() *BbiFile {
 
 func (bwf *BbiFile) Close() error {
   return bwf.Fptr.Close()
+}
+
+func (bwf *BbiFile) QueryRaw(idx, from, to int) ([]float64, error) {
+  result := []float64{}
+  // traverse index tree to collect all vertices containing
+  // data for the given range
+  traverser := NewRTreeTraverser(&bwf.Index)
+
+  for r := range traverser.QueryVertices(idx, from, to) {
+    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
+    if err != nil {
+      return nil, err
+    }
+    decoder, err := NewBbiBlockDecoder(block)
+    if err != nil {
+      return nil, err
+    }
+
+    for record := range decoder.Decode() {
+      if from <= record.From && to >= record.To {
+        result = append(result, record.Value)
+      }
+    }
+  }
+  return result, nil
 }

@@ -82,6 +82,8 @@ func (track *Track) ReadBigWig(filename, name string) error {
   }
   track.Name = name
 
+  bwr.Close()
+
   return nil
 }
 

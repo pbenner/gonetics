@@ -99,6 +99,104 @@ func compressSlice(data []byte) ([]byte, error) {
 
 /* -------------------------------------------------------------------------- */
 
+type BbiZoomRecord struct {
+  ChromId    uint32
+  Start      uint32
+  End        uint32
+  Valid      uint32
+  Min        float32
+  Max        float32
+  Sum        float32
+  SumSquares float32
+}
+
+func (record *BbiZoomRecord) Read(reader io.Reader) error {
+  if err := binary.Read(reader, binary.LittleEndian, &record.ChromId); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Start); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.End); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Valid); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Min); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Max); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Sum); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.SumSquares); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (record BbiZoomRecord) Write(writer io.Writer) error {
+  if err := binary.Write(writer, binary.LittleEndian, record.ChromId); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Start); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.End); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Valid); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Min); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Max); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.Sum); err != nil {
+    return err
+  }
+  if err := binary.Write(writer, binary.LittleEndian, record.SumSquares); err != nil {
+    return err
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BbiSummaryRecord struct {
+  Idx        int
+  From       int
+  To         int
+  Valid      int
+  Min        float64
+  Max        float64
+  Sum        float64
+  SumSquares float64
+}
+
+func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
+  record.Valid      += x.Valid
+  record.Min         = math.Min(record.Min, x.Min)
+  record.Max         = math.Max(record.Max, x.Max)
+  record.Sum        += x.Sum
+  record.SumSquares += x.SumSquares
+}
+
+func (record *BbiSummaryRecord) AddValue(x float64) {
+  record.Valid      += 1
+  record.Min         = math.Min(record.Min, x)
+  record.Max         = math.Max(record.Max, x)
+  record.Sum        += x
+  record.SumSquares += x*x
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiBlockDecoder struct {
   Header  BbiDataHeader
   Buffer  []byte
@@ -242,31 +340,8 @@ type BbiZoomBlockDecoder struct {
 }
 
 type BbiZoomBlockDecoderType struct {
-  Idx        int
-  From       int
-  To         int
-  Valid      int
-  Min        float64
-  Max        float64
-  Sum        float64
-  SumSquares float64
+  BbiSummaryRecord
   Error error
-}
-
-func (record *BbiZoomBlockDecoderType) AddRecord(x BbiZoomBlockDecoderType) {
-  record.Valid      += x.Valid
-  record.Min         = math.Min(record.Min, x.Min)
-  record.Max         = math.Max(record.Max, x.Max)
-  record.Sum        += x.Sum
-  record.SumSquares += x.SumSquares
-}
-
-func (record *BbiZoomBlockDecoderType) AddValue(x float64) {
-  record.Valid      += 1
-  record.Min         = math.Min(record.Min, x)
-  record.Max         = math.Max(record.Max, x)
-  record.Sum        += x
-  record.SumSquares += x*x
 }
 
 func NewBbiZoomBlockDecoder(buffer []byte) *BbiZoomBlockDecoder {
@@ -301,75 +376,6 @@ func (reader *BbiZoomBlockDecoder) Decode() <- chan BbiZoomBlockDecoderType {
     close(channel)
   }()
   return channel
-}
-
-/* -------------------------------------------------------------------------- */
-
-type BbiZoomRecord struct {
-  ChromId    uint32
-  Start      uint32
-  End        uint32
-  Valid      uint32
-  Min        float32
-  Max        float32
-  Sum        float32
-  SumSquares float32
-}
-
-func (record *BbiZoomRecord) Read(reader io.Reader) error {
-  if err := binary.Read(reader, binary.LittleEndian, &record.ChromId); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Start); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.End); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Valid); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Min); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Max); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Sum); err != nil {
-    return err
-  }
-  if err := binary.Read(reader, binary.LittleEndian, &record.SumSquares); err != nil {
-    return err
-  }
-  return nil
-}
-
-func (record BbiZoomRecord) Write(writer io.Writer) error {
-  if err := binary.Write(writer, binary.LittleEndian, record.ChromId); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.Start); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.End); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.Valid); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.Min); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.Max); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.Sum); err != nil {
-    return err
-  }
-  if err := binary.Write(writer, binary.LittleEndian, record.SumSquares); err != nil {
-    return err
-  }
-  return nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1861,7 +1867,7 @@ type BbiFile struct {
 }
 
 type BbiQueryType struct {
-  BbiZoomBlockDecoderType
+  BbiSummaryRecord
   Error error
 }
 
@@ -1936,7 +1942,7 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int)
             result.To   = record.From
           }
           // add contents of current record to the resulting record
-          result.AddRecord(record)
+          result.AddRecord(record.BbiSummaryRecord)
           result.To = record.To
         } else {
           channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}

@@ -1043,14 +1043,16 @@ func (traverser RTreeTraverser) queryVertices(channel chan RTreeTraverserType, v
   for i := 0; i < int(vertex.NChildren); i++ {
     // check if this is the correct chromosome
     if idx >= int(vertex.ChrIdxStart[i]) && idx <= int(vertex.ChrIdxEnd[i]) {
-      // check region on chromosome
-      if to <= int(vertex.BaseEnd[i]) {
-        // query region is still ahead
-        continue
-      }
-      if from >= int(vertex.BaseEnd[i]) {
-        // already past the query region
-        break
+      if int(vertex.ChrIdxStart[i]) == int(vertex.ChrIdxEnd[i]) {
+        // check region on chromosome
+        if int(vertex.BaseEnd[i]) <= from {
+          // query region is still ahead
+          continue
+        }
+        if int(vertex.BaseStart[i]) >= to {
+          // already past the query region
+          break
+        }
       }
       // found a match
       if vertex.IsLeaf == 0 {
@@ -1061,7 +1063,7 @@ func (traverser RTreeTraverser) queryVertices(channel chan RTreeTraverserType, v
     }
     // indices are sorted, hence stop searching if idx is larger than the
     // curent index end
-    if idx > int(vertex.ChrIdxEnd[i]) {
+    if int(vertex.ChrIdxStart[i]) > idx {
       break
     }
   }

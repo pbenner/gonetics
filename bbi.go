@@ -248,6 +248,34 @@ type BbiZoomRecord struct {
   SumSquares float32
 }
 
+func (record *BbiZoomRecord) Read(reader io.Reader) error {
+  if err := binary.Read(reader, binary.LittleEndian, &record.ChromId); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Start); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.End); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Valid); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Min); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Max); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.Sum); err != nil {
+    return err
+  }
+  if err := binary.Read(reader, binary.LittleEndian, &record.SumSquares); err != nil {
+    return err
+  }
+  return nil
+}
+
 func (record BbiZoomRecord) Write(writer io.Writer) error {
   if err := binary.Write(writer, binary.LittleEndian, record.ChromId); err != nil {
     return err

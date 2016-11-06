@@ -1896,6 +1896,9 @@ func (bwf *BbiFile) Close() error {
   return bwf.Fptr.Close()
 }
 
+/* query interface
+ * -------------------------------------------------------------------------- */
+
 func (bwf *BbiFile) QueryRaw(idx, from, to int) ([]float64, error) {
   result := []float64{}
   // traverse index tree to collect all vertices containing
@@ -1921,6 +1924,94 @@ func (bwf *BbiFile) QueryRaw(idx, from, to int) ([]float64, error) {
   return result, nil
 }
 
+func (bwf *BbiFile) queryZoom(channel chan *BbiQueryType, zoomIdx, idx, from, to, binsize int) {
+  traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx])
+  // current zoom record
+  var result *BbiQueryType
+
+  for r := range traverser.QueryVertices(idx, from, to) {
+    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
+    if err != nil {
+      channel <- &BbiQueryType{Error: err}
+      return
+    }
+    decoder := NewBbiZoomBlockDecoder(block)
+
+    for record := range decoder.Decode() {
+      if record.From < from || record.To > to {
+        continue
+      }
+      if binsize % (record.To - record.From) == 0 {
+        // check if current result record is full
+        if result == nil || (result.To - result.From) >= binsize {
+          if result != nil {
+            channel <- result
+          }
+          result = NewBbiQueryType()
+          result.ChromId = idx
+          result.From    = record.From
+          result.To      = record.From
+        }
+        // add contents of current record to the resulting record
+        result.AddRecord(record.BbiSummaryRecord)
+        result.To = record.To
+      } else {
+        channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
+        return
+      }
+    }
+    if result.From != result.To {
+      channel <- result
+    }
+  }
+}
+
+func (bwf *BbiFile) queryRaw(channel chan *BbiQueryType, idx, from, to, binsize int) {
+  // no zoom level found, try raw data
+  traverser := NewRTreeTraverser(&bwf.Index)
+  // current zoom record
+  var result *BbiQueryType
+
+  for r := range traverser.QueryVertices(idx, from, to) {
+    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
+    if err != nil {
+      channel <- &BbiQueryType{Error: err}
+      return
+    }
+    decoder, err := NewBbiBlockDecoder(block)
+    if err != nil {
+      channel <- &BbiQueryType{Error: err}
+      return
+    }
+    for record := range decoder.Decode() {
+      if record.From < from || record.To > to {
+        continue
+      }
+      if binsize % (record.To - record.From) == 0 {
+        // check if current result record is full
+        if result == nil || (result.To - result.From) >= binsize {
+          if result != nil {
+            channel <- result
+          }
+          result = NewBbiQueryType()
+          result.ChromId = idx
+          result.From    = record.From
+          result.To      = record.From
+        }
+        // add contents of current record to the resulting record
+        result.AddValue(record.Value)
+        result.To = record.To
+      } else {
+        channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
+        return
+      }
+    }
+    if result.From != result.To {
+      channel <- result
+    }
+  }
+}
+
 func (bwf *BbiFile) query(channel chan *BbiQueryType, idx, from, to, binsize int) {
   // index of a matching zoom level for the given binsize
   zoomIdx := -1
@@ -1931,89 +2022,9 @@ func (bwf *BbiFile) query(channel chan *BbiQueryType, idx, from, to, binsize int
     }
   }
   if zoomIdx != -1 {
-    traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx])
-    // current zoom record
-    var result *BbiQueryType
-
-    for r := range traverser.QueryVertices(idx, from, to) {
-      block, err := r.Vertex.ReadBlock(bwf, r.Idx)
-      if err != nil {
-        channel <- &BbiQueryType{Error: err}
-        return
-      }
-      decoder := NewBbiZoomBlockDecoder(block)
-
-      for record := range decoder.Decode() {
-        if record.From < from || record.To > to {
-          continue
-        }
-        if binsize % (record.To - record.From) == 0 {
-          // check if current result record is full
-          if result == nil || (result.To - result.From) >= binsize {
-            if result != nil {
-              channel <- result
-            }
-            result = NewBbiQueryType()
-            result.ChromId = idx
-            result.From    = record.From
-            result.To      = record.From
-          }
-          // add contents of current record to the resulting record
-          result.AddRecord(record.BbiSummaryRecord)
-          result.To = record.To
-        } else {
-          channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
-          return
-        }
-      }
-      if result.From != result.To {
-        channel <- result
-      }
-    }
+    bwf.queryZoom(channel, zoomIdx, idx, from, to, binsize)
   } else {
-    // no zoom level found, try raw data
-    traverser := NewRTreeTraverser(&bwf.Index)
-    // current zoom record
-    var result *BbiQueryType
-
-    for r := range traverser.QueryVertices(idx, from, to) {
-      block, err := r.Vertex.ReadBlock(bwf, r.Idx)
-      if err != nil {
-        channel <- &BbiQueryType{Error: err}
-        return
-      }
-      decoder, err := NewBbiBlockDecoder(block)
-      if err != nil {
-        channel <- &BbiQueryType{Error: err}
-        return
-      }
-      for record := range decoder.Decode() {
-        if record.From < from || record.To > to {
-          continue
-        }
-        if binsize % (record.To - record.From) == 0 {
-          // check if current result record is full
-          if result == nil || (result.To - result.From) >= binsize {
-            if result != nil {
-              channel <- result
-            }
-            result = NewBbiQueryType()
-            result.ChromId = idx
-            result.From    = record.From
-            result.To      = record.From
-          }
-          // add contents of current record to the resulting record
-          result.AddValue(record.Value)
-          result.To = record.To
-        } else {
-          channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
-          return
-        }
-      }
-      if result.From != result.To {
-        channel <- result
-      }
-    }
+    bwf.queryRaw(channel, idx, from, to, binsize)
   }
 }
 

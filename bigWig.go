@@ -275,20 +275,6 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
   return nil
 }
 
-func (reader *BigWigReader) QueryRaw(r GRangesRow) ([]float64, error) {
-  seqname := r.Seqname
-  from    := r.Range.From
-  to      := r.Range.To
-  idx     := 0
-
-  if i, err := reader.Genome.GetIdx(seqname); err != nil {
-    return nil, err
-  } else {
-    idx = i
-  }
-  return reader.Bwf.QueryRaw(idx, from, to)
-}
-
 func (reader *BigWigReader) Query(r GRangesRow, binsize int) <- chan *BbiQueryType {
   seqname := r.Seqname
   from    := r.Range.From

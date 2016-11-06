@@ -1899,31 +1899,6 @@ func (bwf *BbiFile) Close() error {
 /* query interface
  * -------------------------------------------------------------------------- */
 
-func (bwf *BbiFile) QueryRaw(idx, from, to int) ([]float64, error) {
-  result := []float64{}
-  // traverse index tree to collect all vertices containing
-  // data for the given range
-  traverser := NewRTreeTraverser(&bwf.Index)
-
-  for r := range traverser.QueryVertices(idx, from, to) {
-    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
-    if err != nil {
-      return nil, err
-    }
-    decoder, err := NewBbiBlockDecoder(block)
-    if err != nil {
-      return nil, err
-    }
-
-    for record := range decoder.Decode() {
-      if from <= record.From && to >= record.To {
-        result = append(result, record.Value)
-      }
-    }
-  }
-  return result, nil
-}
-
 func (bwf *BbiFile) queryZoom(channel chan *BbiQueryType, zoomIdx, idx, from, to, binsize int) {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx])
   // current zoom record

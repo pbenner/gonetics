@@ -169,7 +169,7 @@ func (record BbiZoomRecord) Write(writer io.Writer) error {
 /* -------------------------------------------------------------------------- */
 
 type BbiSummaryRecord struct {
-  Idx        int
+  ChromId    int
   From       int
   To         int
   Valid      int
@@ -177,6 +177,13 @@ type BbiSummaryRecord struct {
   Max        float64
   Sum        float64
   SumSquares float64
+}
+
+func NewBbiSummaryRecord() BbiSummaryRecord {
+  record := BbiSummaryRecord{}
+  record.Min = math.Inf( 1)
+  record.Max = math.Inf(-1)
+  return record
 }
 
 func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
@@ -356,13 +363,13 @@ func (reader *BbiZoomBlockDecoder) decode(channel chan BbiZoomBlockDecoderType) 
       break
     } else {
       result := BbiZoomBlockDecoderType{}
-      result.Idx   = int(record.ChromId)
-      result.From  = int(record.Start)
-      result.To    = int(record.End)
-      result.Valid = int(record.Valid)
-      result.Min   = float64(record.Min)
-      result.Max   = float64(record.Max)
-      result.Sum   = float64(record.Sum)
+      result.ChromId = int(record.ChromId)
+      result.From    = int(record.Start)
+      result.To      = int(record.End)
+      result.Valid   = int(record.Valid)
+      result.Min     = float64(record.Min)
+      result.Max     = float64(record.Max)
+      result.Sum     = float64(record.Sum)
       result.SumSquares = float64(record.SumSquares)
       channel <- result
     }
@@ -426,10 +433,10 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(channel chan BbiBlockEncoderType,
     }
     // compute mean value
     for j := 0; j < n && i+j < len(sequence); j++ {
-      if record.Min > -float32(sequence[i+j]) {
+      if record.Min > float32(sequence[i+j]) {
         record.Min = float32(sequence[i+j])
       }
-      if record.Max < -float32(sequence[i+j]) {
+      if record.Max < float32(sequence[i+j]) {
         record.Max = float32(sequence[i+j])
       }
       record.Valid      += 1
@@ -1137,6 +1144,9 @@ func NewRTreeTraverser(tree *RTree) RTreeTraverser {
 }
 
 func (traverser RTreeTraverser) queryVertices(channel chan RTreeTraverserType, vertex *RVertex, idx, from, to int) {
+  if vertex == nil {
+    return
+  }
   for i := 0; i < int(vertex.NChildren); i++ {
     // check if this is the correct chromosome
     if idx >= int(vertex.ChrIdxStart[i]) && idx <= int(vertex.ChrIdxEnd[i]) {
@@ -1871,6 +1881,10 @@ type BbiQueryType struct {
   Error error
 }
 
+func NewBbiQueryType() *BbiQueryType {
+  return &BbiQueryType{NewBbiSummaryRecord(), nil}
+}
+
 func NewBbiFile() *BbiFile {
   bwf := new(BbiFile)
   bwf.Header    = *NewBbiHeader()
@@ -1907,45 +1921,48 @@ func (bwf *BbiFile) QueryRaw(idx, from, to int) ([]float64, error) {
   return result, nil
 }
 
-func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int) {
+func (bwf *BbiFile) query(channel chan *BbiQueryType, idx, from, to, binsize int) {
   // index of a matching zoom level for the given binsize
   zoomIdx := -1
   for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
-    if int(bwf.Header.ZoomHeaders[i].ReductionLevel) < binsize &&
-      (int(bwf.Header.ZoomHeaders[i].ReductionLevel) % binsize == 0) {
+    if binsize >= int(bwf.Header.ZoomHeaders[i].ReductionLevel) &&
+      (binsize %  int(bwf.Header.ZoomHeaders[i].ReductionLevel) == 0) {
       zoomIdx = i
     }
   }
   if zoomIdx != -1 {
     traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx])
     // current zoom record
-    result := BbiQueryType{}
-    result.Idx    = idx
-    result.From   = from
-    result.To     = from
+    var result *BbiQueryType
+
     for r := range traverser.QueryVertices(idx, from, to) {
       block, err := r.Vertex.ReadBlock(bwf, r.Idx)
       if err != nil {
-        channel <- BbiQueryType{Error: err}
+        channel <- &BbiQueryType{Error: err}
         return
       }
       decoder := NewBbiZoomBlockDecoder(block)
 
       for record := range decoder.Decode() {
-        if (record.To - record.From) % binsize == 0 {
+        if record.From < from || record.To > to {
+          continue
+        }
+        if binsize % (record.To - record.From) == 0 {
           // check if current result record is full
-          if (result.To - result.From) == binsize {
-            channel <- result
-            result := BbiQueryType{}
-            result.Idx  = idx
-            result.From = record.From
-            result.To   = record.From
+          if result == nil || (result.To - result.From) >= binsize {
+            if result != nil {
+              channel <- result
+            }
+            result = NewBbiQueryType()
+            result.ChromId = idx
+            result.From    = record.From
+            result.To      = record.From
           }
           // add contents of current record to the resulting record
           result.AddRecord(record.BbiSummaryRecord)
           result.To = record.To
         } else {
-          channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}
+          channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
           return
         }
       }
@@ -1957,36 +1974,39 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int)
     // no zoom level found, try raw data
     traverser := NewRTreeTraverser(&bwf.Index)
     // current zoom record
-    result := BbiQueryType{}
-    result.Idx  = idx
-    result.From = from
-    result.To   = from
+    var result *BbiQueryType
+
     for r := range traverser.QueryVertices(idx, from, to) {
       block, err := r.Vertex.ReadBlock(bwf, r.Idx)
       if err != nil {
-        channel <- BbiQueryType{Error: err}
+        channel <- &BbiQueryType{Error: err}
         return
       }
       decoder, err := NewBbiBlockDecoder(block)
       if err != nil {
-        channel <- BbiQueryType{Error: err}
+        channel <- &BbiQueryType{Error: err}
         return
       }
       for record := range decoder.Decode() {
-        if (record.To - record.From) % binsize == 0 {
+        if record.From < from || record.To > to {
+          continue
+        }
+        if binsize % (record.To - record.From) == 0 {
           // check if current result record is full
-          if (result.To - result.From) == binsize {
-            channel <- result
-            result := BbiQueryType{}
-            result.Idx  = idx
-            result.From = record.From
-            result.To   = record.From
+          if result == nil || (result.To - result.From) >= binsize {
+            if result != nil {
+              channel <- result
+            }
+            result = NewBbiQueryType()
+            result.ChromId = idx
+            result.From    = record.From
+            result.To      = record.From
           }
           // add contents of current record to the resulting record
           result.AddValue(record.Value)
           result.To = record.To
         } else {
-          channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}
+          channel <- &BbiQueryType{Error: fmt.Errorf("invalid binsize")}
           return
         }
       }
@@ -1997,8 +2017,8 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int)
   }
 }
 
-func (bwf *BbiFile) Query(idx, from, to, binsize int) <- chan BbiQueryType {
-  channel := make(chan BbiQueryType)
+func (bwf *BbiFile) Query(idx, from, to, binsize int) <- chan *BbiQueryType {
+  channel := make(chan *BbiQueryType)
   go func() {
     bwf.query(channel, idx, from, to, binsize)
     close(channel)

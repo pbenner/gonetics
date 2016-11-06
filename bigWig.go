@@ -86,6 +86,16 @@ func (bwf *BigWigFile) Open(filename string) error {
   if err := bwf.Index.Read(bwf.Fptr); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
+  // parse zoom level indices
+  bwf.IndexZoom = make([]RTree, bwf.Header.ZoomLevels)
+  for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
+    if _, err := bwf.Fptr.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
+      return fmt.Errorf("reading `%s' failed: %v", filename, err)
+    }
+    if err := bwf.IndexZoom[i].Read(bwf.Fptr); err != nil {
+      return fmt.Errorf("reading `%s' failed: %v", filename, err)
+    }
+  }
   return nil
 }
 

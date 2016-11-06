@@ -289,6 +289,20 @@ func (reader *BigWigReader) QueryRaw(r GRangesRow) ([]float64, error) {
   return reader.Bwf.QueryRaw(idx, from, to)
 }
 
+func (reader *BigWigReader) Query(r GRangesRow, binsize int) <- chan *BbiQueryType {
+  seqname := r.Seqname
+  from    := r.Range.From
+  to      := r.Range.To
+  idx     := 0
+
+  if i, err := reader.Genome.GetIdx(seqname); err != nil {
+    return nil
+  } else {
+    idx = i
+  }
+  return reader.Bwf.Query(idx, from, to, binsize)
+}
+
 func (reader *BigWigReader) Close() {
   reader.Bwf.Close()
 }

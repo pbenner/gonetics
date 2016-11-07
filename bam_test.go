@@ -26,7 +26,7 @@ import   "testing"
 func TestBam1(t *testing.T) {
 
   granges := GRanges{}
-  if err := granges.ReadBam("bam_test.bam"); err != nil {
+  if err := granges.ReadBamSingleEnd("bam_test.bam"); err != nil {
     t.Error(err)
   }
   if granges.Length() != 12 {

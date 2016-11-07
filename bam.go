@@ -638,7 +638,9 @@ func (reader *BamReader) ReadPairedEnd() <- chan *BamReaderType2 {
 
 func (reader *BamReader) readPairedEnd(channel chan *BamReaderType2) {
   cache := make(map[string]BamBlock)
-
+  // force parsing read names
+  reader.Options.ReadName = true
+  // parse reads as single-end and try to match paired-reads
   for r := range reader.ReadSingleEnd() {
     if r.Error != nil {
       channel <- &BamReaderType2{Error: r.Error}

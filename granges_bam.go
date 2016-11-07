@@ -22,10 +22,26 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
+func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) error {
   var reader *BamReader
-
-  if r, err := NewBamReader(filename, args...); err != nil {
+  // catch options for the bam reader
+  options := BamReaderOptions{}
+  // default options
+  options.ReadName      = false
+  options.ReadCigar     = true
+  options.ReadSequence  = true
+  options.ReadAuxiliary = false
+  options.ReadQual      = true
+  // parse optional arguments
+  for _, arg := range args {
+    switch a := arg.(type) {
+    default:
+      return fmt.Errorf("invalid optional argument")
+    case BamReaderOptions:
+      options = a
+    }
+  }
+  if r, err := NewBamReader(filename, options); err != nil {
     return err
   } else {
     reader = r
@@ -62,16 +78,24 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
     } else {
       strand = append(strand,   '+')
     }
-    mapq     = append(mapq,     int(block.MapQ))
     flag     = append(flag,     int(block.Flag))
-    sequence = append(sequence, block.Seq.String())
-    cigar    = append(cigar,    block.Cigar.String())
+    mapq     = append(mapq,     int(block.MapQ))
+    if options.ReadSequence {
+      sequence = append(sequence, block.Seq.String())
+    }
+    if options.ReadCigar {
+      cigar    = append(cigar,    block.Cigar.String())
+    }
   }
   *granges = NewGRanges(seqnames, from, to, strand)
-  granges.AddMeta("sequence", sequence)
   granges.AddMeta("flag", flag)
   granges.AddMeta("mapq", mapq)
-  granges.AddMeta("cigar", cigar)
+  if options.ReadSequence {
+    granges.AddMeta("sequence", sequence)
+  }
+  if options.ReadCigar {
+    granges.AddMeta("cigar", cigar)
+  }
   
   return nil
 }
@@ -79,7 +103,24 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
 func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) error {
   var reader *BamReader
 
-  if r, err := NewBamReader(filename, args...); err != nil {
+  // catch options for the bam reader
+  options := BamReaderOptions{}
+  // default options
+  options.ReadName      = true
+  options.ReadCigar     = true
+  options.ReadSequence  = true
+  options.ReadAuxiliary = false
+  options.ReadQual      = true
+  // parse optional arguments
+  for _, arg := range args {
+    switch a := arg.(type) {
+    default:
+      return fmt.Errorf("invalid optional argument")
+    case BamReaderOptions:
+      options = a
+    }
+  }
+  if r, err := NewBamReader(filename, options); err != nil {
     return err
   } else {
     reader = r
@@ -119,20 +160,27 @@ func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) e
     mapq2     = append(mapq2,     int(block2.MapQ))
     flag1     = append(flag1,     int(block1.Flag))
     flag2     = append(flag2,     int(block2.Flag))
-    sequence1 = append(sequence1, block1.Seq.String())
-    sequence2 = append(sequence2, block2.Seq.String())
-    cigar1    = append(cigar1,    block1.Cigar.String())
-    cigar2    = append(cigar2,    block2.Cigar.String())
+    if options.ReadSequence {
+      sequence1 = append(sequence1, block1.Seq.String())
+      sequence2 = append(sequence2, block2.Seq.String())
+    }
+    if options.ReadCigar {
+      cigar1    = append(cigar1,    block1.Cigar.String())
+      cigar2    = append(cigar2,    block2.Cigar.String())
+    }
   }
   *granges = NewGRanges(seqnames, from, to, strand)
-  granges.AddMeta("sequence1", sequence1)
-  granges.AddMeta("sequence2", sequence2)
   granges.AddMeta("flag1", flag1)
   granges.AddMeta("flag2", flag2)
   granges.AddMeta("mapq1", mapq1)
   granges.AddMeta("mapq2", mapq2)
-  granges.AddMeta("cigar1", cigar1)
-  granges.AddMeta("cigar2", cigar2)
-  
+  if options.ReadSequence {
+    granges.AddMeta("sequence1", sequence1)
+    granges.AddMeta("sequence2", sequence2)
+  }
+  if options.ReadCigar {
+    granges.AddMeta("cigar1", cigar1)
+    granges.AddMeta("cigar2", cigar2)
+  }
   return nil
 }

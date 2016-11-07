@@ -26,7 +26,7 @@ import   "testing"
 func TestBam1(t *testing.T) {
 
   granges := GRanges{}
-  if err := granges.ReadBamSingleEnd("bam_test.bam"); err != nil {
+  if err := granges.ReadBamSingleEnd("bam_test.1.bam"); err != nil {
     t.Error(err)
   }
   if granges.Length() != 12 {
@@ -34,5 +34,16 @@ func TestBam1(t *testing.T) {
   }
   if granges.GetMetaStr("cigar")[3] != "6M14N1I5M" {
     t.Error("TestBam1 failed")
+  }
+}
+
+func TestBam2(t *testing.T) {
+
+  granges := GRanges{}
+  if err := granges.ReadBamPairedEnd("bam_test.2.bam"); err != nil {
+    t.Error(err)
+  }
+  if granges.Length() != 2335 {
+    t.Error("TestBam2 failed")
   }
 }

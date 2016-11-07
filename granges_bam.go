@@ -39,7 +39,7 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
   cigar    := []string{}
   flag     := []int{}
 
-  for block := range reader.ReadBlocks() {
+  for block := range reader.ReadSingleEnd() {
     if block.Error != nil {
       return block.Error
     }
@@ -57,7 +57,7 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
     from     = append(from,     int(block.Position))
     to       = append(to,       int(block.Position + block.LSeq))
     // check if read is unmapped
-    if block.Flag.Revcomp() {
+    if block.Flag.ReverseStrand() {
       strand = append(strand,   '-')
     } else {
       strand = append(strand,   '+')
@@ -72,6 +72,67 @@ func (granges *GRanges) ReadBam(filename string, args... interface{}) error {
   granges.AddMeta("flag", flag)
   granges.AddMeta("mapq", mapq)
   granges.AddMeta("cigar", cigar)
+  
+  return nil
+}
+
+func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) error {
+  var reader *BamReader
+
+  if r, err := NewBamReader(filename, args...); err != nil {
+    return err
+  } else {
+    reader = r
+  }
+  seqnames  := []string{}
+  from      := []int{}
+  to        := []int{}
+  strand    := []byte{}
+  // meta data
+  sequence1 := []string{}
+  sequence2 := []string{}
+  mapq1     := []int{}
+  mapq2     := []int{}
+  cigar1    := []string{}
+  cigar2    := []string{}
+  flag1     := []int{}
+  flag2     := []int{}
+
+  for r := range reader.ReadPairedEnd() {
+    if r.Error != nil {
+      return r.Error
+    }
+    block1 := &r.Block1
+    block2 := &r.Block2
+    if block1.RefID == -1 || block1.RefID != block2.RefID {
+      continue
+    }
+    if block1.RefID < 0 || int(block1.RefID) > len(reader.Genome.Seqnames) {
+      return fmt.Errorf("bam file `%s' contains invalid RefID `%d'", filename, block1.RefID)
+    }
+    seqnames  = append(seqnames,  reader.Genome.Seqnames[block1.RefID])
+    from      = append(from,      int(block1.Position))
+    to        = append(to,        int(block2.Position + block2.LSeq))
+    strand    = append(strand,    '*')
+    // parse meta data
+    mapq1     = append(mapq1,     int(block1.MapQ))
+    mapq2     = append(mapq2,     int(block2.MapQ))
+    flag1     = append(flag1,     int(block1.Flag))
+    flag2     = append(flag2,     int(block2.Flag))
+    sequence1 = append(sequence1, block1.Seq.String())
+    sequence2 = append(sequence2, block2.Seq.String())
+    cigar1    = append(cigar1,    block1.Cigar.String())
+    cigar2    = append(cigar2,    block2.Cigar.String())
+  }
+  *granges = NewGRanges(seqnames, from, to, strand)
+  granges.AddMeta("sequence1", sequence1)
+  granges.AddMeta("sequence2", sequence2)
+  granges.AddMeta("flag1", flag1)
+  granges.AddMeta("flag2", flag2)
+  granges.AddMeta("mapq1", mapq1)
+  granges.AddMeta("mapq2", mapq2)
+  granges.AddMeta("cigar1", cigar1)
+  granges.AddMeta("cigar2", cigar2)
   
   return nil
 }

@@ -1981,7 +1981,7 @@ func (bwf *BbiFile) queryRaw(channel chan *BbiQueryType, idx, from, to, binsize 
         return
       }
     }
-    if result.From != result.To {
+    if result != nil && result.From != result.To {
       channel <- result
     }
   }

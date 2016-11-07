@@ -31,7 +31,7 @@ func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) e
   options.ReadCigar     = true
   options.ReadSequence  = true
   options.ReadAuxiliary = false
-  options.ReadQual      = true
+  options.ReadQual      = false
   // parse optional arguments
   for _, arg := range args {
     switch a := arg.(type) {
@@ -110,7 +110,7 @@ func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) e
   options.ReadCigar     = true
   options.ReadSequence  = true
   options.ReadAuxiliary = false
-  options.ReadQual      = true
+  options.ReadQual      = false
   // parse optional arguments
   for _, arg := range args {
     switch a := arg.(type) {

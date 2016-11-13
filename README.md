@@ -1,6 +1,6 @@
 ## Gonetics
 
-Gonetics is a bioinformatics library for Go / Golang providing basic data structures for handling genetic data. The library has native implementations of common file formats such as BAM, GTF, BED, BigWig, and Wig. The documentation is available [here](https://godoc.org/github.com/pbenner/gonetics).
+Gonetics is a bioinformatics library for the Go programming language (golang). It provides native data structures for handling genetic data and methods for handling common file formats such as BAM, GTF, BED, BigWig, and Wig. The documentation is available [here](https://godoc.org/github.com/pbenner/gonetics).
 
 ### GRanges
 

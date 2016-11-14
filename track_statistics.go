@@ -253,3 +253,16 @@ func (track Track) Histogram(from, to float64, bins int) TrackHistogram {
   }
   return histogram
 }
+
+func (track Track) CumulativeHistogram(from, to float64, bins int) TrackHistogram {
+
+  histogram := track.Histogram(from, to, bins)
+  // cumulative sum
+  sum := 0.0
+
+  for i := 0; i < len(histogram.Y); i++ {
+    sum += histogram.Y[i]
+    histogram.Y[i] = sum
+  }
+  return histogram
+}

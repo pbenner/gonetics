@@ -1916,7 +1916,7 @@ func (bwf *BbiFile) queryZoom(channel chan *BbiQueryType, zoomIdx, idx, from, to
       if record.From < from || record.To > to {
         continue
       }
-      if binsize % (record.To - record.From) == 0 {
+      if (record.To - record.From) < binsize || binsize % (record.To - record.From) == 0 {
         // check if current result record is full
         if result == nil || (result.To - result.From) >= binsize {
           if result != nil {

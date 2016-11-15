@@ -136,6 +136,8 @@ func (r GRanges) RemoveOverlapsWith(subject GRanges) GRanges {
 func (r GRanges) KeepOverlapsWith(subject GRanges) GRanges {
   queryHits, _ := FindOverlaps(r, subject)
   queryHits     = removeDuplicatesInt(queryHits)
+  // avoid shuffling the rows
+  sort.Ints(queryHits)
   return r.Subset(queryHits)
 }
 

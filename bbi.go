@@ -2002,6 +2002,8 @@ func (bwf *BbiFile) query(channel chan *BbiQueryType, idx, from, to, binsize int
 }
 
 func (bwf *BbiFile) Query(idx, from, to, binsize int) <- chan *BbiQueryType {
+  from = divIntDown(from, binsize)*binsize
+  to   = divIntUp  (to,   binsize)*binsize
   channel := make(chan *BbiQueryType)
   go func() {
     bwf.query(channel, idx, from, to, binsize)

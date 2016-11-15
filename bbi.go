@@ -1925,7 +1925,6 @@ func (bwf *BbiFile) queryZoom(channel chan *BbiQueryType, zoomIdx, idx, from, to
           result = NewBbiQueryType()
           result.ChromId = idx
           result.From    = record.From
-          result.To      = record.From
         }
         // add contents of current record to the resulting record
         result.AddRecord(record.BbiSummaryRecord)
@@ -1935,9 +1934,9 @@ func (bwf *BbiFile) queryZoom(channel chan *BbiQueryType, zoomIdx, idx, from, to
         return
       }
     }
-    if result.From != result.To {
-      channel <- result
-    }
+  }
+  if result != nil {
+    channel <- result
   }
 }
 
@@ -1971,7 +1970,6 @@ func (bwf *BbiFile) queryRaw(channel chan *BbiQueryType, idx, from, to, binsize 
           result = NewBbiQueryType()
           result.ChromId = idx
           result.From    = record.From
-          result.To      = record.From
         }
         // add contents of current record to the resulting record
         result.AddValue(record.Value)
@@ -1981,9 +1979,9 @@ func (bwf *BbiFile) queryRaw(channel chan *BbiQueryType, idx, from, to, binsize 
         return
       }
     }
-    if result != nil && result.From != result.To {
-      channel <- result
-    }
+  }
+  if result != nil {
+    channel <- result
   }
 }
 

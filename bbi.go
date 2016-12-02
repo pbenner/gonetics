@@ -290,19 +290,25 @@ func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
   return channel
 }
 
-func (reader *BbiBlockDecoder) importRecord(sequence []float64, binsize int, record *BbiBlockDecoderType) error {
+func (reader *BbiBlockDecoder) importRecord(s []float64, n []int, binsize int, record *BbiBlockDecoderType) error {
   for i := record.From/binsize; i < record.To/binsize; i++ {
-    if i < len(sequence) {
-      sequence[i] = record.Value
+    if i < len(s) {
+      s[i]  = (float64(n[i])*s[i] + record.Value)/(float64(n[i])+1.0)
+      n[i] += 1
     } else {
-      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(sequence))
+      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(s))
     }
   }
   return nil
 }
 
 func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
+  if binsize > int(reader.Header.Span) && binsize % int(reader.Header.Span) != 0 ||
+    (int(reader.Header.Span) > binsize && int(reader.Header.Span) % binsize != 0) {
+    return fmt.Errorf("cannot import data with binsize `%d' into track with binsize `%d'", reader.Header.Span, binsize)
+  }
   r := &BbiBlockDecoderType{}
+  n := make([]int, len(sequence))
   switch reader.Header.Type {
   default:
     return fmt.Errorf("unsupported block type")
@@ -312,7 +318,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
       r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
       r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
       r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }
     }
@@ -322,7 +328,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
       r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
       r.To    = r.From + int(reader.Header.Span)
       r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }
     }
@@ -332,7 +338,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
       r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
       r.To    = r.From + int(reader.Header.Span)
       r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }
     }

@@ -326,30 +326,21 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
     return fmt.Errorf("unsupported block type")
   case 1:
     for i := 0; i < len(reader.Buffer); i += 12 {
-      r.Idx   = i
-      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-      r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+      reader.readBedGraph(r, i)
       if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }
     }
   case 2:
     for i := 0; i < len(reader.Buffer); i += 8 {
-      r.Idx   = i
-      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-      r.To    = r.From + int(reader.Header.Span)
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+      reader.readVariable(r, i)
       if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }
     }
   case 3:
     for i := 0; i < len(reader.Buffer); i += 4 {
-      r.Idx   = i
-      r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
-      r.To    = r.From + int(reader.Header.Span)
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+      reader.readFixed(r, i)
       if err := reader.importRecord(sequence, n, binsize, r); err != nil {
         return err
       }

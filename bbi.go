@@ -315,7 +315,8 @@ func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
 }
 
 func (reader *BbiBlockDecoder) importRecord(s []float64, binsize int, record *BbiBlockDecoderType) error {
-  for i := record.From/binsize; i < record.To/binsize; i++ {
+  for k := record.From; k < record.To; k += binsize {
+    i := k/binsize
     j := i - int(reader.Header.Start)/binsize
     if j >= len(reader.Tmp) || j < 0 {
       return fmt.Errorf("data range in block header does not match block contents")
@@ -334,7 +335,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
     (int(reader.Header.Span) > binsize && int(reader.Header.Span) % binsize != 0) {
     return fmt.Errorf("cannot import data with binsize `%d' into track with binsize `%d'", reader.Header.Span, binsize)
   }
-  reader.allocTmp(int(reader.Header.End - reader.Header.Start)/binsize + 1)
+  reader.allocTmp(divIntUp(int(reader.Header.End - reader.Header.Start), binsize) + 1)
   r := &BbiBlockDecoderType{}
   switch reader.Header.Type {
   default:

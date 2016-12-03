@@ -314,13 +314,17 @@ func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
   return channel
 }
 
-func (reader *BbiBlockDecoder) importRecord(s []float64, n float64, binsize int, record *BbiBlockDecoderType) error {
+func (reader *BbiBlockDecoder) importRecord(s []float64, binsize int, record *BbiBlockDecoderType) error {
   for i := record.From/binsize; i < record.To/binsize; i++ {
-    if i < len(s) {
-      s[i]  = (n*s[i] + record.Value)/(n+1.0)
-    } else {
+    j := i - int(reader.Header.Start)/binsize
+    if j >= len(reader.Tmp) || j < 0 {
+      return fmt.Errorf("data range in block header does not match block contents")
+    }
+    if i >= len(s) {
       return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(s))
     }
+    s[i] = (reader.Tmp[j]*s[i] + record.Value)/(reader.Tmp[j]+1.0)
+    reader.Tmp[j] += 1.0
   }
   return nil
 }
@@ -330,36 +334,31 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
     (int(reader.Header.Span) > binsize && int(reader.Header.Span) % binsize != 0) {
     return fmt.Errorf("cannot import data with binsize `%d' into track with binsize `%d'", reader.Header.Span, binsize)
   }
+  reader.allocTmp(int(reader.Header.End - reader.Header.Start)/binsize + 1)
   r := &BbiBlockDecoderType{}
   switch reader.Header.Type {
   default:
     return fmt.Errorf("unsupported block type")
   case 1:
-    reader.allocTmp(len(reader.Buffer)/12)
     for i := 0; i < len(reader.Buffer); i += 12 {
       reader.readBedGraph(r, i)
-      if err := reader.importRecord(sequence, reader.Tmp[i/12], binsize, r); err != nil {
+      if err := reader.importRecord(sequence, binsize, r); err != nil {
         return err
       }
-      reader.Tmp[i/12] += 1.0
     }
   case 2:
-    reader.allocTmp(len(reader.Buffer)/8)
     for i := 0; i < len(reader.Buffer); i += 8 {
       reader.readVariable(r, i)
-      if err := reader.importRecord(sequence, reader.Tmp[i/8], binsize, r); err != nil {
+      if err := reader.importRecord(sequence, binsize, r); err != nil {
         return err
       }
-      reader.Tmp[i/8] += 1.0
     }
   case 3:
-    reader.allocTmp(len(reader.Buffer)/4)
     for i := 0; i < len(reader.Buffer); i += 4 {
       reader.readFixed(r, i)
-      if err := reader.importRecord(sequence, reader.Tmp[i/4], binsize, r); err != nil {
+      if err := reader.importRecord(sequence, binsize, r); err != nil {
         return err
       }
-      reader.Tmp[i/4] += 1.0
     }
   }
   return nil

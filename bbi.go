@@ -247,6 +247,17 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
   return &reader, nil
 }
 
+func (reader *BbiBlockDecoder) allocTmp(bufsize int) {
+  // allocate temporary memory for counting how many values we read at each position
+  if len(reader.Tmp) < bufsize {
+    reader.Tmp = make([]float64, bufsize)
+  } else {
+    for i := 0; i < len(reader.Tmp); i++ {
+      reader.Tmp[i] = 0.0
+    }
+  }
+}
+
 func (reader *BbiBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
   r.Idx   = i
   r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
@@ -324,10 +335,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
   default:
     return fmt.Errorf("unsupported block type")
   case 1:
-    // allocate temporary memory for counting how many values we read at each position
-    if bufsize := len(reader.Buffer)/12; len(reader.Tmp) < bufsize {
-      reader.Tmp = make([]float64, bufsize)
-    }
+    reader.allocTmp(len(reader.Buffer)/12)
     for i := 0; i < len(reader.Buffer); i += 12 {
       reader.readBedGraph(r, i)
       if err := reader.importRecord(sequence, reader.Tmp[i/12], binsize, r); err != nil {
@@ -336,10 +344,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
       reader.Tmp[i/12] += 1.0
     }
   case 2:
-    // allocate temporary memory for counting how many values we read at each position
-    if bufsize := len(reader.Buffer)/8; len(reader.Tmp) < bufsize {
-      reader.Tmp = make([]float64, bufsize)
-    }
+    reader.allocTmp(len(reader.Buffer)/8)
     for i := 0; i < len(reader.Buffer); i += 8 {
       reader.readVariable(r, i)
       if err := reader.importRecord(sequence, reader.Tmp[i/8], binsize, r); err != nil {
@@ -348,10 +353,7 @@ func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
       reader.Tmp[i/8] += 1.0
     }
   case 3:
-    // allocate temporary memory for counting how many values we read at each position
-    if bufsize := len(reader.Buffer)/4; len(reader.Tmp) < bufsize {
-      reader.Tmp = make([]float64, bufsize)
-    }
+    reader.allocTmp(len(reader.Buffer)/4)
     for i := 0; i < len(reader.Buffer); i += 4 {
       reader.readFixed(r, i)
       if err := reader.importRecord(sequence, reader.Tmp[i/4], binsize, r); err != nil {

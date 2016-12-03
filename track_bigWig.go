@@ -35,28 +35,18 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
 
   // allocate track if this is the first buffer
   if len(track.Data) == 0 {
-    switch decoder.Header.Type {
-    case 1:
-      if track.Binsize == 0 {
-        return fmt.Errorf("binsize is required for bedGraph tracks")
-      }
+    if track.Binsize != 0 {
+      // binsize is defined
       *track = AllocTrack("", genome, track.Binsize)
-    case 2: fallthrough
-    case 3:
-      *track = AllocTrack("", genome, int(decoder.Header.Span))
-    }
-  }
-  switch decoder.Header.Type {
-  case 2:
-    if int(decoder.Header.Span) != track.Binsize {
-      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
-    }
-  case 3:
-    if int(decoder.Header.Span) != track.Binsize {
-      return fmt.Errorf("block has invalid span `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
-    }
-    if int(decoder.Header.Step) != track.Binsize {
-      return fmt.Errorf("block has invalid step `%d' for track with bin size `%d'", decoder.Header.Span, track.Binsize)
+    } else {
+      // no binsize given, try do determine it
+      switch decoder.Header.Type {
+      case 1:
+        return fmt.Errorf("binsize is required for bedGraph tracks")
+      case 2: fallthrough
+      case 3:
+        *track = AllocTrack("", genome, int(decoder.Header.Span))
+      }
     }
   }
   if seq, ok := track.Data[seqname]; !ok {

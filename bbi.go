@@ -318,11 +318,16 @@ func (reader *BbiBlockDecoder) importRecord(s []float64, binsize int, record *Bb
   for k := record.From; k < record.To; k += binsize {
     i := k/binsize
     j := i - int(reader.Header.Start)/binsize
+    if i == len(s) {
+      // the last bin is dropped by convention if it is not fully
+      // covered with data
+      continue
+    } else
+    if i > len(s) {
+      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(s))
+    }
     if j >= len(reader.Tmp) || j < 0 {
       return fmt.Errorf("data range in block header does not match block contents")
-    }
-    if i >= len(s) {
-      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(s))
     }
     s[i] = (reader.Tmp[j]*s[i] + record.Value)/(reader.Tmp[j]+1.0)
     reader.Tmp[j] += 1.0

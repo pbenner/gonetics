@@ -246,6 +246,27 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
   return &reader, nil
 }
 
+func (reader *BbiBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
+  r.Idx   = i
+  r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
+  r.To    = r.From + int(reader.Header.Span)
+  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+}
+
+func (reader *BbiBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
+  r.Idx   = i
+  r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To    = r.From + int(reader.Header.Span)
+  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+}
+
+func (reader *BbiBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
+  r.Idx   = i
+  r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
+  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+}
+
 func (reader *BbiBlockDecoder) fillChannel(channel chan BbiBlockDecoderType) {
   switch reader.Header.Type {
   default:
@@ -254,28 +275,19 @@ func (reader *BbiBlockDecoder) fillChannel(channel chan BbiBlockDecoderType) {
   case 1:
     for i := 0; i < len(reader.Buffer); i += 12 {
       r := BbiBlockDecoderType{}
-      r.Idx   = i
-      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-      r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+      reader.readBedGraph(&r, i)
       channel <- r
     }
   case 2:
     for i := 0; i < len(reader.Buffer); i += 8 {
       r := BbiBlockDecoderType{}
-      r.Idx   = i
-      r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-      r.To    = r.From + int(reader.Header.Span)
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+      reader.readVariable(&r, i)
       channel <- r
     }
   case 3:
     for i := 0; i < len(reader.Buffer); i += 4 {
       r := BbiBlockDecoderType{}
-      r.Idx   = i
-      r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
-      r.To    = r.From + int(reader.Header.Span)
-      r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+      reader.readFixed(&r, i)
       channel <- r
     }
   }

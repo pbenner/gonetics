@@ -143,6 +143,42 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
   return track1.Crosscorrelation(track2, 0, maxDelay, true)
 }
 
+/* estimate mean fragment length
+ * -------------------------------------------------------------------------- */
+
+func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int) (int, error) {
+
+  // compute mean read length
+  readLength := uint64(0)
+  for i := 0; i < reads.Length(); i++ {
+    readLength += uint64(reads.Ranges[i].To - reads.Ranges[i].From)
+  }
+  readLength /= uint64(reads.Length())
+
+  x, y, err := CrosscorrelateReads(reads, genome, maxDelay, binsize)
+
+  if err != nil {
+    return -1, err
+  }
+  // find peak
+  i_max := -1
+  v_max := 0.0
+  for i := 1; i < len(x); i++ {
+    // skip everything close to the read length (i.e. fantom peaks)
+    if x[i] < int(readLength + readLength/2) {
+      continue
+    }
+    if v_max < y[i] {
+      i_max = i
+      v_max = y[i]
+    }
+  }
+  if i_max == -1 {
+    return -1, fmt.Errorf("no crosscorrelation peak found")
+  }
+  return x[i_max], nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 // Compute the sample autocorrelation. If [normalize] is true the result is

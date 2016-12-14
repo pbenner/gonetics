@@ -21,7 +21,6 @@ package gonetics
 import "errors"
 import "fmt"
 import "math"
-import "os"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
@@ -184,7 +183,6 @@ func (track Track) GetSlice(r GRangesRow) ([]float64, error) {
 // a length of [d]. This is the same as the macs2 `extsize' parameter.
 // Reads are not extended if [d] is zero.
 func (track Track) AddReads(reads GRanges, d int) error {
-  sum_reads_outside := 0
   for i := 0; i < reads.Length(); i++ {
     seq, ok := track.Data[reads.Seqnames[i]]
     if !ok {
@@ -207,16 +205,11 @@ func (track Track) AddReads(reads GRanges, d int) error {
       jfrom := iMax(from, (j+0)*track.Binsize)
       jto   := iMin(to  , (j+1)*track.Binsize)
       if j >= len(seq) {
-        sum_reads_outside++
         break
       } else {
         seq[j] += float64(jto-jfrom)/float64(track.Binsize)
       }
     }
-  }
-  if sum_reads_outside > 0 {
-    fmt.Fprintf(os.Stderr, "AddReads(): %d read(s) are outside the genome!\n",
-      sum_reads_outside)
   }
   return nil
 }

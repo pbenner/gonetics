@@ -146,7 +146,7 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
 /* estimate mean fragment length
  * -------------------------------------------------------------------------- */
 
-func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int) (int, error) {
+func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int) (int, []int, []float64, error) {
 
   // compute mean read length
   readLength := uint64(0)
@@ -158,7 +158,7 @@ func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int)
   x, y, err := CrosscorrelateReads(reads, genome, maxDelay, binsize)
 
   if err != nil {
-    return -1, err
+    return -1, nil, nil, err
   }
   // find peak
   i_max := -1
@@ -178,12 +178,12 @@ func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int)
     }
   }
   if i_max == -1 {
-    return -1, fmt.Errorf("no crosscorrelation peak found")
+    return -1, nil, nil, fmt.Errorf("no crosscorrelation peak found")
   }
   if v_max < y[len(y)-1] {
-    return -1, fmt.Errorf("it seems that maxDelay is too small")
+    return -1, nil, nil, fmt.Errorf("it seems that maxDelay is too small")
   }
-  return x[i_max], nil
+  return x[i_max], x, y, nil
 }
 
 /* -------------------------------------------------------------------------- */

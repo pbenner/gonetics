@@ -148,6 +148,10 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
 
 func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int) (int, []int, []float64, error) {
 
+  if reads.Length() == 0 {
+    return -1, nil, nil, fmt.Errorf("no reads given")
+  }
+
   // compute mean read length
   readLength := uint64(0)
   for i := 0; i < reads.Length(); i++ {

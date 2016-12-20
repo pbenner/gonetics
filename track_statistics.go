@@ -146,7 +146,7 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
 /* estimate mean fragment length
  * -------------------------------------------------------------------------- */
 
-func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int) (int, []int, []float64, error) {
+func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int, fraglenRange [2]int) (int, []int, []float64, error) {
 
   if reads.Length() == 0 {
     return -1, nil, nil, fmt.Errorf("no reads given")
@@ -164,13 +164,26 @@ func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int)
   if err != nil {
     return -1, nil, nil, err
   }
+  // set initial feasible range
+  from := int(readLength + readLength/2)
+  to   := maxDelay
+  // check if a feasible range is given
+  if fraglenRange[0] != -1 {
+    from = fraglenRange[0]
+  }
+  if fraglenRange[1] != -1 {
+    to   = fraglenRange[1]
+  }
   // find peak
   i_max := -1
   v_max := 0.0
   for i := 1; i < len(x)-1; i++ {
     // skip everything close to the read length (i.e. fantom peaks)
-    if x[i] < int(readLength + readLength/3) {
+    if x[i] < from {
       continue
+    }
+    if x[i] >= to {
+      break
     }
     // test for local maximum
     if y[i-1] < y[i] && y[i] > y[i+1] {

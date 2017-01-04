@@ -142,3 +142,25 @@ Export track to wig or bigWig:
   track.WriteWiggle("track.wig", "track description")
   track.WriteBigWig("track.bw",  "track description")
 ```
+
+### BigWig Files
+
+BigWig files contain data in a binary format optimized for fast random access. In addition to the raw data, bigWig files typically contain several zoom levels for which the data has been summarized. The BigWigReader class allows to query data and automatically selects an appropriate zoom level for the given binsize:
+```go
+  reader, err := NewBigWigReader("test.bw")
+  if err != nil {
+    log.Fatal(err)
+  }
+  // query details
+  seqname := "chr4"
+  from    := 11774000
+  to      := 11778000
+  binsize := 20
+
+  for record := range reader.Query(seqname, from, to, binsize) {
+    if record.Error != nil {
+      log.Fatalf("reading bigWig failed: %v", record.Error)
+    }
+    fmt.Println(record)
+  }
+```

@@ -33,14 +33,14 @@ type StringSet map[string][]byte
 
 /* -------------------------------------------------------------------------- */
 
-func NewStringSet(seqnames []string, sequences []byte) StringSet {
+func NewStringSet(seqnames []string, sequences [][]byte) StringSet {
   if len(seqnames) != len(sequences) {
     panic("NewStringSet(): invalid parameters")
   }
   s := make(StringSet)
 
   for i := 0; i < len(sequences); i++ {
-    s[seqnames[i]] = sequences
+    s[seqnames[i]] = sequences[i]
   }
   return s
 }

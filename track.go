@@ -314,23 +314,6 @@ func (track *Track) Map(f func(float64) float64) {
   }
 }
 
-func (track1 *Track) Map2(f func(float64, float64) float64, track2 Track) error {
-  if track1.Binsize != track2.Binsize {
-    return fmt.Errorf("binsizes do not match")
-  }
-  for name, seq1 := range track1.Data {
-    if seq2, ok := track2.Data[name]; ok {
-      if len(seq1) != len(seq2) {
-        return fmt.Errorf("sequence `%s' has different lengths (`%d' and `%d')", name, len(seq1), len(seq2))
-      }
-      for i := 0; i < len(seq1); i++ {
-        seq1[i] = f(seq1[i], seq2[i])
-      }
-    }
-  }
-  return nil
-}
-
 func (track *Track) Reduce(f func(float64, float64) float64, x0 float64) map[string]float64 {
   result := make(map[string]float64)
 
@@ -346,4 +329,40 @@ func (track *Track) Reduce(f func(float64, float64) float64, x0 float64) map[str
     result[name] = tmp
   }
   return result
+}
+
+func (track *Track) ReduceTrackList(f func(...float64) float64, tracks []Track) error {
+  // number of tracks
+  n := len(tracks)
+  v := make([]float64, n)
+  // check bin sizes
+  for _, t := range tracks {
+    if track.Binsize != t.Binsize {
+      return fmt.Errorf("binsizes do not match")
+    }
+  }
+  for name, dst := range track.Data {
+    sequences := [][]float64{}
+    // collect source sequences
+    for k, t := range tracks {
+      if seq, ok := t.Data[name]; ok {
+        if len(seq) != len(dst) {
+          return fmt.Errorf("sequence `%s' in track `%d' has invalid length (`%d' instead of `%d')", name, k, len(seq), len(dst))
+        }
+        sequences = append(sequences, seq)
+      }
+    }
+    // reduce length of v if some tracks are missing a sequence
+    v := v[0:len(sequences)]
+    // loop over sequence
+    for i := 0; i < len(dst); i++ {
+      // copy values to local vector
+      for j := 0; j < len(sequences); j++ {
+        v[j] = sequences[j][i]
+      }
+      // apply function
+      dst[i] = f(v...)
+    }
+  }
+  return nil
 }

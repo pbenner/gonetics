@@ -318,7 +318,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) (*GRanges, error) 
   return r, nil
 }
 
-func (r *GRanges) ImportBigWig(reader *BigWigReader, binsize int, revNegStrand bool) (*GRanges, error) {
+func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, revNegStrand bool) (*GRanges, error) {
   counts := [][]float64{}
   for i := 0; i < r.Length(); i++ {
     seqname := r.Seqnames[i]
@@ -343,7 +343,7 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, binsize int, revNegStrand b
     }
     counts = append(counts, seq)
   }
-  r.AddMeta("counts", counts)
+  r.AddMeta(name, counts)
   return r, nil
 }
 

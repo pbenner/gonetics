@@ -276,7 +276,7 @@ func (r GRanges) SetLengths(n int) GRanges {
 // Add data from a track to the GRanges object. The data will be
 // contained in a meta-data column with the same name as the track.
 // It is required that each range has the same length.
-func (r *GRanges) ImportTrack(track Track, revNegStrand bool) (*GRanges, error) {
+func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
   n := r.Length()
   m := -1
   data    := make([][]float64, n)
@@ -289,7 +289,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) (*GRanges, error) 
     if m == -1 {
       m = divIntUp(to - from, track.Binsize)
     } else if m != divIntUp(to - from, track.Binsize) {
-      return nil, fmt.Errorf("varying window sizes are not allowed")
+      return fmt.Errorf("varying window sizes are not allowed")
     }
     // all rows are using the same binsize
     binsize[i] = track.Binsize
@@ -310,15 +310,15 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) (*GRanges, error) 
         }
       }
     } else {
-      return nil, fmt.Errorf("range has no strand information")
+      return fmt.Errorf("range has no strand information")
     }
   }
   r.AddMeta("binsize", binsize)
   r.AddMeta(track.Name, data)
-  return r, nil
+  return nil
 }
 
-func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, revNegStrand bool) (*GRanges, error) {
+func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, revNegStrand bool)  error {
   counts := [][]float64{}
   for i := 0; i < r.Length(); i++ {
     seqname := r.Seqnames[i]
@@ -329,7 +329,7 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, r
     seq := make([]float64, n)
     for record := range reader.Query(seqname, from, to, binsize) {
       if record.Error != nil {
-        return nil, fmt.Errorf("%v", record.Error)
+        return fmt.Errorf("%v", record.Error)
       }
       if revNegStrand == false || strand == '+' {
         if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
@@ -344,7 +344,7 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, r
     counts = append(counts, seq)
   }
   r.AddMeta(name, counts)
-  return r, nil
+  return nil
 }
 
 /* convert to gene object

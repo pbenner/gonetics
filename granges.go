@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
@@ -276,7 +276,7 @@ func (r GRanges) SetLengths(n int) GRanges {
 // Add data from a track to the GRanges object. The data will be
 // contained in a meta-data column with the same name as the track.
 // It is required that each range has the same length.
-func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
+func (r *GRanges) ImportTrack(track Track, revNegStrand bool) (*GRanges, error) {
   n := r.Length()
   m := -1
   data    := make([][]float64, n)
@@ -289,7 +289,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
     if m == -1 {
       m = divIntUp(to - from, track.Binsize)
     } else if m != divIntUp(to - from, track.Binsize) {
-      panic("varying window sizes are not allowed")
+      return nil, fmt.Errorf("varying window sizes are not allowed")
     }
     // all rows are using the same binsize
     binsize[i] = track.Binsize
@@ -310,12 +310,41 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) *GRanges {
         }
       }
     } else {
-      panic("range has no strand information")
+      return nil, fmt.Errorf("range has no strand information")
     }
   }
   r.AddMeta("binsize", binsize)
   r.AddMeta(track.Name, data)
-  return r
+  return r, nil
+}
+
+func (r *GRanges) ImportBigWig(reader *BigWigReader, binsize int, revNegStrand bool) (*GRanges, error) {
+  counts := [][]float64{}
+  for i := 0; i < r.Length(); i++ {
+    seqname := r.Seqnames[i]
+    from    := r.Ranges[i].From
+    to      := r.Ranges[i].To
+    strand  := r.Strand[i]
+    n   := (to - from)/binsize
+    seq := make([]float64, n)
+    for record := range reader.Query(seqname, from, to, binsize) {
+      if record.Error != nil {
+        return nil, fmt.Errorf("%v", record.Error)
+      }
+      if revNegStrand == false || strand == '+' {
+        if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
+          seq[idx] = record.Sum/float64(record.Valid)
+        }
+      } else {
+        if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
+          seq[n-1-idx] = record.Sum/float64(record.Valid)
+        }
+      }
+    }
+    counts = append(counts, seq)
+  }
+  r.AddMeta("counts", counts)
+  return r, nil
 }
 
 /* convert to gene object

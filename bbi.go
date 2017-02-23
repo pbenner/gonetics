@@ -168,15 +168,19 @@ func (record BbiZoomRecord) Write(writer io.Writer) error {
 
 /* -------------------------------------------------------------------------- */
 
-type BbiSummaryRecord struct {
-  ChromId    int
-  From       int
-  To         int
+type BbiSummaryStatistics struct {
   Valid      int
   Min        float64
   Max        float64
   Sum        float64
   SumSquares float64
+}
+
+type BbiSummaryRecord struct {
+  ChromId    int
+  From       int
+  To         int
+  BbiSummaryStatistics
 }
 
 func NewBbiSummaryRecord() BbiSummaryRecord {
@@ -186,7 +190,15 @@ func NewBbiSummaryRecord() BbiSummaryRecord {
   return record
 }
 
-func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
+func (record *BbiSummaryStatistics) Reset() {
+  record.Valid      = 0
+  record.Min        = 0.0
+  record.Max        = 0.0
+  record.Sum        = 0.0
+  record.SumSquares = 0.0
+}
+
+func (record *BbiSummaryStatistics) AddRecord(x BbiSummaryRecord) {
   record.Valid      += x.Valid
   record.Min         = math.Min(record.Min, x.Min)
   record.Max         = math.Max(record.Max, x.Max)
@@ -194,7 +206,7 @@ func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
   record.SumSquares += x.SumSquares
 }
 
-func (record *BbiSummaryRecord) AddValue(x float64) {
+func (record *BbiSummaryStatistics) AddValue(x float64) {
   record.Valid      += 1
   record.Min         = math.Min(record.Min, x)
   record.Max         = math.Max(record.Max, x)
@@ -207,7 +219,7 @@ func (record *BbiSummaryRecord) AddValue(x float64) {
 type BbiBlockDecoder struct {
   Header  BbiDataHeader
   Buffer  []byte
-  Tmp     []float64
+  Tmp     []BbiSummaryStatistics
 }
 
 type BbiBlockDecoderType struct {
@@ -250,10 +262,10 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
 func (reader *BbiBlockDecoder) allocTmp(bufsize int) {
   // allocate temporary memory for counting how many values we read at each position
   if len(reader.Tmp) < bufsize {
-    reader.Tmp = make([]float64, bufsize)
+    reader.Tmp = make([]BbiSummaryStatistics, bufsize)
   } else {
     for i := 0; i < len(reader.Tmp); i++ {
-      reader.Tmp[i] = 0.0
+      reader.Tmp[i].Reset()
     }
   }
 }
@@ -314,55 +326,57 @@ func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
   return channel
 }
 
-func (reader *BbiBlockDecoder) importRecord(s []float64, binsize int, record *BbiBlockDecoderType) error {
+func (reader *BbiBlockDecoder) importRecord(sequence []float64, t []BbiSummaryStatistics, s BinSummaryStatistics, binsize int, record *BbiBlockDecoderType) error {
+  offset := int(reader.Header.Start)/binsize
   for k := record.From; k < record.To; k += binsize {
     i := k/binsize
-    j := i - int(reader.Header.Start)/binsize
-    if i == len(s) {
+    j := i - offset
+    if i == len(sequence) {
       // the last bin is dropped by convention if it is not fully
-      // covered with data
+      // covered with data (do not raise an error)
       continue
-    } else
-    if i > len(s) {
-      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(s))
     }
-    if j >= len(reader.Tmp) || j < 0 {
+    if i > len(sequence) {
+      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(t))
+    }
+    if j >= len(t) || j < 0 {
       return fmt.Errorf("data range in block header does not match block contents")
     }
-    s[i] = (reader.Tmp[j]*s[i] + record.Value)/(reader.Tmp[j]+1.0)
-    reader.Tmp[j] += 1.0
+    t[j].AddValue(record.Value)
+    sequence[i] = s(t[j].Sum, t[j].Min, t[j].Max, t[j].Valid)
   }
   return nil
 }
 
-func (reader *BbiBlockDecoder) Import(sequence []float64, binsize int) error {
+func (reader *BbiBlockDecoder) Import(sequence []float64, s BinSummaryStatistics, binsize int) error {
   if binsize > int(reader.Header.Span) && binsize % int(reader.Header.Span) != 0 ||
     (int(reader.Header.Span) > binsize && int(reader.Header.Span) % binsize != 0) {
     return fmt.Errorf("cannot import data with binsize `%d' into track with binsize `%d'", reader.Header.Span, binsize)
   }
   reader.allocTmp(divIntUp(int(reader.Header.End - reader.Header.Start), binsize) + 1)
   r := &BbiBlockDecoderType{}
+  t := reader.Tmp
   switch reader.Header.Type {
   default:
     return fmt.Errorf("unsupported block type")
   case 1:
     for i := 0; i < len(reader.Buffer); i += 12 {
       reader.readBedGraph(r, i)
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
         return err
       }
     }
   case 2:
     for i := 0; i < len(reader.Buffer); i += 8 {
       reader.readVariable(r, i)
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
         return err
       }
     }
   case 3:
     for i := 0; i < len(reader.Buffer); i += 4 {
       reader.readFixed(r, i)
-      if err := reader.importRecord(sequence, binsize, r); err != nil {
+      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
         return err
       }
     }

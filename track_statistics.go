@@ -23,21 +23,15 @@ import "math"
 
 /* -------------------------------------------------------------------------- */
 
-type BinSummaryStatistics interface {
-  Eval(sum, min, max float64, n int) float64
-}
+type BinSummaryStatistics func(sum, min, max float64, n int) float64
 
-type BinMean struct {}
-type BinMax  struct {}
-type BinMin  struct {}
-
-func (BinMean) Eval(sum, min, max float64, n int) float64 {
+func BinMean(sum, min, max float64, n int) float64 {
   return sum/float64(n)
 }
-func (BinMax ) Eval(sum, min, max float64, n int) float64 {
+func BinMax (sum, min, max float64, n int) float64 {
   return max
 }
-func (BinMin ) Eval(sum, min, max float64, n int) float64 {
+func BinMin (sum, min, max float64, n int) float64 {
   return min
 }
 

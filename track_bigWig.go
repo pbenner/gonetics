@@ -22,7 +22,7 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
+func (track *Track) readBigWig_block(buffer []byte, s BinSummaryStatistics, genome Genome) error {
   decoder, err := NewBbiBlockDecoder(buffer)
   if err != nil {
     return err
@@ -52,11 +52,11 @@ func (track *Track) readBigWig_block(buffer []byte, genome Genome) error {
   if seq, ok := track.Data[seqname]; !ok {
     return fmt.Errorf("sequence `%s' not vailable in track", seqname)
   } else {
-    return decoder.Import(seq, track.Binsize)
+    return decoder.Import(seq, s, track.Binsize)
   }
 }
 
-func (track *Track) ReadBigWig(filename, name string) error {
+func (track *Track) ReadBigWig(filename, name string, s BinSummaryStatistics) error {
 
   bwr, err := NewBigWigReader(filename)
   if err != nil {
@@ -66,7 +66,7 @@ func (track *Track) ReadBigWig(filename, name string) error {
     if result.Error != nil {
       return fmt.Errorf("reading `%s' failed: %v", filename, result.Error)
     }
-    if err := track.readBigWig_block(result.Block, bwr.Genome); err != nil {
+    if err := track.readBigWig_block(result.Block, s, bwr.Genome); err != nil {
       return fmt.Errorf("reading `%s' failed: %v", filename, err)
     }
   }

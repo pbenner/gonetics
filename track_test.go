@@ -182,7 +182,7 @@ func TestTrack7(t *testing.T) {
   genome := Genome{}
   genome.ReadFile("track_test.1.genome")
 
-  if err := track.ReadBigWig("track_test.1.bw", ""); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw", "", BinMean); err != nil {
     t.Error(err)
   }
   if err := track.WriteBigWig("track_test.1.bw.tmp", "", genome); err != nil {
@@ -190,7 +190,7 @@ func TestTrack7(t *testing.T) {
   }
   // reset track and read file again
   track = Track{}
-  if err := track.ReadBigWig("track_test.1.bw.tmp", ""); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw.tmp", "", BinMean); err != nil {
     t.Error(err)
   }
 }
@@ -203,13 +203,13 @@ func TestTrack8(t *testing.T) {
   genome := Genome{}
   genome.ReadFile("track_test.3.genome")
 
-  if err := track1.ReadBigWig("track_test.3.bw", ""); err != nil {
+  if err := track1.ReadBigWig("track_test.3.bw", "", BinMean); err != nil {
     t.Error(err)
   }
   if err := track1.WriteBigWig("track_test.3.bw.tmp", "", genome); err != nil {
     t.Error(err)
   }
-  if err := track2.ReadBigWig("track_test.3.bw.tmp", ""); err != nil {
+  if err := track2.ReadBigWig("track_test.3.bw.tmp", "", BinMean); err != nil {
     t.Error(err)
   }
 }
@@ -227,7 +227,7 @@ func TestTrack9(t *testing.T) {
 
   track2 := AllocTrack("", genome, 10)
   track2.Map(func(x float64) float64 { return math.NaN() })
-  err1 := track2.ReadBigWig(filename, "")
+  err1 := track2.ReadBigWig(filename, "", BinMean)
   if err1 != nil {
     t.Error(err1)
   }

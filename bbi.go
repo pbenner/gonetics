@@ -644,10 +644,13 @@ func NewBTree(data *BData) *BTree {
   tree.ItemsPerBlock = data.ItemsPerBlock
   tree.ItemCount     = data.ItemCount
   // compute tree depth
-  d := int(math.Ceil(math.Log(float64(data.ItemCount))/math.Log(float64(data.ItemsPerBlock))))
+  if data.ItemCount == 1 {
+    tree.Root.BuildTree(data, 0, data.ItemCount, 0)
+  } else {
+    d := int(math.Ceil(math.Log(float64(data.ItemCount))/math.Log(float64(data.ItemsPerBlock))))
 
-  tree.Root.BuildTree(data, 0, data.ItemCount, d-1)
-
+    tree.Root.BuildTree(data, 0, data.ItemCount, d-1)
+  }
   return &tree
 }
 

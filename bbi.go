@@ -326,64 +326,6 @@ func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
   return channel
 }
 
-func (reader *BbiBlockDecoder) importRecord(sequence []float64, t []BbiSummaryStatistics, s BinSummaryStatistics, binsize int, record *BbiBlockDecoderType) error {
-  offset := int(reader.Header.Start)/binsize
-  for k := record.From; k < record.To; k += binsize {
-    i := k/binsize
-    j := i - offset
-    if i == len(sequence) {
-      // the last bin is dropped by convention if it is not fully
-      // covered with data (do not raise an error)
-      continue
-    }
-    if i > len(sequence) {
-      return fmt.Errorf("position `%d' is out of range (trying to access bin `%d' but sequence has only `%d' bins)", i*binsize, i, len(t))
-    }
-    if j >= len(t) || j < 0 {
-      return fmt.Errorf("data range in block header does not match block contents")
-    }
-    t[j].AddValue(record.Value)
-    sequence[i] = s(t[j].Sum, t[j].Min, t[j].Max, t[j].Valid)
-  }
-  return nil
-}
-
-func (reader *BbiBlockDecoder) Import(sequence []float64, s BinSummaryStatistics, binsize int) error {
-  if binsize > int(reader.Header.Span) && binsize % int(reader.Header.Span) != 0 ||
-    (int(reader.Header.Span) > binsize && int(reader.Header.Span) % binsize != 0) {
-    return fmt.Errorf("cannot import data with binsize `%d' into track with binsize `%d'", reader.Header.Span, binsize)
-  }
-  reader.allocTmp(divIntUp(int(reader.Header.End - reader.Header.Start), binsize) + 1)
-  r := &BbiBlockDecoderType{}
-  t := reader.Tmp
-  switch reader.Header.Type {
-  default:
-    return fmt.Errorf("unsupported block type")
-  case 1:
-    for i := 0; i < len(reader.Buffer); i += 12 {
-      reader.readBedGraph(r, i)
-      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
-        return err
-      }
-    }
-  case 2:
-    for i := 0; i < len(reader.Buffer); i += 8 {
-      reader.readVariable(r, i)
-      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
-        return err
-      }
-    }
-  case 3:
-    for i := 0; i < len(reader.Buffer); i += 4 {
-      reader.readFixed(r, i)
-      if err := reader.importRecord(sequence, t, s, binsize, r); err != nil {
-        return err
-      }
-    }
-  }
-  return nil
-}
-
 /* -------------------------------------------------------------------------- */
 
 type BbiZoomBlockDecoder struct {

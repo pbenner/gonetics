@@ -283,6 +283,23 @@ func (reader *BigWigReader) Query(seqname string, from, to , binsize int) <- cha
   }
 }
 
+func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics, binsize int) ([]float64, error) {
+  if n, err := reader.Genome.SeqLength(seqname); err != nil {
+    return nil, err
+  } else {
+    s := make([]float64, n/binsize)
+    for record := range reader.Query(seqname, 0, n, binsize) {
+      if record.Error != nil {
+        return nil, record.Error
+      }
+      if idx := record.From/binsize; idx >= 0 && idx < len(s) {
+        s[idx] = f(record.Sum, record.Min, record.Max, record.Valid)
+      }
+    }
+    return s, nil
+  }
+}
+
 func (reader *BigWigReader) Close() {
   reader.Bwf.Close()
 }

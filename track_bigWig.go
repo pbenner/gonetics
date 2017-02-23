@@ -22,58 +22,26 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *Track) readBigWig_block(buffer []byte, s BinSummaryStatistics, genome Genome) error {
-  decoder, err := NewBbiBlockDecoder(buffer)
-  if err != nil {
-    return err
-  }
-  if idx := int(decoder.Header.ChromId); idx < 0 || idx > genome.Length() {
-    return fmt.Errorf("invalid chromosome id")
-  }
-  // convert chromosome id to sequence name
-  seqname := genome.Seqnames[int(decoder.Header.ChromId)]
-
-  // allocate track if this is the first buffer
-  if len(track.Data) == 0 {
-    if track.Binsize != 0 {
-      // binsize is defined
-      *track = AllocTrack("", genome, track.Binsize)
-    } else {
-      // no binsize given, try do determine it
-      switch decoder.Header.Type {
-      case 1:
-        return fmt.Errorf("binsize is required for bedGraph tracks")
-      case 2: fallthrough
-      case 3:
-        *track = AllocTrack("", genome, int(decoder.Header.Span))
-      }
-    }
-  }
-  if seq, ok := track.Data[seqname]; !ok {
-    return fmt.Errorf("sequence `%s' not vailable in track", seqname)
-  } else {
-    return decoder.Import(seq, s, track.Binsize)
-  }
-}
-
-func (track *Track) ReadBigWig(filename, name string, s BinSummaryStatistics) error {
+func (track *Track) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
 
   bwr, err := NewBigWigReader(filename)
   if err != nil {
     return err
   }
-  for result := range bwr.ReadBlocks() {
-    if result.Error != nil {
-      return fmt.Errorf("reading `%s' failed: %v", filename, result.Error)
-    }
-    if err := track.readBigWig_block(result.Block, s, bwr.Genome); err != nil {
-      return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  // extract all sequences
+  seqnames  := bwr.Genome.Seqnames
+  sequences := [][]float64{}
+  for _, seqname := range seqnames {
+    if s, err := bwr.QuerySequence(seqname, f, binsize); err != nil {
+      return err
+    } else {
+      sequences = append(sequences, s)
     }
   }
-  track.Name = name
-
   bwr.Close()
 
+  // create new track
+  *track = NewTrack(name, seqnames, sequences, binsize)
   return nil
 }
 

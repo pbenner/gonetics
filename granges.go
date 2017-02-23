@@ -318,7 +318,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
   return nil
 }
 
-func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, revNegStrand bool)  error {
+func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, s BinSummaryStatistics, binsize int, revNegStrand bool)  error {
   counts := [][]float64{}
   for i := 0; i < r.Length(); i++ {
     seqname := r.Seqnames[i]
@@ -333,11 +333,11 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, binsize int, r
       }
       if revNegStrand == false || strand == '+' {
         if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[idx] = record.Sum/float64(record.Valid)
+          seq[idx] = s.Eval(record.Sum, record.Min, record.Max, record.Valid)
         }
       } else {
         if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[n-1-idx] = record.Sum/float64(record.Valid)
+          seq[n-1-idx] = s.Eval(record.Sum, record.Min, record.Max, record.Valid)
         }
       }
     }

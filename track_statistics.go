@@ -23,6 +23,26 @@ import "math"
 
 /* -------------------------------------------------------------------------- */
 
+type BinSummaryStatistics interface {
+  Eval(sum, min, max float64, n int) float64
+}
+
+type BinMean struct {}
+type BinMax  struct {}
+type BinMin  struct {}
+
+func (BinMean) Eval(sum, min, max float64, n int) float64 {
+  return sum/float64(n)
+}
+func (BinMax ) Eval(sum, min, max float64, n int) float64 {
+  return max
+}
+func (BinMin ) Eval(sum, min, max float64, n int) float64 {
+  return min
+}
+
+/* -------------------------------------------------------------------------- */
+
 // Compute the sample cross-correlation between track1 and track2. If
 // [normalize] is true the result is normalized by mean and variance. The
 // arguments [from] and [to] specify the range of the delay in basepairs.

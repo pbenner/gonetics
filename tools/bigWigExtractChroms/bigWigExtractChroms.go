@@ -73,7 +73,7 @@ func main() {
   optHelp    := options.BoolLong("help",    'h',  "print help")
   optVerbose := options.BoolLong("verbose", 'v',  "be verbose")
 
-  options.SetParameters("<chrom1,chrom2,...> <input.wig> <output.wig>")
+  options.SetParameters("<chrom1,chrom2,...> <input.bw> <output.bw>")
   options.Parse(os.Args)
 
   if *optHelp {

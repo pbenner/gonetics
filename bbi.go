@@ -192,8 +192,8 @@ func NewBbiSummaryRecord() BbiSummaryRecord {
 
 func (record *BbiSummaryStatistics) Reset() {
   record.Valid      = 0
-  record.Min        = 0.0
-  record.Max        = 0.0
+  record.Min        = math.Inf( 1)
+  record.Max        = math.Inf(-1)
   record.Sum        = 0.0
   record.SumSquares = 0.0
 }
@@ -1048,7 +1048,9 @@ func (tree *RTree) Write(file *os.File) error {
   if err := binary.Write(file, binary.LittleEndian, uint32(0)); err != nil {
     return err
   }
-  tree.Root.Write(file)
+  if tree.Root != nil {
+    tree.Root.Write(file)
+  }
   // get current offset
   if offset, err := file.Seek(0, 1); err != nil {
     return err

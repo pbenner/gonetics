@@ -31,10 +31,15 @@ func (track *Track) ReadBigWig(filename, name string, f BinSummaryStatistics, bi
   // extract all sequences
   seqnames  := bwr.Genome.Seqnames
   sequences := [][]float64{}
-  for _, seqname := range seqnames {
+  for i := 0; i < bwr.Genome.Length(); i++ {
+    length  := bwr.Genome.Lengths [i]
+    seqname := bwr.Genome.Seqnames[i]
     if s, err := bwr.QuerySequence(seqname, f, binsize); err != nil {
       return err
     } else {
+      if binsize == 0 {
+        binsize = divIntUp(length, len(s))
+      }
       sequences = append(sequences, s)
     }
   }

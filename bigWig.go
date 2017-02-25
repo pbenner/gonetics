@@ -284,21 +284,29 @@ func (reader *BigWigReader) Query(seqname string, from, to , binsize int) <- cha
 }
 
 func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics, binsize int) ([]float64, error) {
-  if n, err := reader.Genome.SeqLength(seqname); err != nil {
+  if seqlength, err := reader.Genome.SeqLength(seqname); err != nil {
     return nil, err
   } else {
     var s []float64
     // a binsize of 0 means that the raw data is returned as is
     if binsize == 0 {
-      for record := range reader.Query(seqname, 0, n, binsize) {
+      for record := range reader.Query(seqname, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, record.Error
         }
-        s = append(s, f(record.Sum, record.Min, record.Max, record.Valid))
+        // try to determine binsize from the first record (this most likely
+        // fails for bedGraph files)
+        if binsize == 0 {
+          binsize = record.To - record.From
+          s = make([]float64, divIntDown(seqlength, binsize))
+        }
+        if idx := record.From/binsize; idx >= 0 && idx < len(s) {
+          s[idx] = f(record.Sum, record.Min, record.Max, record.Valid)
+        }
       }
     } else {
-      s := make([]float64, n/binsize)
-      for record := range reader.Query(seqname, 0, n, binsize) {
+      s = make([]float64, divIntDown(seqlength, binsize))
+      for record := range reader.Query(seqname, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, record.Error
         }

@@ -219,7 +219,6 @@ func (record *BbiSummaryStatistics) AddValue(x float64) {
 type BbiBlockDecoder struct {
   Header  BbiDataHeader
   Buffer  []byte
-  Tmp     []BbiSummaryStatistics
 }
 
 type BbiBlockDecoderType struct {
@@ -257,17 +256,6 @@ func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
     }
   }
   return &reader, nil
-}
-
-func (reader *BbiBlockDecoder) allocTmp(bufsize int) {
-  // allocate temporary memory for counting how many values we read at each position
-  if len(reader.Tmp) < bufsize {
-    reader.Tmp = make([]BbiSummaryStatistics, bufsize)
-  } else {
-    for i := 0; i < len(reader.Tmp); i++ {
-      reader.Tmp[i].Reset()
-    }
-  }
 }
 
 func (reader *BbiBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {

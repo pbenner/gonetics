@@ -245,7 +245,7 @@ func NewBigWigReader(filename string) (*BigWigReader, error) {
 
 func (reader *BigWigReader) ReadBlocks() <- chan BigWigReaderType {
   // create new channel
-  channel := make(chan BigWigReaderType)
+  channel := make(chan BigWigReaderType, 10)
   // fill channel with blocks
   go func() {
     reader.fillChannel(channel, reader.Bwf.Index.Root)
@@ -275,7 +275,7 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
   return nil
 }
 
-func (reader *BigWigReader) Query(seqname string, from, to , binsize int) <- chan *BbiQueryType {
+func (reader *BigWigReader) Query(seqname string, from, to , binsize int) <- chan BbiQueryType {
   if idx, err := reader.Genome.GetIdx(seqname); err != nil {
     return nil
   } else {

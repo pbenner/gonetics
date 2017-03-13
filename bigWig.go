@@ -556,3 +556,14 @@ func (bww *BigWigWriter) Close() error {
 
   return nil
 }
+
+/* utility
+ * -------------------------------------------------------------------------- */
+
+func BigWigReadGenome(filename string) (Genome, error) {
+  reader, err := NewBigWigReader(filename)
+  if err != nil {
+    return Genome{}, nil
+  }
+  return reader.Genome, nil
+}

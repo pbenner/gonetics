@@ -1531,7 +1531,6 @@ func (vertex *RVertex) Write(file *os.File) error {
 type RVertexGenerator struct {
   BlockSize    int
   ItemsPerSlot int
-  Channel      chan RVertexGeneratorType
 }
 
 type RVertexGeneratorType struct {
@@ -1553,15 +1552,15 @@ func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error)
 }
 
 func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) <- chan RVertexGeneratorType {
-  generator.Channel = make(chan RVertexGeneratorType, 10)
+  channel := make(chan RVertexGeneratorType, 2)
   go func() {
-    generator.fillChannel(idx, sequence, binsize, reductionLevel, fixedStep)
-    close(generator.Channel)
+    generator.generate(channel, idx, sequence, binsize, reductionLevel, fixedStep)
+    close(channel)
   }()
-  return generator.Channel
+  return channel
 }
 
-func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
+func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
   var encoder BbiBlockEncoder
   // create block encoder
   if reductionLevel > binsize {
@@ -1589,7 +1588,7 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
   for chunk := it.Get(); it.Ok(); it.Next() {
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
-      generator.Channel <- RVertexGeneratorType{
+      channel <- RVertexGeneratorType{
         Vertex: v,
         Blocks: b }
       // create new emtpy vertex
@@ -1609,7 +1608,7 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
     b = append(b, chunk.Block)
   }
   if v.NChildren != 0 {
-    generator.Channel <- RVertexGeneratorType{
+    channel <- RVertexGeneratorType{
       Vertex: v,
       Blocks: b }
   }

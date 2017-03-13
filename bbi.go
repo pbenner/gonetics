@@ -23,7 +23,6 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "bufio"
 import "bytes"
 import "compress/zlib"
 import "fmt"
@@ -108,6 +107,18 @@ type BbiZoomRecord struct {
   Max        float32
   Sum        float32
   SumSquares float32
+}
+
+func (record *BbiZoomRecord) AddValue(x float64) {
+  if record.Min > float32(x) {
+    record.Min = float32(x)
+  }
+  if record.Max < float32(x) {
+    record.Max = float32(x)
+  }
+  record.Valid      += 1
+  record.Sum        += float32(x)
+  record.SumSquares += float32(x*x)
 }
 
 func (record *BbiZoomRecord) Read(reader io.Reader) error {
@@ -292,6 +303,14 @@ func (reader *BbiBlockDecoder) Decode() BbiBlockDecoderIterator {
   return it
 }
 
+func (it *BbiBlockDecoderIterator) Get() *BbiBlockDecoderType {
+  return &it.r
+}
+
+func (it *BbiBlockDecoderIterator) Ok() bool {
+  return it.i != -1
+}
+
 func (it *BbiBlockDecoderIterator) Next() {
   if it.i >= len(it.Buffer) {
     it.i = -1
@@ -311,14 +330,6 @@ func (it *BbiBlockDecoderIterator) Next() {
     it.readFixed(&it.r, it.i)
     it.i += 4
   }
-}
-
-func (it *BbiBlockDecoderIterator) Get() *BbiBlockDecoderType {
-  return &it.r
-}
-
-func (it *BbiBlockDecoderIterator) Ok() bool {
-  return it.i != -1
 }
 
 /* -------------------------------------------------------------------------- */
@@ -351,6 +362,14 @@ func (reader *BbiZoomBlockDecoder) Decode() BbiZoomBlockDecoderIterator {
   return it
 }
 
+func (it *BbiZoomBlockDecoderIterator) Get() *BbiZoomBlockDecoderType {
+  return &it.r
+}
+
+func (it *BbiZoomBlockDecoderIterator) Ok() bool {
+  return it.k
+}
+
 func (it *BbiZoomBlockDecoderIterator) Next() {
   // read BbiZoomRecord
   if err := it.t.Read(it.b); err != nil {
@@ -369,78 +388,112 @@ func (it *BbiZoomBlockDecoderIterator) Next() {
   }
 }
 
-func (it *BbiZoomBlockDecoderIterator) Get() *BbiZoomBlockDecoderType {
-  return &it.r
-}
-
-func (it *BbiZoomBlockDecoderIterator) Ok() bool {
-  return it.k
-}
-
 /* -------------------------------------------------------------------------- */
 
-type BbiBlockEncoder struct {
-  ItemsPerSlot   int
-  tmp          []byte
+type BbiBlockEncoder interface {
+  Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator
 }
 
 type BbiBlockEncoderType struct {
   From    int
   To      int
   Block []byte
-  Error   error
 }
 
-func NewBbiBlockEncoder(itemsPerSlot int) (*BbiBlockEncoder, error) {
-  writer := BbiBlockEncoder{}
-  writer.ItemsPerSlot = itemsPerSlot
-  writer.tmp          = make([]byte, 8)
-  return &writer, nil
+type BbiBlockEncoderIterator interface {
+  Get () *BbiBlockEncoderType
+  Ok  () bool
+  Next()
 }
 
-func (writer *BbiBlockEncoder) encodeBlockZoom(channel chan BbiBlockEncoderType, chromid int, sequence []float64, binsize, reductionLevel int) {
+/* -------------------------------------------------------------------------- */
+
+type BbiZoomBlockEncoder struct {
+  ItemsPerSlot   int
+  tmp          []byte
+  reductionLevel int
+}
+
+type BbiZoomBlockEncoderIterator struct {
+  *BbiZoomBlockEncoder
+  chromid        int
+  sequence     []float64
+  binsize        int
+  position       int
+  // result
+  r BbiBlockEncoderType
+}
+
+type BbiZoomBlockEncoderType struct {
+  From    int
+  To      int
+  Block []byte
+}
+
+func NewBbiZoomBlockEncoder(itemsPerSlot, reductionLevel int) (*BbiZoomBlockEncoder, error) {
+  r := BbiZoomBlockEncoder{}
+  r.ItemsPerSlot   = itemsPerSlot
+  r.reductionLevel = reductionLevel
+  return &r, nil
+}
+
+func (encoder *BbiZoomBlockEncoder) Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator {
+  r := BbiZoomBlockEncoderIterator{}
+  r.BbiZoomBlockEncoder = encoder
+  r.chromid             = chromid
+  r.sequence            = sequence
+  r.binsize             = binsize
+  r.position            = 0
+  r.Next()
+  return &r
+}
+
+func (it *BbiZoomBlockEncoderIterator) Get() *BbiBlockEncoderType {
+  return &it.r
+}
+
+func (it *BbiZoomBlockEncoderIterator) Ok() bool {
+  return it.r.Block != nil
+}
+
+func (it *BbiZoomBlockEncoderIterator) Next() {
+  // create a new buffer (the returned block should not be overwritten by later calls)
   b := new(bytes.Buffer)
-  w := bufio.NewWriter(b)
   // number of bins covered by each record
-  n := divIntUp(reductionLevel, binsize)
+  n := divIntUp(it.reductionLevel, it.binsize)
   // beginning of region covered by a single block
   f := -1
   // number of records written to block
   m := 0
+  // reset result
+  it.r.From  = 0
+  it.r.To    = 0
+  it.r.Block = nil
   // loop over sequence and generate records
-  for p := 0; p < binsize*len(sequence); p += reductionLevel {
+  for p := it.position; p < it.binsize*len(it.sequence); p += it.reductionLevel {
     // p: position in base pairs
     // i: position in bins
-    i := p/binsize
-    // create a new record
-    record := BbiZoomRecord{
-      ChromId: uint32(chromid),
-      Start  : uint32(p),
-      End    : uint32(p + reductionLevel),
-      Min    :  math.MaxFloat32,
-      Max    : -math.MaxFloat32 }
+    i := p/it.binsize
+    // reset record
+    record := BbiZoomRecord{}
+    record.ChromId = uint32(it.chromid)
+    record.Start   = uint32(p)
+    record.End     = uint32(p + it.reductionLevel)
+    record.Min     =  math.MaxFloat32
+    record.Max     = -math.MaxFloat32
     // crop record end if it is longer than the actual sequence
-    if record.End > uint32(binsize*len(sequence)) {
-      record.End = uint32(binsize*len(sequence))
+    if record.End > uint32(it.binsize*len(it.sequence)) {
+      record.End = uint32(it.binsize*len(it.sequence))
     }
-    // compute mean value
-    for j := 0; j < n && i+j < len(sequence); j++ {
-      if record.Min > float32(sequence[i+j]) {
-        record.Min = float32(sequence[i+j])
-      }
-      if record.Max < float32(sequence[i+j]) {
-        record.Max = float32(sequence[i+j])
-      }
-      record.Valid      += 1
-      record.Sum        += float32(sequence[i+j])
-      record.SumSquares += float32(sequence[i+j]*sequence[i+j])
+    // add records
+    for j := 0; j < n && i+j < len(it.sequence); j++ {
+      record.AddValue(it.sequence[i+j])
     }
     // check if there was some non-zero data
     if !(record.Min == 0 && record.Max == 0) {
       // if yes, save record
-      if err := record.Write(w); err != nil {
-        channel <- BbiBlockEncoderType{Error: err}
-        return
+      if err := record.Write(b); err != nil {
+        panic(err)
       }
       // if this is the first record in a block
       if f == -1 {
@@ -451,121 +504,140 @@ func (writer *BbiBlockEncoder) encodeBlockZoom(channel chan BbiBlockEncoderType,
     }
     // check if block is full or if the end of the
     // sequence is reached
-    if m == writer.ItemsPerSlot || p + reductionLevel >= binsize*len(sequence) {
-      w.Flush()
+    if m == it.ItemsPerSlot || p + it.reductionLevel >= it.binsize*len(it.sequence) {
       if tmp := b.Bytes(); len(tmp) > 0 {
-        if f == -1 {
-          // this shouldn't happen
-          panic("internal error")
-        }
-        // send block over channel
-        channel <- BbiBlockEncoderType{
-          From : f,
-          To   : int(record.End),
-          Block: tmp }
-        // reset buffer
-        b = new(bytes.Buffer)
-        w = bufio.NewWriter(b)
-        // reset variables
-        m =  0
-        f = -1
+        // save result
+        it.r.From  = f
+        it.r.To    = int(record.End)
+        it.r.Block = tmp
+        // update position
+        it.position = p + it.reductionLevel
+        // return result
+        break
       }
     }
   }
 }
 
-func (writer *BbiBlockEncoder) encodeVariable(buffer []byte, position uint32, value float64) {
+/* -------------------------------------------------------------------------- */
+
+type BbiRawBlockEncoder struct {
+  ItemsPerSlot   int
+  tmp          []byte
+  fixedStep      bool
+}
+
+type BbiRawBlockEncoderIterator struct {
+  *BbiRawBlockEncoder
+  chromid        int
+  sequence     []float64
+  binsize        int
+  position       int
+  record         BbiZoomRecord
+  // result
+  r BbiBlockEncoderType
+}
+
+func NewBbiRawBlockEncoder(itemsPerSlot int, fixedStep bool) (*BbiRawBlockEncoder, error) {
+  r := BbiRawBlockEncoder{}
+  r.ItemsPerSlot = itemsPerSlot
+  r.tmp          = make([]byte, 24)
+  r.fixedStep    = fixedStep
+  return &r, nil
+}
+
+func (encoder *BbiRawBlockEncoder) encodeVariable(buffer []byte, position uint32, value float64) {
   binary.LittleEndian.PutUint32(buffer[0:4], position)
   binary.LittleEndian.PutUint32(buffer[4:8], math.Float32bits(float32(value)))
 }
 
-func (writer *BbiBlockEncoder) encodeFixed(buffer []byte, value float64) {
+func (encoder *BbiRawBlockEncoder) encodeFixed(buffer []byte, value float64) {
   binary.LittleEndian.PutUint32(buffer[0:4], math.Float32bits(float32(value)))
 }
 
-func (writer *BbiBlockEncoder) encodeBlock(channel chan BbiBlockEncoderType, chromid int, sequence []float64, binsize int, fixedStep bool) {
-  // loop over sequence and generate records
-  for i := 0; i < len(sequence); {
-    // create header for this block
-    header := BbiDataHeader{}
-    header.ChromId = uint32(chromid)
-    header.Start   = uint32(i*binsize)
-    header.End     = uint32(i*binsize)
-    header.Step    = uint32(binsize)
-    header.Span    = uint32(binsize)
-    if fixedStep {
-      header.Type = 3
-    } else {
-      header.Type = 2
-    }
-    // new buffer
-    var buffer bytes.Buffer
-    // fill buffer with data
-    switch header.Type {
-    default:
-      channel <- BbiBlockEncoderType{
-        Error: fmt.Errorf("unsupported block type") }
-      return
-    case 2:
-      // variable step
-      for ; i < len(sequence); i++ {
-        if sequence[i] != 0.0 && !math.IsNaN(sequence[i]) {
-          writer.encodeVariable(writer.tmp, header.End, sequence[i])
-          if _, err := buffer.Write(writer.tmp); err != nil {
-            channel <- BbiBlockEncoderType{Error: err}
-            return
-          }
-          header.ItemCount++
-        }
-        header.End += header.Step
-        // check if maximum number of items per block is reached
-        if int(header.ItemCount) == writer.ItemsPerSlot {
-          break
-        }
-      }
-    case 3:
-      // fixed step
-      for ; i < len(sequence); i++ {
-        writer.encodeFixed(writer.tmp, sequence[i])
-        if _, err := buffer.Write(writer.tmp[0:4]); err != nil {
-          channel <- BbiBlockEncoderType{Error: err}
-          return
-        }
-        header.ItemCount++
-        header.End += header.Step
-        // check if maximum number of items per block is reached
-        if int(header.ItemCount) == writer.ItemsPerSlot {
-          break
-        }
-      }
-    }
-    if tmp := buffer.Bytes(); len(tmp) > 0 {
-      // prepend header
-      block := make([]byte, 24)
-      header.WriteBuffer(block)
-      block = append(block, tmp...)
-      // send result through channel
-      channel <- BbiBlockEncoderType{
-        From : int(header.Start),
-        To   : int(header.End),
-        Block: block }
-    }
-  }
+func (encoder *BbiRawBlockEncoder) Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator {
+  r := BbiRawBlockEncoderIterator{}
+  r.BbiRawBlockEncoder = encoder
+  r.chromid    = chromid
+  r.sequence   = sequence
+  r.binsize    = binsize
+  r.position   = 0
+  r.Next()
+  return &r
 }
 
-func (writer *BbiBlockEncoder) EncodeBlock(chromid int, sequence []float64, binsize, reductionLevel int, fixedStep bool) <- chan BbiBlockEncoderType {
-  // open a new channel
-  channel := make(chan BbiBlockEncoderType, 10)
-  // fill channel
-  go func() {
-    if reductionLevel > binsize {
-      writer.encodeBlockZoom(channel, chromid, sequence, binsize, reductionLevel)
-    } else {
-      writer.encodeBlock(channel, chromid, sequence, binsize, fixedStep)
+func (it *BbiRawBlockEncoderIterator) Get() *BbiBlockEncoderType {
+  return &it.r
+}
+
+func (it *BbiRawBlockEncoderIterator) Ok() bool {
+  return it.r.Block != nil
+}
+
+func (it *BbiRawBlockEncoderIterator) Next() {
+  // create a new buffer (the returned block should not be overwritten by later calls)
+  b := new(bytes.Buffer)
+  // reset result
+  it.r.From  = 0
+  it.r.To    = 0
+  it.r.Block = nil
+  // create header for this block
+  header := BbiDataHeader{}
+  header.ChromId = uint32(it.chromid)
+  header.Start   = uint32(it.binsize*it.position)
+  header.End     = uint32(it.binsize*it.position)
+  header.Step    = uint32(it.binsize)
+  header.Span    = uint32(it.binsize)
+  if it.fixedStep {
+    header.Type = 3
+  } else {
+    header.Type = 2
+  }
+  // write header
+  header.WriteBuffer(it.tmp[0:24])
+  if _, err := b.Write(it.tmp[0:24]); err != nil {
+    panic(err)
+  }
+  // fill buffer with data
+  if it.fixedStep {
+    // fixed step
+    for ; it.position < len(it.sequence); it.position++ {
+      it.encodeFixed(it.tmp[0:4], it.sequence[it.position])
+      if _, err := b.Write(it.tmp[0:4]); err != nil {
+        panic(err)
+      }
+      header.ItemCount++
+      header.End += header.Step
+      // check if maximum number of items per block is reached
+      if int(header.ItemCount) == it.ItemsPerSlot {
+        break
+      }
     }
-    close(channel)
-  }()
-  return channel
+  } else {
+    // variable step
+    for ; it.position < len(it.sequence); it.position++ {
+      if it.sequence[it.position] != 0.0 && !math.IsNaN(it.sequence[it.position]) {
+        it.encodeVariable(it.tmp[0:8], header.End, it.sequence[it.position])
+        if _, err := b.Write(it.tmp[0:8]); err != nil {
+          panic(err)
+        }
+        header.ItemCount++
+      }
+      header.End += header.Step
+      // check if maximum number of items per block is reached
+      if int(header.ItemCount) == it.ItemsPerSlot {
+        break
+      }
+    }
+  }
+  if block := b.Bytes(); len(block) > 24 {
+    // update header (end position and ItemCount have changed)
+    header.WriteBuffer(block[0:24])
+    // save result
+    it.r.From  = int(header.Start)
+    it.r.To    = int(header.End)
+    it.r.Block = block
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1490,12 +1562,22 @@ func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize
 }
 
 func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
-  var encoder *BbiBlockEncoder
+  var encoder BbiBlockEncoder
   // create block encoder
-  if tmp, err := NewBbiBlockEncoder(generator.ItemsPerSlot); err != nil {
-    return err
+  if reductionLevel > binsize {
+    // use a zoom block encoder
+    if tmp, err := NewBbiZoomBlockEncoder(generator.ItemsPerSlot, reductionLevel); err != nil {
+      return err
+    } else {
+      encoder = tmp
+    }
   } else {
-    encoder = tmp
+    // use a raw block encoder
+    if tmp, err := NewBbiRawBlockEncoder(generator.ItemsPerSlot, fixedStep); err != nil {
+      return err
+    } else {
+      encoder = tmp
+    }
   }
   // create empty leaf
   v := new(RVertex)
@@ -1503,10 +1585,8 @@ func (generator *RVertexGenerator) fillChannel(idx int, sequence []float64, bins
   // empty list of blocks
   b := [][]byte{}
   // loop over sequence chunks
-  for chunk := range encoder.EncodeBlock(idx, sequence, binsize, reductionLevel, fixedStep) {
-    if chunk.Error != nil {
-      return chunk.Error
-    }
+  it := encoder.Encode(idx, sequence, binsize)
+  for chunk := it.Get(); it.Ok(); it.Next() {
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
       generator.Channel <- RVertexGeneratorType{

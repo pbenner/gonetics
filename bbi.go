@@ -226,7 +226,12 @@ type BbiBlockDecoderType struct {
   From  int
   To    int
   Value float64
-  Error error
+}
+
+type BbiBlockDecoderIterator struct {
+  *BbiBlockDecoder
+  i int
+  r BbiBlockDecoderType
 }
 
 func NewBbiBlockDecoder(buffer []byte) (*BbiBlockDecoder, error) {
@@ -279,39 +284,41 @@ func (reader *BbiBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
   r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
 }
 
-func (reader *BbiBlockDecoder) fillChannel(channel chan BbiBlockDecoderType) {
-  switch reader.Header.Type {
+func (reader *BbiBlockDecoder) Decode() BbiBlockDecoderIterator {
+  it := BbiBlockDecoderIterator{}
+  it.BbiBlockDecoder = reader
+  it.i = 0
+  it.Next()
+  return it
+}
+
+func (it *BbiBlockDecoderIterator) Next() {
+  if it.i >= len(it.Buffer) {
+    it.i = -1
+    return
+  }
+  switch it.Header.Type {
   default:
     // this shouldn't happen
     panic("internal error (unsupported block type)")
   case 1:
-    for i := 0; i < len(reader.Buffer); i += 12 {
-      r := BbiBlockDecoderType{}
-      reader.readBedGraph(&r, i)
-      channel <- r
-    }
+    it.readBedGraph(&it.r, it.i)
+    it.i += 12
   case 2:
-    for i := 0; i < len(reader.Buffer); i += 8 {
-      r := BbiBlockDecoderType{}
-      reader.readVariable(&r, i)
-      channel <- r
-    }
+    it.readVariable(&it.r, it.i)
+    it.i += 8
   case 3:
-    for i := 0; i < len(reader.Buffer); i += 4 {
-      r := BbiBlockDecoderType{}
-      reader.readFixed(&r, i)
-      channel <- r
-    }
+    it.readFixed(&it.r, it.i)
+    it.i += 4
   }
 }
 
-func (reader *BbiBlockDecoder) Decode() <- chan BbiBlockDecoderType {
-  channel := make(chan BbiBlockDecoderType, 10)
-  go func() {
-    reader.fillChannel(channel)
-    close(channel)
-  }()
-  return channel
+func (it *BbiBlockDecoderIterator) Get() *BbiBlockDecoderType {
+  return &it.r
+}
+
+func (it *BbiBlockDecoderIterator) Ok() bool {
+  return it.i != -1
 }
 
 /* -------------------------------------------------------------------------- */
@@ -325,38 +332,49 @@ type BbiZoomBlockDecoderType struct {
   Error error
 }
 
+type BbiZoomBlockDecoderIterator struct {
+  b *bytes.Reader
+  k  bool
+  t  BbiZoomRecord
+  r  BbiZoomBlockDecoderType
+}
+
 func NewBbiZoomBlockDecoder(buffer []byte) *BbiZoomBlockDecoder {
   return &BbiZoomBlockDecoder{buffer}
 }
 
-func (reader *BbiZoomBlockDecoder) decode(channel chan BbiZoomBlockDecoderType) {
-  b := bytes.NewReader(reader.Buffer)
-  for {
-    record := BbiZoomRecord{}
-    if err := record.Read(b); err != nil {
-      break
-    } else {
-      result := BbiZoomBlockDecoderType{}
-      result.ChromId = int(record.ChromId)
-      result.From    = int(record.Start)
-      result.To      = int(record.End)
-      result.Valid   = int(record.Valid)
-      result.Min     = float64(record.Min)
-      result.Max     = float64(record.Max)
-      result.Sum     = float64(record.Sum)
-      result.SumSquares = float64(record.SumSquares)
-      channel <- result
-    }
+func (reader *BbiZoomBlockDecoder) Decode() BbiZoomBlockDecoderIterator {
+  it := BbiZoomBlockDecoderIterator{}
+  it.b = bytes.NewReader(reader.Buffer)
+  it.k = true
+  it.Next()
+  return it
+}
+
+func (it *BbiZoomBlockDecoderIterator) Next() {
+  // read BbiZoomRecord
+  if err := it.t.Read(it.b); err != nil {
+    // end of block reached
+    it.k = false
+  } else {
+    // convert result to BbiZoomBlockDecoderType
+    it.r.ChromId    = int    (it.t.ChromId)
+    it.r.From       = int    (it.t.Start)
+    it.r.To         = int    (it.t.End)
+    it.r.Valid      = int    (it.t.Valid)
+    it.r.Min        = float64(it.t.Min)
+    it.r.Max        = float64(it.t.Max)
+    it.r.Sum        = float64(it.t.Sum)
+    it.r.SumSquares = float64(it.t.SumSquares)
   }
 }
 
-func (reader *BbiZoomBlockDecoder) Decode() <- chan BbiZoomBlockDecoderType {
-  channel := make(chan BbiZoomBlockDecoderType, 10)
-  go func() {
-    reader.decode(channel)
-    close(channel)
-  }()
-  return channel
+func (it *BbiZoomBlockDecoderIterator) Get() *BbiZoomBlockDecoderType {
+  return &it.r
+}
+
+func (it *BbiZoomBlockDecoderIterator) Ok() bool {
+  return it.k
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1109,8 +1127,41 @@ func (tree *RTree) BuildTree(leaves []*RVertex) error {
 
 /* -------------------------------------------------------------------------- */
 
+type RVertexIndexPair struct {
+  Vertex *RVertex
+  Index  int
+}
+
+type RVertexStack []RVertexIndexPair
+
+func (stack *RVertexStack) Push(v *RVertex, i int) {
+  *stack = append(*stack, RVertexIndexPair{v, i})
+}
+
+func (stack *RVertexStack) Length() int {
+  return len(*stack)
+}
+
+func (stack *RVertexStack) Pop() (*RVertex, int) {
+  n := len(*stack)
+  v := (*stack)[n-1].Vertex
+  i := (*stack)[n-1].Index
+  *stack = (*stack)[0:n-1]
+  return v, i
+}
+
+/* -------------------------------------------------------------------------- */
+
 type RTreeTraverser struct {
-  Tree *RTree
+  // query details
+  idx   int
+  from  int
+  to    int
+  // vertex stack for saving the current position
+  // in the tree
+  stack RVertexStack
+  // result type
+  r     RTreeTraverserType
 }
 
 type RTreeTraverserType struct {
@@ -1118,50 +1169,68 @@ type RTreeTraverserType struct {
   Idx    int
 }
 
-func NewRTreeTraverser(tree *RTree) RTreeTraverser {
-  return RTreeTraverser{tree}
+func NewRTreeTraverser(tree *RTree, idx, from, to int) RTreeTraverser {
+  r := RTreeTraverser{}
+  r.idx  = idx
+  r.from = from
+  r.to   = to
+  r.stack.Push(tree.Root, 0)
+  r.Next()
+  return r
 }
 
-func (traverser RTreeTraverser) queryVertices(channel chan RTreeTraverserType, vertex *RVertex, idx, from, to int) {
-  if vertex == nil {
-    return
-  }
-  for i := 0; i < int(vertex.NChildren); i++ {
-    // check if this is the correct chromosome
-    if idx >= int(vertex.ChrIdxStart[i]) && idx <= int(vertex.ChrIdxEnd[i]) {
-      if int(vertex.ChrIdxStart[i]) == int(vertex.ChrIdxEnd[i]) {
-        // check region on chromosome
-        if int(vertex.BaseEnd[i]) <= from {
-          // query region is still ahead
-          continue
+func (traverser *RTreeTraverser) Get() *RTreeTraverserType {
+  return &traverser.r
+}
+
+func (traverser *RTreeTraverser) Next() {
+  // reset result
+  traverser.r.Vertex = nil
+  traverser.r.Idx    = 0
+  // loop over stack until either it is empty or a new
+  // position is found
+  L1: for traverser.stack.Length() > 0 {
+    vertex, index := traverser.stack.Pop()
+    L2: for i := index; i < int(vertex.NChildren); i++ {
+      // indices are sorted, hence stop searching if idx is larger than the
+      // curent index end
+      if int(vertex.ChrIdxStart[i]) > traverser.idx {
+        continue L1
+      }
+      // check if this is the correct chromosome
+      if traverser.idx >= int(vertex.ChrIdxStart[i]) && traverser.idx <= int(vertex.ChrIdxEnd[i]) {
+        if int(vertex.ChrIdxStart[i]) == int(vertex.ChrIdxEnd[i]) {
+          // check region on chromosome
+          if int(vertex.BaseEnd[i]) <= traverser.from {
+            // query region is still ahead
+            continue L2
+          }
+          if int(vertex.BaseStart[i]) >= traverser.to {
+            // already past the query region
+            continue L1
+          }
         }
-        if int(vertex.BaseStart[i]) >= to {
-          // already past the query region
-          break
+        // push current position incremented by one leaf
+        traverser.stack.Push(vertex, i+1)
+        // found a match
+        if vertex.IsLeaf == 0 {
+          // push child
+          traverser.stack.Push(vertex.Children[i], 0)
+          // continue with processing the child
+          continue L1
+        } else {
+          // save result and exit
+          traverser.r.Vertex = vertex
+          traverser.r.Idx    = i
+          return
         }
       }
-      // found a match
-      if vertex.IsLeaf == 0 {
-        traverser.queryVertices(channel, vertex.Children[i], idx, from, to)
-      } else {
-        channel <- RTreeTraverserType{vertex, i}
-      }
-    }
-    // indices are sorted, hence stop searching if idx is larger than the
-    // curent index end
-    if int(vertex.ChrIdxStart[i]) > idx {
-      break
     }
   }
 }
 
-func (traverser RTreeTraverser) QueryVertices(idx, from, to int) <- chan RTreeTraverserType {
-  channel := make(chan RTreeTraverserType, 10)
-  go func() {
-    traverser.queryVertices(channel, traverser.Tree.Root, idx, from, to)
-    close(channel)
-  }()
-  return channel
+func (traverser *RTreeTraverser) Ok() bool {
+  return traverser.stack.Length() > 0
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1879,10 +1948,10 @@ func (bwf *BbiFile) Close() error {
  * -------------------------------------------------------------------------- */
 
 func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to, binsize int) {
-  traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx])
+  traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], idx, from, to)
   result    := NewBbiQueryType()
 
-  for r := range traverser.QueryVertices(idx, from, to) {
+  for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
@@ -1890,7 +1959,8 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
     }
     decoder := NewBbiZoomBlockDecoder(block)
 
-    for record := range decoder.Decode() {
+    it := decoder.Decode()
+    for record := it.Get(); it.Ok(); it.Next() {
       if record.From < from || record.To > to {
         continue
       }
@@ -1920,10 +1990,10 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
 
 func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize int) {
   // no zoom level found, try raw data
-  traverser := NewRTreeTraverser(&bwf.Index)
+  traverser := NewRTreeTraverser(&bwf.Index, idx, from, to)
   result := NewBbiQueryType()
 
-  for r := range traverser.QueryVertices(idx, from, to) {
+  for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
@@ -1934,7 +2004,8 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
       channel <- BbiQueryType{Error: err}
       return
     }
-    for record := range decoder.Decode() {
+    it := decoder.Decode()
+    for record := it.Get(); it.Ok(); it.Next() {
       if record.From < from || record.To > to {
         continue
       }

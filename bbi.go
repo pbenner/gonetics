@@ -2086,7 +2086,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
 func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize int) {
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, idx, from, to)
-  result := NewBbiQueryType()
+  result    := NewBbiQueryType()
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)

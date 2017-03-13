@@ -227,22 +227,31 @@ func (record *BbiSummaryStatistics) AddValue(x float64) {
 
 /* -------------------------------------------------------------------------- */
 
+type BbiBlockDecoder interface {
+  Decode() BbiBlockDecoderIterator
+}
+
+type BbiBlockDecoderType struct {
+  BbiSummaryRecord
+}
+
+type BbiBlockDecoderIterator interface {
+  Get () *BbiBlockDecoderType
+  Ok  ()  bool
+  Next()
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiRawBlockDecoder struct {
   Header  BbiDataHeader
   Buffer  []byte
 }
 
-type BbiRawBlockDecoderType struct {
-  Idx   int
-  From  int
-  To    int
-  Value float64
-}
-
 type BbiRawBlockDecoderIterator struct {
   *BbiRawBlockDecoder
   i int
-  r BbiRawBlockDecoderType
+  r BbiBlockDecoderType
 }
 
 func NewBbiRawBlockDecoder(buffer []byte) (*BbiRawBlockDecoder, error) {
@@ -274,36 +283,48 @@ func NewBbiRawBlockDecoder(buffer []byte) (*BbiRawBlockDecoder, error) {
   return &reader, nil
 }
 
-func (reader *BbiRawBlockDecoder) readFixed(r *BbiRawBlockDecoderType, i int) {
-  r.Idx   = i
-  r.From  = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
-  r.To    = r.From + int(reader.Header.Span)
-  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+func (reader *BbiRawBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
+  r.ChromId    = int(reader.Header.ChromId)
+  r.From       = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
+  r.To         = r.From + int(reader.Header.Span)
+  r.Valid      = 1
+  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+  r.SumSquares = r.Sum*r.Sum
+  r.Min        = r.Sum
+  r.Max        = r.Sum
 }
 
-func (reader *BbiRawBlockDecoder) readVariable(r *BbiRawBlockDecoderType, i int) {
-  r.Idx   = i
-  r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-  r.To    = r.From + int(reader.Header.Span)
-  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+func (reader *BbiRawBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
+  r.ChromId    = int(reader.Header.ChromId)
+  r.From       = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To         = r.From + int(reader.Header.Span)
+  r.Valid      = 1
+  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+  r.SumSquares = r.Sum*r.Sum
+  r.Min        = r.Sum
+  r.Max        = r.Sum
 }
 
-func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiRawBlockDecoderType, i int) {
-  r.Idx   = i
-  r.From  = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-  r.To    = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
-  r.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
+  r.ChromId    = int(reader.Header.ChromId)
+  r.From       = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To         = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
+  r.Valid      = 1
+  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+  r.SumSquares = r.Sum*r.Sum
+  r.Min        = r.Sum
+  r.Max        = r.Sum
 }
 
-func (reader *BbiRawBlockDecoder) Decode() BbiRawBlockDecoderIterator {
+func (reader *BbiRawBlockDecoder) Decode() BbiBlockDecoderIterator {
   it := BbiRawBlockDecoderIterator{}
   it.BbiRawBlockDecoder = reader
   it.i = 0
   it.Next()
-  return it
+  return &it
 }
 
-func (it *BbiRawBlockDecoderIterator) Get() *BbiRawBlockDecoderType {
+func (it *BbiRawBlockDecoderIterator) Get() *BbiBlockDecoderType {
   return &it.r
 }
 
@@ -338,30 +359,26 @@ type BbiZoomBlockDecoder struct {
   Buffer []byte
 }
 
-type BbiZoomBlockDecoderType struct {
-  BbiSummaryRecord
-}
-
 type BbiZoomBlockDecoderIterator struct {
   b *bytes.Reader
   k  bool
   t  BbiZoomRecord
-  r  BbiZoomBlockDecoderType
+  r  BbiBlockDecoderType
 }
 
 func NewBbiZoomBlockDecoder(buffer []byte) *BbiZoomBlockDecoder {
   return &BbiZoomBlockDecoder{buffer}
 }
 
-func (reader *BbiZoomBlockDecoder) Decode() BbiZoomBlockDecoderIterator {
+func (reader *BbiZoomBlockDecoder) Decode() BbiBlockDecoderIterator {
   it := BbiZoomBlockDecoderIterator{}
   it.b = bytes.NewReader(reader.Buffer)
   it.k = true
   it.Next()
-  return it
+  return &it
 }
 
-func (it *BbiZoomBlockDecoderIterator) Get() *BbiZoomBlockDecoderType {
+func (it *BbiZoomBlockDecoderIterator) Get() *BbiBlockDecoderType {
   return &it.r
 }
 
@@ -401,7 +418,7 @@ type BbiBlockEncoderType struct {
 
 type BbiBlockEncoderIterator interface {
   Get () *BbiBlockEncoderType
-  Ok  () bool
+  Ok  ()  bool
   Next()
 }
 
@@ -2098,7 +2115,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
           result.From    = record.From
         }
         // add contents of current record to the resulting record
-        result.AddValue(record.Value)
+        result.AddRecord(record.BbiSummaryRecord)
         result.To = record.To
       } else {
         channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}

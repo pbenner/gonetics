@@ -145,7 +145,7 @@ Export track to wig or bigWig:
 
 ### BigWig Files
 
-BigWig files contain data in a binary format optimized for fast random access. In addition to the raw data, bigWig files typically contain several zoom levels for which the data has been summarized. The BigWigReader class allows to query data and automatically selects an appropriate zoom level for the given binsize:
+BigWig files contain data in a binary format optimized for fast random access. In addition to the raw data, bigWig files typically contain several zoom levels for which the data has been summarized. The BigWigReader class allows to query data and it automatically selects an appropriate zoom level for the given binsize:
 ```go
   reader, err := NewBigWigReader("test.bw")
   if err != nil {

@@ -209,7 +209,7 @@ func (record *BbiSummaryStatistics) Reset() {
   record.SumSquares = 0.0
 }
 
-func (record *BbiSummaryStatistics) AddRecord(x BbiSummaryRecord) {
+func (record *BbiSummaryStatistics) AddRecord(x BbiSummaryStatistics) {
   record.Valid      += x.Valid
   record.Min         = math.Min(record.Min, x.Min)
   record.Max         = math.Max(record.Max, x.Max)
@@ -2070,7 +2070,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
           result.From    = record.From
         }
         // add contents of current record to the resulting record
-        result.AddRecord(record.BbiSummaryRecord)
+        result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
         result.To = record.To
       } else {
         channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}
@@ -2115,7 +2115,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
           result.From    = record.From
         }
         // add contents of current record to the resulting record
-        result.AddRecord(record.BbiSummaryRecord)
+        result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
         result.To = record.To
       } else {
         channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}

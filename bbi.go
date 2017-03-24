@@ -180,7 +180,7 @@ func (record BbiZoomRecord) Write(writer io.Writer) error {
 /* -------------------------------------------------------------------------- */
 
 type BbiSummaryStatistics struct {
-  Valid      int
+  Valid      float64
   Min        float64
   Max        float64
   Sum        float64
@@ -202,7 +202,7 @@ func NewBbiSummaryRecord() BbiSummaryRecord {
 }
 
 func (record *BbiSummaryStatistics) Reset() {
-  record.Valid      = 0
+  record.Valid      = 0.0
   record.Min        = math.Inf( 1)
   record.Max        = math.Inf(-1)
   record.Sum        = 0.0
@@ -215,14 +215,6 @@ func (record *BbiSummaryStatistics) AddRecord(x BbiSummaryStatistics) {
   record.Max         = math.Max(record.Max, x.Max)
   record.Sum        += x.Sum
   record.SumSquares += x.SumSquares
-}
-
-func (record *BbiSummaryStatistics) AddValue(x float64) {
-  record.Valid      += 1
-  record.Min         = math.Min(record.Min, x)
-  record.Max         = math.Max(record.Max, x)
-  record.Sum        += x
-  record.SumSquares += x*x
 }
 
 /* -------------------------------------------------------------------------- */
@@ -284,36 +276,42 @@ func NewBbiRawBlockDecoder(buffer []byte) (*BbiRawBlockDecoder, error) {
 }
 
 func (reader *BbiRawBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
-  r.ChromId    = int(reader.Header.ChromId)
-  r.From       = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
-  r.To         = r.From + int(reader.Header.Span)
-  r.Valid      = 1
-  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
-  r.SumSquares = r.Sum*r.Sum
-  r.Min        = r.Sum
-  r.Max        = r.Sum
+  r.ChromId     = int(reader.Header.ChromId)
+  r.From        = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
+  r.To          = r.From + int(reader.Header.Span)
+  r.Valid       = float64(r.To - r.From)
+  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+  r.SumSquares  = r.Sum*r.Sum
+  r.Min         = r.Sum
+  r.Max         = r.Sum
+  r.Sum        *= r.Valid
+  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
-  r.ChromId    = int(reader.Header.ChromId)
-  r.From       = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-  r.To         = r.From + int(reader.Header.Span)
-  r.Valid      = 1
-  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
-  r.SumSquares = r.Sum*r.Sum
-  r.Min        = r.Sum
-  r.Max        = r.Sum
+  r.ChromId     = int(reader.Header.ChromId)
+  r.From        = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To          = r.From + int(reader.Header.Span)
+  r.Valid       = float64(r.To - r.From)
+  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+  r.SumSquares  = r.Sum*r.Sum
+  r.Min         = r.Sum
+  r.Max         = r.Sum
+  r.Sum        *= r.Valid
+  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
-  r.ChromId    = int(reader.Header.ChromId)
-  r.From       = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-  r.To         = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
-  r.Valid      = 1
-  r.Sum        = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
-  r.SumSquares = r.Sum*r.Sum
-  r.Min        = r.Sum
-  r.Max        = r.Sum
+  r.ChromId     = int(reader.Header.ChromId)
+  r.From        = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.To          = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
+  r.Valid       = float64(r.To - r.From)
+  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+  r.SumSquares  = r.Sum*r.Sum
+  r.Min         = r.Sum
+  r.Max         = r.Sum
+  r.Sum        *= r.Valid
+  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) Decode() BbiBlockDecoderIterator {
@@ -396,7 +394,7 @@ func (it *BbiZoomBlockDecoderIterator) Next() {
     it.r.ChromId    = int    (it.t.ChromId)
     it.r.From       = int    (it.t.Start)
     it.r.To         = int    (it.t.End)
-    it.r.Valid      = int    (it.t.Valid)
+    it.r.Valid      = float64(it.t.Valid)
     it.r.Min        = float64(it.t.Min)
     it.r.Max        = float64(it.t.Max)
     it.r.Sum        = float64(it.t.Sum)
@@ -1667,6 +1665,10 @@ func (zoomHeader *BbiHeaderZoom) Read(file *os.File) error {
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
     return err
   }
+  // read NBlocks
+  if err := fileReadAt(file, binary.LittleEndian, int64(zoomHeader.DataOffset), &zoomHeader.NBlocks); err != nil {
+    return err
+  }
   return nil
 }
 
@@ -1855,6 +1857,10 @@ func (header *BbiHeader) Read(file *os.File) error {
       return err
     }
   }
+  // read NBlocks
+  if err := fileReadAt(file, binary.LittleEndian, int64(header.DataOffset), &header.NBlocks); err != nil {
+    return err
+  }
   return nil
 }
 
@@ -2001,7 +2007,6 @@ func (header *BbiHeader) Write(file *os.File) error {
       return err
     }
   }
-
   return nil
 }
 
@@ -2059,23 +2064,20 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
       if record.From < from || record.To > to {
         continue
       }
-      if (record.To - record.From) < binsize || binsize % (record.To - record.From) == 0 {
-        // check if current result record is full
-        if result.From != result.To && (result.To - result.From) >= binsize {
-          // send resulting zoom record
-          channel <- result
-          // prepare new zoom record
-          result.Reset()
-          result.ChromId = idx
-          result.From    = record.From
-        }
-        // add contents of current record to the resulting record
-        result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
-        result.To = record.To
-      } else {
-        channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}
-        return
+      // check if current result record is full or if there is
+      // a gap
+      if result.To != result.From &&
+        (result.To  - result.From >= binsize || result.From + binsize < record.From) {
+        // send resulting zoom record
+        channel <- result
+        // prepare new zoom record
+        result.Reset()
+        result.ChromId = idx
+        result.From    = record.From
       }
+      // add contents of current record to the resulting record
+      result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
+      result.To = record.To
     }
   }
   if result.From != result.To {
@@ -2104,23 +2106,20 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
       if record.From < from || record.To > to {
         continue
       }
-      if binsize % (record.To - record.From) == 0 {
-        // check if current result record is full
-        if result.From != result.To && (result.To - result.From) >= binsize {
-          // send resulting zoom record
-          channel <- result
-          // prepare new zoom record
-          result.Reset()
-          result.ChromId = idx
-          result.From    = record.From
-        }
-        // add contents of current record to the resulting record
-        result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
-        result.To = record.To
-      } else {
-        channel <- BbiQueryType{Error: fmt.Errorf("invalid binsize")}
-        return
+      // check if current result record is full or if there is
+      // a gap
+      if result.To != result.From &&
+        (result.To  - result.From >= binsize || result.From + binsize < record.From) {
+        // send resulting zoom record
+        channel <- result
+        // prepare new zoom record
+        result.Reset()
+        result.ChromId = idx
+        result.From    = record.From
       }
+      // add contents of current record to the resulting record
+      result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
+      result.To = record.To
     }
   }
   if result.From != result.To {

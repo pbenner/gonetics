@@ -23,15 +23,15 @@ import "math"
 
 /* -------------------------------------------------------------------------- */
 
-type BinSummaryStatistics func(sum, min, max float64, n int) float64
+type BinSummaryStatistics func(sum, min, max, n float64) float64
 
-func BinMean(sum, min, max float64, n int) float64 {
-  return sum/float64(n)
+func BinMean(sum, min, max, n float64) float64 {
+  return sum/n
 }
-func BinMax (sum, min, max float64, n int) float64 {
+func BinMax (sum, min, max, n float64) float64 {
   return max
 }
-func BinMin (sum, min, max float64, n int) float64 {
+func BinMin (sum, min, max, n float64) float64 {
   return min
 }
 

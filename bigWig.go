@@ -414,9 +414,9 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
       return err
     } else {
       bww.Bwf.Header.NBlocks += uint64(n)
-      return bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr)
     }
   }
+  return nil
 }
 
 func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reductionLevel int) (int, error) {
@@ -446,9 +446,9 @@ func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, 
       return err
     } else {
       bww.Bwf.Header.ZoomHeaders[i].NBlocks += uint32(n)
-      return bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.BbiFile.Fptr)
     }
   }
+  return nil
 }
 
 func (bww *BigWigWriter) getLeavesSorted() []*RVertex {
@@ -550,6 +550,23 @@ func (bww *BigWigWriter) Close() error {
   }
   // write chromosome list to file
   if err := bww.Bwf.WriteChromList(); err != nil {
+    return err
+  }
+  // write nblocks
+  if err := bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr); err != nil {
+    return err
+  }
+  for i := 0; i < len(bww.Bwf.Header.ZoomHeaders); i++ {
+    if err := bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.BbiFile.Fptr); err != nil {
+      return err
+    }
+  }
+  // go to the end of the file
+  if _, err := bww.Bwf.Fptr.Seek(0, 2); err != nil {
+    return err
+  }
+  // write magic number
+  if err := binary.Write(bww.Bwf.Fptr, binary.LittleEndian, bww.Bwf.Header.Magic); err != nil {
     return err
   }
   bww.Bwf.Close()

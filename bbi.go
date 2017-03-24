@@ -1254,14 +1254,14 @@ func (stack *RVertexStack) Pop() (*RVertex, int) {
 
 type RTreeTraverser struct {
   // query details
-  idx   int
-  from  int
-  to    int
+  chromId int
+  from    int
+  to      int
   // vertex stack for saving the current position
   // in the tree
-  stack RVertexStack
+  stack   RVertexStack
   // result type
-  r     RTreeTraverserType
+  r       RTreeTraverserType
 }
 
 type RTreeTraverserType struct {
@@ -1269,11 +1269,11 @@ type RTreeTraverserType struct {
   Idx    int
 }
 
-func NewRTreeTraverser(tree *RTree, idx, from, to int) RTreeTraverser {
+func NewRTreeTraverser(tree *RTree, chromId, from, to int) RTreeTraverser {
   r := RTreeTraverser{}
-  r.idx  = idx
-  r.from = from
-  r.to   = to
+  r.chromId = chromId
+  r.from    = from
+  r.to      = to
   r.stack.Push(tree.Root, 0)
   r.Next()
   return r
@@ -1294,11 +1294,11 @@ func (traverser *RTreeTraverser) Next() {
     L2: for i := index; i < int(vertex.NChildren); i++ {
       // indices are sorted, hence stop searching if idx is larger than the
       // curent index end
-      if int(vertex.ChrIdxStart[i]) > traverser.idx {
+      if int(vertex.ChrIdxStart[i]) > traverser.chromId {
         continue L1
       }
       // check if this is the correct chromosome
-      if traverser.idx >= int(vertex.ChrIdxStart[i]) && traverser.idx <= int(vertex.ChrIdxEnd[i]) {
+      if traverser.chromId >= int(vertex.ChrIdxStart[i]) && traverser.chromId <= int(vertex.ChrIdxEnd[i]) {
         if int(vertex.ChrIdxStart[i]) == int(vertex.ChrIdxEnd[i]) {
           // check region on chromosome
           if int(vertex.BaseEnd[i]) <= traverser.from {

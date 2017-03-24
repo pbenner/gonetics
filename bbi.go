@@ -201,7 +201,10 @@ func NewBbiSummaryRecord() BbiSummaryRecord {
   return record
 }
 
-func (record *BbiSummaryStatistics) Reset() {
+func (record *BbiSummaryRecord) Reset() {
+  record.ChromId    = -1
+  record.From       = 0
+  record.To         = 0
   record.Valid      = 0.0
   record.Min        = math.Inf( 1)
   record.Max        = math.Inf(-1)
@@ -209,7 +212,18 @@ func (record *BbiSummaryStatistics) Reset() {
   record.SumSquares = 0.0
 }
 
-func (record *BbiSummaryStatistics) AddRecord(x BbiSummaryStatistics) {
+func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
+  if record.To < x.From {
+    // fill gaps with zeros
+    record.Valid += float64(record.To - x.From)
+    if record.Min > 0.0 {
+      record.Min = 0.0
+    }
+    if record.Max < 0.0 {
+      record.Max = 0.0
+    }
+  }
+  record.To          = x.To
   record.Valid      += x.Valid
   record.Min         = math.Min(record.Min, x.Min)
   record.Max         = math.Max(record.Max, x.Max)
@@ -2074,10 +2088,10 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
         result.Reset()
         result.ChromId = idx
         result.From    = record.From
+        result.To      = record.From
       }
       // add contents of current record to the resulting record
-      result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
-      result.To = record.To
+      result.AddRecord(record.BbiSummaryRecord)
     }
   }
   if result.From != result.To {
@@ -2116,10 +2130,10 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
         result.Reset()
         result.ChromId = idx
         result.From    = record.From
+        result.To      = record.From
       }
       // add contents of current record to the resulting record
-      result.AddRecord(record.BbiSummaryRecord.BbiSummaryStatistics)
-      result.To = record.To
+      result.AddRecord(record.BbiSummaryRecord)
     }
   }
   if result.From != result.To {

@@ -1736,7 +1736,7 @@ type BbiHeader struct {
   MinVal            uint64
   MaxVal            uint64
   SumData           uint64
-  SumSquared        uint64
+  SumSquares        uint64
   ZoomHeaders     []BbiHeaderZoom
   NBlocks           uint64
   // offset positions
@@ -1853,7 +1853,7 @@ func (header *BbiHeader) Read(file *os.File) error {
     if err := binary.Read(file, binary.LittleEndian, &header.SumData); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &header.SumSquared); err != nil {
+    if err := binary.Read(file, binary.LittleEndian, &header.SumSquares); err != nil {
       return err
     }
   }
@@ -2003,7 +2003,7 @@ func (header *BbiHeader) Write(file *os.File) error {
     if err := binary.Write(file, binary.LittleEndian, header.SumData); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, header.SumSquared); err != nil {
+    if err := binary.Write(file, binary.LittleEndian, header.SumSquares); err != nil {
       return err
     }
   }

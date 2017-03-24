@@ -333,11 +333,11 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, s BinSummarySt
       }
       if revNegStrand == false || strand == '+' {
         if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[idx] = s(record.Sum, record.Min, record.Max, record.Valid)
+          seq[idx] = s(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
         }
       } else {
         if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[n-1-idx] = s(record.Sum, record.Min, record.Max, record.Valid)
+          seq[n-1-idx] = s(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
         }
       }
     }

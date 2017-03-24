@@ -301,7 +301,7 @@ func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics
           s = make([]float64, divIntDown(seqlength, binsize))
         }
         if idx := record.From/binsize; idx >= 0 && idx < len(s) {
-          s[idx] = f(record.Sum, record.Min, record.Max, record.Valid)
+          s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
         }
       }
     } else {
@@ -311,7 +311,7 @@ func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics
           return nil, record.Error
         }
         if idx := record.From/binsize; idx >= 0 && idx < len(s) {
-          s[idx] = f(record.Sum, record.Min, record.Max, record.Valid)
+          s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
         }
       }
     }

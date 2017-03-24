@@ -215,7 +215,7 @@ func (record *BbiSummaryRecord) Reset() {
 func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
   if record.To < x.From {
     // fill gaps with zeros
-    record.Valid += float64(record.To - x.From)
+    record.Valid += float64(x.From - record.To)
     if record.Min > 0.0 {
       record.Min = 0.0
     }

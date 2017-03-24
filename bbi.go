@@ -1588,7 +1588,7 @@ func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize
   return channel
 }
 
-func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
+func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, chromId int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
   var encoder BbiBlockEncoder
   // create block encoder
   if reductionLevel > binsize {
@@ -1612,7 +1612,7 @@ func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, i
   // empty list of blocks
   b := [][]byte{}
   // loop over sequence chunks
-  it := encoder.Encode(idx, sequence, binsize)
+  it := encoder.Encode(chromId, sequence, binsize)
   for chunk := it.Get(); it.Ok(); it.Next() {
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
@@ -1624,8 +1624,8 @@ func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, i
       v.IsLeaf = 1
       b = [][]byte{}
     }
-    v.ChrIdxStart   = append(v.ChrIdxStart,   uint32(idx))
-    v.ChrIdxEnd     = append(v.ChrIdxEnd,     uint32(idx))
+    v.ChrIdxStart   = append(v.ChrIdxStart,   uint32(chromId))
+    v.ChrIdxEnd     = append(v.ChrIdxEnd,     uint32(chromId))
     v.BaseStart     = append(v.BaseStart,     uint32(chunk.From))
     v.BaseEnd       = append(v.BaseEnd,       uint32(chunk.To))
     v.DataOffset    = append(v.DataOffset,    0)
@@ -2061,8 +2061,8 @@ func (bwf *BbiFile) Close() error {
 /* query interface
  * -------------------------------------------------------------------------- */
 
-func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to, binsize int) {
-  traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], idx, from, to)
+func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binsize int) {
+  traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType()
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
@@ -2075,6 +2075,9 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
 
     it := decoder.Decode()
     for record := it.Get(); it.Ok(); it.Next() {
+      if record.ChromId != chromId {
+        continue
+      }
       if record.From < from || record.To > to {
         continue
       }
@@ -2086,7 +2089,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
         channel <- result
         // prepare new zoom record
         result.Reset()
-        result.ChromId = idx
+        result.ChromId = chromId
         result.From    = record.From
         result.To      = record.From
       }
@@ -2099,9 +2102,9 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, idx, from, to,
   }
 }
 
-func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize int) {
+func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsize int) {
   // no zoom level found, try raw data
-  traverser := NewRTreeTraverser(&bwf.Index, idx, from, to)
+  traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType()
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
@@ -2117,6 +2120,9 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
     }
     it := decoder.Decode()
     for record := it.Get(); it.Ok(); it.Next() {
+      if record.ChromId != chromId {
+        continue
+      }
       if record.From < from || record.To > to {
         continue
       }
@@ -2128,7 +2134,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
         channel <- result
         // prepare new zoom record
         result.Reset()
-        result.ChromId = idx
+        result.ChromId = chromId
         result.From    = record.From
         result.To      = record.From
       }
@@ -2141,7 +2147,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, idx, from, to, binsize i
   }
 }
 
-func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int) {
+func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binsize int) {
   // index of a matching zoom level for the given binsize
   zoomIdx := -1
   for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
@@ -2151,13 +2157,13 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, idx, from, to, binsize int)
     }
   }
   if zoomIdx != -1 {
-    bwf.queryZoom(channel, zoomIdx, idx, from, to, binsize)
+    bwf.queryZoom(channel, zoomIdx, chromId, from, to, binsize)
   } else {
-    bwf.queryRaw(channel, idx, from, to, binsize)
+    bwf.queryRaw(channel, chromId, from, to, binsize)
   }
 }
 
-func (bwf *BbiFile) Query(idx, from, to, binsize int) <- chan BbiQueryType {
+func (bwf *BbiFile) Query(chromId, from, to, binsize int) <- chan BbiQueryType {
   // a binsize of zero is used to query raw data without
   // any further summary
   if binsize != 0 {
@@ -2166,7 +2172,7 @@ func (bwf *BbiFile) Query(idx, from, to, binsize int) <- chan BbiQueryType {
   }
   channel := make(chan BbiQueryType, 100)
   go func() {
-    bwf.query(channel, idx, from, to, binsize)
+    bwf.query(channel, chromId, from, to, binsize)
     close(channel)
   }()
   return channel

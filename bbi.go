@@ -42,7 +42,7 @@ const BbiResIncrement  =  4 /* Amount to reduce at each zoom level */
 
 /* -------------------------------------------------------------------------- */
 
-func fileReadAt(file *os.File, order binary.ByteOrder, offset int64, data interface{}) error {
+func fileReadAt(file io.ReadSeeker, order binary.ByteOrder, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
@@ -56,7 +56,7 @@ func fileReadAt(file *os.File, order binary.ByteOrder, offset int64, data interf
   return nil
 }
 
-func fileWriteAt(file *os.File, order binary.ByteOrder, offset int64, data interface{}) error {
+func fileWriteAt(file io.WriteSeeker, order binary.ByteOrder, offset int64, data interface{}) error {
   currentPosition, _ := file.Seek(0, 1)
   if _, err := file.Seek(offset, 0); err != nil {
     return err
@@ -737,7 +737,7 @@ func (vertex *BVertex) BuildTree(data *BData, from, to uint64, level int) (uint6
   return i, nil
 }
 
-func (vertex *BVertex) writeLeaf(file *os.File) error {
+func (vertex *BVertex) writeLeaf(file io.Writer) error {
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
 
@@ -761,7 +761,7 @@ func (vertex *BVertex) writeLeaf(file *os.File) error {
   return nil
 }
 
-func (vertex *BVertex) writeIndex(file *os.File) error {
+func (vertex *BVertex) writeIndex(file io.WriteSeeker) error {
   isLeaf  := uint8(0)
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
@@ -803,7 +803,7 @@ func (vertex *BVertex) writeIndex(file *os.File) error {
   return nil
 }
 
-func (vertex *BVertex) write(file *os.File) error {
+func (vertex *BVertex) write(file io.WriteSeeker) error {
   if vertex.IsLeaf != 0 {
     return vertex.writeLeaf(file)
   } else {
@@ -812,7 +812,7 @@ func (vertex *BVertex) write(file *os.File) error {
   return nil
 }
 
-func (tree *BTree) Write(file *os.File) error {
+func (tree *BTree) Write(file io.WriteSeeker) error {
   magic := uint32(CIRTREE_MAGIC)
 
   // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
@@ -878,7 +878,7 @@ func (data *BData) Add(key, value []byte) error {
   return nil
 }
 
-func (data *BData) readVertexLeaf(file *os.File) error {
+func (data *BData) readVertexLeaf(file io.Reader) error {
   var nVals   uint16
   var key   []byte
   var value []byte
@@ -902,7 +902,7 @@ func (data *BData) readVertexLeaf(file *os.File) error {
   return nil
 }
 
-func (data *BData) readVertexIndex(file *os.File) error {
+func (data *BData) readVertexIndex(file io.ReadSeeker) error {
   var nVals     uint16
   var key     []byte
   var position  uint64
@@ -933,7 +933,7 @@ func (data *BData) readVertexIndex(file *os.File) error {
   return nil
 }
 
-func (data *BData) readVertex(file *os.File) error {
+func (data *BData) readVertex(file io.ReadSeeker) error {
   var isLeaf  uint8
   var padding uint8
 
@@ -950,7 +950,7 @@ func (data *BData) readVertex(file *os.File) error {
   }
 }
 
-func (data *BData) Read(file *os.File) error {
+func (data *BData) Read(file io.ReadSeeker) error {
 
   var magic uint32
 
@@ -984,7 +984,7 @@ func (data *BData) Read(file *os.File) error {
   return data.readVertex(file)
 }
 
-func (data *BData) Write(file *os.File) error {
+func (data *BData) Write(file io.WriteSeeker) error {
   tree := NewBTree(data)
   return tree.Write(file)
 }
@@ -1051,7 +1051,7 @@ func NewRTree() *RTree {
   return &tree
 }
 
-func (tree *RTree) Read(file *os.File) error {
+func (tree *RTree) Read(file io.ReadSeeker) error {
 
   var magic uint32
 
@@ -1103,11 +1103,11 @@ func (tree *RTree) Read(file *os.File) error {
   return nil
 }
 
-func (tree *RTree) WriteSize(file *os.File) error {
+func (tree *RTree) WriteSize(file io.WriteSeeker) error {
   return fileWriteAt(file, binary.LittleEndian, tree.PtrIdxSize, tree.IdxSize)
 }
 
-func (tree *RTree) Write(file *os.File) error {
+func (tree *RTree) Write(file io.WriteSeeker) error {
   var offsetStart int64
   var offsetEnd   int64
   // get current offset
@@ -1406,7 +1406,7 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
   return nil
 }
 
-func (vertex *RVertex) Read(file *os.File) error {
+func (vertex *RVertex) Read(file io.ReadSeeker) error {
 
   var padding uint8
 
@@ -1478,7 +1478,7 @@ func (vertex *RVertex) Read(file *os.File) error {
   return nil
 }
 
-func (vertex *RVertex) Write(file *os.File) error {
+func (vertex *RVertex) Write(file io.WriteSeeker) error {
 
   if len(vertex.DataOffset) != int(vertex.NChildren) {
     vertex.DataOffset = make([]uint64, vertex.NChildren)
@@ -1655,7 +1655,7 @@ type BbiHeaderZoom struct {
   PtrIndexOffset     int64
 }
 
-func (zoomHeader *BbiHeaderZoom) Read(file *os.File) error {
+func (zoomHeader *BbiHeaderZoom) Read(file io.ReadSeeker) error {
 
   if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
     return err
@@ -1686,7 +1686,7 @@ func (zoomHeader *BbiHeaderZoom) Read(file *os.File) error {
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) Write(file *os.File) error {
+func (zoomHeader *BbiHeaderZoom) Write(file io.WriteSeeker) error {
 
   if err := binary.Write(file, binary.LittleEndian, zoomHeader.ReductionLevel); err != nil {
     return err
@@ -1713,7 +1713,7 @@ func (zoomHeader *BbiHeaderZoom) Write(file *os.File) error {
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) WriteOffsets(file *os.File) error {
+func (zoomHeader *BbiHeaderZoom) WriteOffsets(file io.WriteSeeker) error {
   if zoomHeader.PtrDataOffset != 0 {
     if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
       return err
@@ -1727,7 +1727,7 @@ func (zoomHeader *BbiHeaderZoom) WriteOffsets(file *os.File) error {
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) WriteNBlocks(file *os.File) error {
+func (zoomHeader *BbiHeaderZoom) WriteNBlocks(file io.WriteSeeker) error {
   return fileWriteAt(file, binary.LittleEndian, int64(zoomHeader.DataOffset), zoomHeader.NBlocks)
 }
 
@@ -1769,7 +1769,7 @@ func NewBbiHeader() *BbiHeader {
   return &header
 }
 
-func (header *BbiHeader) Read(file *os.File) error {
+func (header *BbiHeader) Read(file io.ReadSeeker) error {
 
   if err := binary.Read(file, binary.LittleEndian, &header.Magic); err != nil {
     return err
@@ -1878,7 +1878,7 @@ func (header *BbiHeader) Read(file *os.File) error {
   return nil
 }
 
-func (header *BbiHeader) WriteOffsets(file *os.File) error {
+func (header *BbiHeader) WriteOffsets(file io.WriteSeeker) error {
   if header.PtrCtOffset != 0 {
     if err := fileWriteAt(file, binary.LittleEndian, header.PtrCtOffset, header.CtOffset); err != nil {
       return err
@@ -1907,14 +1907,14 @@ func (header *BbiHeader) WriteOffsets(file *os.File) error {
   return nil
 }
 
-func (header *BbiHeader) WriteUncompressBufSize(file *os.File) error {
+func (header *BbiHeader) WriteUncompressBufSize(file io.WriteSeeker) error {
   if header.PtrUncompressBufSize != 0 {
     return fileWriteAt(file, binary.LittleEndian, header.PtrUncompressBufSize, header.UncompressBufSize)
   }
   return nil
 }
 
-func (header *BbiHeader) Write(file *os.File) error {
+func (header *BbiHeader) Write(file io.WriteSeeker) error {
 
   if err := binary.Write(file, binary.LittleEndian, header.Magic); err != nil {
     return err
@@ -2024,7 +2024,7 @@ func (header *BbiHeader) Write(file *os.File) error {
   return nil
 }
 
-func (header *BbiHeader) WriteNBlocks(file *os.File) error {
+func (header *BbiHeader) WriteNBlocks(file io.WriteSeeker) error {
   return fileWriteAt(file, binary.LittleEndian, int64(header.DataOffset), header.NBlocks)
 }
 

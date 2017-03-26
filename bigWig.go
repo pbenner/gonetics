@@ -66,8 +66,10 @@ func (bwf *BigWigFile) Open(filename string) error {
   bwf.Fptr = f
 
   // parse header
-  if err := bwf.Header.Read(bwf.Fptr); err != nil {
+  if order, err := bwf.Header.Read(bwf.Fptr, BIGWIG_MAGIC); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  } else {
+    bwf.Order = order
   }
   if bwf.Header.Magic != BIGWIG_MAGIC {
     return fmt.Errorf("reading `%s' failed: not a BigWig file", filename)
@@ -76,14 +78,14 @@ func (bwf *BigWigFile) Open(filename string) error {
   if _, err := bwf.Fptr.Seek(int64(bwf.Header.CtOffset), 0); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  if err := bwf.ChromData.Read(bwf.Fptr); err != nil {
+  if err := bwf.ChromData.Read(bwf.Fptr, bwf.Order); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   // parse data index
   if _, err := bwf.Fptr.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
-  if err := bwf.Index.Read(bwf.Fptr); err != nil {
+  if err := bwf.Index.Read(bwf.Fptr, bwf.Order); err != nil {
     return fmt.Errorf("reading `%s' failed: %v", filename, err)
   }
   // parse zoom level indices
@@ -92,7 +94,7 @@ func (bwf *BigWigFile) Open(filename string) error {
     if _, err := bwf.Fptr.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
       return fmt.Errorf("reading `%s' failed: %v", filename, err)
     }
-    if err := bwf.IndexZoom[i].Read(bwf.Fptr); err != nil {
+    if err := bwf.IndexZoom[i].Read(bwf.Fptr, bwf.Order); err != nil {
       return fmt.Errorf("reading `%s' failed: %v", filename, err)
     }
   }
@@ -106,10 +108,10 @@ func (bwf *BigWigFile) Create(filename string) error {
   if err != nil {
     return err
   }
-  bwf.Fptr = f
+  bwf.Fptr  = f
 
   // write header
-  if err := bwf.Header.Write(bwf.Fptr); err != nil {
+  if err := bwf.Header.Write(bwf.Fptr, bwf.Order); err != nil {
     return fmt.Errorf("writing `%s' failed: %v", filename, err)
   }
   // data starts here
@@ -119,7 +121,7 @@ func (bwf *BigWigFile) Create(filename string) error {
     bwf.Header.DataOffset = uint64(offset)
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
+  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   // write number of blocks (zero at the moment)
@@ -136,11 +138,11 @@ func (bwf *BigWigFile) WriteChromList() error {
   } else {
     bwf.Header.CtOffset = uint64(offset)
   }
-  if err := bwf.ChromData.Write(bwf.Fptr); err != nil {
+  if err := bwf.ChromData.Write(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
+  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   return nil
@@ -154,11 +156,11 @@ func (bwf *BigWigFile) WriteIndex() error {
     bwf.Header.IndexOffset = uint64(offset)
   }
   // write data index
-  if err := bwf.Index.Write(bwf.Fptr); err != nil {
+  if err := bwf.Index.Write(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr); err != nil {
+  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   return nil
@@ -172,11 +174,11 @@ func (bwf *BigWigFile) WriteIndexZoom(i int) error {
     bwf.Header.ZoomHeaders[i].IndexOffset = uint64(offset)
   }
   // write data index
-  if err := bwf.IndexZoom[i].Write(bwf.Fptr); err != nil {
+  if err := bwf.IndexZoom[i].Write(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(bwf.Fptr); err != nil {
+  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
     return err
   }
   return nil
@@ -344,7 +346,7 @@ func NewBigWigWriter(filename string, genome Genome, parameters BigWigParameters
   // create new leaf map
   bww.resetLeafMap()
   // create vertex generator
-  if tmp, err := NewRVertexGenerator(parameters.BlockSize, parameters.ItemsPerSlot); err != nil {
+  if tmp, err := NewRVertexGenerator(parameters.BlockSize, parameters.ItemsPerSlot, bwf.Order); err != nil {
     return nil, err
   } else {
     bww.generator = tmp
@@ -520,7 +522,7 @@ func (bww *BigWigWriter) StartZoomData(i int) error {
     return err
   }
   // update offsets
-  if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Bwf.Fptr); err != nil {
+  if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
     return err
   }
   return nil
@@ -553,11 +555,11 @@ func (bww *BigWigWriter) Close() error {
     return err
   }
   // write nblocks
-  if err := bww.Bwf.Header.WriteNBlocks(bww.Bwf.BbiFile.Fptr); err != nil {
+  if err := bww.Bwf.Header.WriteNBlocks(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
     return err
   }
   for i := 0; i < len(bww.Bwf.Header.ZoomHeaders); i++ {
-    if err := bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.BbiFile.Fptr); err != nil {
+    if err := bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
       return err
     }
   }

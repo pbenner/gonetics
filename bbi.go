@@ -121,57 +121,57 @@ func (record *BbiZoomRecord) AddValue(x float64) {
   record.SumSquares += float32(x*x)
 }
 
-func (record *BbiZoomRecord) Read(reader io.Reader) error {
-  if err := binary.Read(reader, binary.LittleEndian, &record.ChromId); err != nil {
+func (record *BbiZoomRecord) Read(reader io.Reader, order binary.ByteOrder) error {
+  if err := binary.Read(reader, order, &record.ChromId); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Start); err != nil {
+  if err := binary.Read(reader, order, &record.Start); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.End); err != nil {
+  if err := binary.Read(reader, order, &record.End); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Valid); err != nil {
+  if err := binary.Read(reader, order, &record.Valid); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Min); err != nil {
+  if err := binary.Read(reader, order, &record.Min); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Max); err != nil {
+  if err := binary.Read(reader, order, &record.Max); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.Sum); err != nil {
+  if err := binary.Read(reader, order, &record.Sum); err != nil {
     return err
   }
-  if err := binary.Read(reader, binary.LittleEndian, &record.SumSquares); err != nil {
+  if err := binary.Read(reader, order, &record.SumSquares); err != nil {
     return err
   }
   return nil
 }
 
-func (record BbiZoomRecord) Write(writer io.Writer) error {
-  if err := binary.Write(writer, binary.LittleEndian, record.ChromId); err != nil {
+func (record BbiZoomRecord) Write(writer io.Writer, order binary.ByteOrder) error {
+  if err := binary.Write(writer, order, record.ChromId); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.Start); err != nil {
+  if err := binary.Write(writer, order, record.Start); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.End); err != nil {
+  if err := binary.Write(writer, order, record.End); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.Valid); err != nil {
+  if err := binary.Write(writer, order, record.Valid); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.Min); err != nil {
+  if err := binary.Write(writer, order, record.Min); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.Max); err != nil {
+  if err := binary.Write(writer, order, record.Max); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.Sum); err != nil {
+  if err := binary.Write(writer, order, record.Sum); err != nil {
     return err
   }
-  if err := binary.Write(writer, binary.LittleEndian, record.SumSquares); err != nil {
+  if err := binary.Write(writer, order, record.SumSquares); err != nil {
     return err
   }
   return nil
@@ -252,6 +252,7 @@ type BbiBlockDecoderIterator interface {
 type BbiRawBlockDecoder struct {
   Header  BbiDataHeader
   Buffer  []byte
+  order   binary.ByteOrder
 }
 
 type BbiRawBlockDecoderIterator struct {
@@ -260,15 +261,16 @@ type BbiRawBlockDecoderIterator struct {
   r BbiBlockDecoderType
 }
 
-func NewBbiRawBlockDecoder(buffer []byte) (*BbiRawBlockDecoder, error) {
+func NewBbiRawBlockDecoder(buffer []byte, order binary.ByteOrder) (*BbiRawBlockDecoder, error) {
   if len(buffer) < 24 {
     return nil, fmt.Errorf("block length is shorter than 24 bytes")
   }
   reader := BbiRawBlockDecoder{}
   // parse header
-  reader.Header.ReadBuffer(buffer)
+  reader.Header.ReadBuffer(buffer, order)
   // crop header from buffer
   reader.Buffer = buffer[24:]
+  reader.order  = order
 
   switch reader.Header.Type {
   default:
@@ -294,7 +296,7 @@ func (reader *BbiRawBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
   r.From        = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
   r.To          = r.From + int(reader.Header.Span)
   r.Valid       = float64(r.To - r.From)
-  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i:i+4])))
+  r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i:i+4])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
@@ -304,10 +306,10 @@ func (reader *BbiRawBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
 
 func (reader *BbiRawBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
   r.ChromId     = int(reader.Header.ChromId)
-  r.From        = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
+  r.From        = int(reader.order.Uint32(reader.Buffer[i+0:i+4]))
   r.To          = r.From + int(reader.Header.Span)
   r.Valid       = float64(r.To - r.From)
-  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8])))
+  r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i+4:i+8])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
@@ -317,10 +319,10 @@ func (reader *BbiRawBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
 
 func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
   r.ChromId     = int(reader.Header.ChromId)
-  r.From        = int(binary.LittleEndian.Uint32(reader.Buffer[i+0:i+4]))
-  r.To          = int(binary.LittleEndian.Uint32(reader.Buffer[i+4:i+8]))
+  r.From        = int(reader.order.Uint32(reader.Buffer[i+0:i+4]))
+  r.To          = int(reader.order.Uint32(reader.Buffer[i+4:i+8]))
   r.Valid       = float64(r.To - r.From)
-  r.Sum         = float64(math.Float32frombits(binary.LittleEndian.Uint32(reader.Buffer[i+8:i+12])))
+  r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i+8:i+12])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
@@ -369,21 +371,24 @@ func (it *BbiRawBlockDecoderIterator) Next() {
 
 type BbiZoomBlockDecoder struct {
   Buffer []byte
+  order    binary.ByteOrder
 }
 
 type BbiZoomBlockDecoderIterator struct {
+  *BbiZoomBlockDecoder
   b *bytes.Reader
   k  bool
   t  BbiZoomRecord
   r  BbiBlockDecoderType
 }
 
-func NewBbiZoomBlockDecoder(buffer []byte) *BbiZoomBlockDecoder {
-  return &BbiZoomBlockDecoder{buffer}
+func NewBbiZoomBlockDecoder(buffer []byte, order binary.ByteOrder) *BbiZoomBlockDecoder {
+  return &BbiZoomBlockDecoder{buffer, order}
 }
 
 func (reader *BbiZoomBlockDecoder) Decode() BbiBlockDecoderIterator {
   it := BbiZoomBlockDecoderIterator{}
+  it.BbiZoomBlockDecoder = reader
   it.b = bytes.NewReader(reader.Buffer)
   it.k = true
   it.Next()
@@ -400,7 +405,7 @@ func (it *BbiZoomBlockDecoderIterator) Ok() bool {
 
 func (it *BbiZoomBlockDecoderIterator) Next() {
   // read BbiZoomRecord
-  if err := it.t.Read(it.b); err != nil {
+  if err := it.t.Read(it.b, it.order); err != nil {
     // end of block reached
     it.k = false
   } else {
@@ -440,6 +445,7 @@ type BbiZoomBlockEncoder struct {
   ItemsPerSlot   int
   tmp          []byte
   reductionLevel int
+  order          binary.ByteOrder
 }
 
 type BbiZoomBlockEncoderIterator struct {
@@ -458,10 +464,11 @@ type BbiZoomBlockEncoderType struct {
   Block []byte
 }
 
-func NewBbiZoomBlockEncoder(itemsPerSlot, reductionLevel int) (*BbiZoomBlockEncoder, error) {
+func NewBbiZoomBlockEncoder(itemsPerSlot, reductionLevel int, order binary.ByteOrder) (*BbiZoomBlockEncoder, error) {
   r := BbiZoomBlockEncoder{}
   r.ItemsPerSlot   = itemsPerSlot
   r.reductionLevel = reductionLevel
+  r.order          = order
   return &r, nil
 }
 
@@ -520,7 +527,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     // check if there was some non-zero data
     if !(record.Min == 0 && record.Max == 0) {
       // if yes, save record
-      if err := record.Write(b); err != nil {
+      if err := record.Write(b, it.order); err != nil {
         panic(err)
       }
       // if this is the first record in a block
@@ -553,6 +560,7 @@ type BbiRawBlockEncoder struct {
   ItemsPerSlot   int
   tmp          []byte
   fixedStep      bool
+  order          binary.ByteOrder
 }
 
 type BbiRawBlockEncoderIterator struct {
@@ -566,21 +574,22 @@ type BbiRawBlockEncoderIterator struct {
   r BbiBlockEncoderType
 }
 
-func NewBbiRawBlockEncoder(itemsPerSlot int, fixedStep bool) (*BbiRawBlockEncoder, error) {
+func NewBbiRawBlockEncoder(itemsPerSlot int, fixedStep bool, order binary.ByteOrder) (*BbiRawBlockEncoder, error) {
   r := BbiRawBlockEncoder{}
   r.ItemsPerSlot = itemsPerSlot
   r.tmp          = make([]byte, 24)
   r.fixedStep    = fixedStep
+  r.order        = order
   return &r, nil
 }
 
 func (encoder *BbiRawBlockEncoder) encodeVariable(buffer []byte, position uint32, value float64) {
-  binary.LittleEndian.PutUint32(buffer[0:4], position)
-  binary.LittleEndian.PutUint32(buffer[4:8], math.Float32bits(float32(value)))
+  encoder.order.PutUint32(buffer[0:4], position)
+  encoder.order.PutUint32(buffer[4:8], math.Float32bits(float32(value)))
 }
 
 func (encoder *BbiRawBlockEncoder) encodeFixed(buffer []byte, value float64) {
-  binary.LittleEndian.PutUint32(buffer[0:4], math.Float32bits(float32(value)))
+  encoder.order.PutUint32(buffer[0:4], math.Float32bits(float32(value)))
 }
 
 func (encoder *BbiRawBlockEncoder) Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator {
@@ -622,7 +631,7 @@ func (it *BbiRawBlockEncoderIterator) Next() {
     header.Type = 2
   }
   // write header
-  header.WriteBuffer(it.tmp[0:24])
+  header.WriteBuffer(it.tmp[0:24], it.order)
   if _, err := b.Write(it.tmp[0:24]); err != nil {
     panic(err)
   }
@@ -660,7 +669,7 @@ func (it *BbiRawBlockEncoderIterator) Next() {
   }
   if block := b.Bytes(); len(block) > 24 {
     // update header (end position and ItemCount have changed)
-    header.WriteBuffer(block[0:24])
+    header.WriteBuffer(block[0:24], it.order)
     // save result
     it.r.From  = int(header.Start)
     it.r.To    = int(header.End)
@@ -737,53 +746,53 @@ func (vertex *BVertex) BuildTree(data *BData, from, to uint64, level int) (uint6
   return i, nil
 }
 
-func (vertex *BVertex) writeLeaf(file io.Writer) error {
+func (vertex *BVertex) writeLeaf(file io.Writer, order binary.ByteOrder) error {
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
 
-  if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
+  if err := binary.Write(file, order, vertex.IsLeaf); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+  if err := binary.Write(file, order, padding); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+  if err := binary.Write(file, order, nVals); err != nil {
     return err
   }
   for i := 0; i < len(vertex.Keys); i++ {
-    if err := binary.Write(file, binary.LittleEndian, vertex.Keys[i]); err != nil {
+    if err := binary.Write(file, order, vertex.Keys[i]); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, vertex.Values[i]); err != nil {
+    if err := binary.Write(file, order, vertex.Values[i]); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (vertex *BVertex) writeIndex(file io.WriteSeeker) error {
+func (vertex *BVertex) writeIndex(file io.WriteSeeker, order binary.ByteOrder) error {
   isLeaf  := uint8(0)
   padding := uint8(0)
   nVals   := uint16(len(vertex.Keys))
   offsets := make([]int64, nVals)
 
-  if err := binary.Write(file, binary.LittleEndian, isLeaf); err != nil {
+  if err := binary.Write(file, order, isLeaf); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, padding); err != nil {
+  if err := binary.Write(file, order, padding); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, nVals); err != nil {
+  if err := binary.Write(file, order, nVals); err != nil {
     return err
   }
   for i := 0; i < int(nVals); i++ {
-    if err := binary.Write(file, binary.LittleEndian, vertex.Keys[i]); err != nil {
+    if err := binary.Write(file, order, vertex.Keys[i]); err != nil {
       return err
     }
     // save current file offset
     offsets[i], _ = file.Seek(0, 1)
     // offset of the ith child vertex (first set to zero)
-    if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
+    if err := binary.Write(file, order, uint64(0)); err != nil {
       return err
     }
   }
@@ -792,27 +801,27 @@ func (vertex *BVertex) writeIndex(file io.WriteSeeker) error {
     // get current file offset (where the ith child vertex begins)
     offset, _ := file.Seek(0, 1)
     // and write it at the expected position 
-    if err := fileWriteAt(file, binary.LittleEndian, offsets[i], uint64(offset)); err != nil {
+    if err := fileWriteAt(file, order, offsets[i], uint64(offset)); err != nil {
       return err
     }
     // write ith child
-    if err := vertex.Children[i].write(file); err != nil {
+    if err := vertex.Children[i].write(file, order); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (vertex *BVertex) write(file io.WriteSeeker) error {
+func (vertex *BVertex) write(file io.WriteSeeker, order binary.ByteOrder) error {
   if vertex.IsLeaf != 0 {
-    return vertex.writeLeaf(file)
+    return vertex.writeLeaf(file, order)
   } else {
-    return vertex.writeIndex(file)
+    return vertex.writeIndex(file, order)
   }
   return nil
 }
 
-func (tree *BTree) Write(file io.WriteSeeker) error {
+func (tree *BTree) Write(file io.WriteSeeker, order binary.ByteOrder) error {
   magic := uint32(CIRTREE_MAGIC)
 
   // ItemsPerBlock has 32 bits but nVals has only 16 bits, check for overflow
@@ -820,26 +829,26 @@ func (tree *BTree) Write(file io.WriteSeeker) error {
     return fmt.Errorf("ItemsPerBlock too large (maximum value is `%d')", ^uint16(0))
   }
 
-  if err := binary.Write(file, binary.LittleEndian, magic); err != nil {
+  if err := binary.Write(file, order, magic); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.ItemsPerBlock); err != nil {
+  if err := binary.Write(file, order, tree.ItemsPerBlock); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.KeySize); err != nil {
+  if err := binary.Write(file, order, tree.KeySize); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.ValueSize); err != nil {
+  if err := binary.Write(file, order, tree.ValueSize); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.ItemCount); err != nil {
+  if err := binary.Write(file, order, tree.ItemCount); err != nil {
     return err
   }
   // padding
-  if err := binary.Write(file, binary.LittleEndian, uint64(0)); err != nil {
+  if err := binary.Write(file, order, uint64(0)); err != nil {
     return err
   }
-  return tree.Root.write(file)
+  return tree.Root.write(file, order)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -878,22 +887,22 @@ func (data *BData) Add(key, value []byte) error {
   return nil
 }
 
-func (data *BData) readVertexLeaf(file io.Reader) error {
+func (data *BData) readVertexLeaf(file io.Reader, order binary.ByteOrder) error {
   var nVals   uint16
   var key   []byte
   var value []byte
 
-  if err := binary.Read(file, binary.LittleEndian, &nVals); err != nil {
+  if err := binary.Read(file, order, &nVals); err != nil {
     return err
   }
 
   for i := 0; i < int(nVals); i++ {
     key   = make([]byte, data.KeySize)
     value = make([]byte, data.ValueSize)
-    if err := binary.Read(file, binary.LittleEndian, &key); err != nil {
+    if err := binary.Read(file, order, &key); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &value); err != nil {
+    if err := binary.Read(file, order, &value); err != nil {
       return err
     }
     data.Keys   = append(data.Keys, key)
@@ -902,22 +911,22 @@ func (data *BData) readVertexLeaf(file io.Reader) error {
   return nil
 }
 
-func (data *BData) readVertexIndex(file io.ReadSeeker) error {
+func (data *BData) readVertexIndex(file io.ReadSeeker, order binary.ByteOrder) error {
   var nVals     uint16
   var key     []byte
   var position  uint64
 
   key = make([]byte, data.KeySize)
 
-  if err := binary.Read(file, binary.LittleEndian, &nVals); err != nil {
+  if err := binary.Read(file, order, &nVals); err != nil {
     return err
   }
 
   for i := 0; i < int(nVals); i++ {
-    if err := binary.Read(file, binary.LittleEndian, &key); err != nil {
+    if err := binary.Read(file, order, &key); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &position); err != nil {
+    if err := binary.Read(file, order, &position); err != nil {
       return err
     }
     // save current position and jump to child vertex
@@ -925,7 +934,7 @@ func (data *BData) readVertexIndex(file io.ReadSeeker) error {
     if _, err := file.Seek(int64(position), 0); err != nil {
       return err
     }
-    data.readVertex(file)
+    data.readVertex(file, order)
     if _, err := file.Seek(currentPosition, 0); err != nil {
       return err
     }
@@ -933,60 +942,60 @@ func (data *BData) readVertexIndex(file io.ReadSeeker) error {
   return nil
 }
 
-func (data *BData) readVertex(file io.ReadSeeker) error {
+func (data *BData) readVertex(file io.ReadSeeker, order binary.ByteOrder) error {
   var isLeaf  uint8
   var padding uint8
 
-  if err := binary.Read(file, binary.LittleEndian, &isLeaf); err != nil {
+  if err := binary.Read(file, order, &isLeaf); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &padding); err != nil {
+  if err := binary.Read(file, order, &padding); err != nil {
     return err
   }
   if isLeaf != 0 {
-    return data.readVertexLeaf(file)
+    return data.readVertexLeaf(file, order)
   } else {
-    return data.readVertexIndex(file)
+    return data.readVertexIndex(file, order)
   }
 }
 
-func (data *BData) Read(file io.ReadSeeker) error {
+func (data *BData) Read(file io.ReadSeeker, order binary.ByteOrder) error {
 
   var magic uint32
 
   // magic number
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, order, &magic); err != nil {
     return err
   }
   if magic != CIRTREE_MAGIC {
     return fmt.Errorf("invalid tree")
   }
 
-  if err := binary.Read(file, binary.LittleEndian, &data.ItemsPerBlock); err != nil {
+  if err := binary.Read(file, order, &data.ItemsPerBlock); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &data.KeySize); err != nil {
+  if err := binary.Read(file, order, &data.KeySize); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &data.ValueSize); err != nil {
+  if err := binary.Read(file, order, &data.ValueSize); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &data.ItemCount); err != nil {
+  if err := binary.Read(file, order, &data.ItemCount); err != nil {
     return err
   }
   // padding
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, order, &magic); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, order, &magic); err != nil {
     return err
   }
-  return data.readVertex(file)
+  return data.readVertex(file, order)
 }
 
-func (data *BData) Write(file io.WriteSeeker) error {
+func (data *BData) Write(file io.WriteSeeker, order binary.ByteOrder) error {
   tree := NewBTree(data)
-  return tree.Write(file)
+  return tree.Write(file, order)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1002,29 +1011,29 @@ type BbiDataHeader struct {
   ItemCount uint16
 }
 
-func (header *BbiDataHeader) ReadBuffer(buffer []byte) {
+func (header *BbiDataHeader) ReadBuffer(buffer []byte, order binary.ByteOrder) {
 
-  header.ChromId   = binary.LittleEndian.Uint32(buffer[ 0: 4])
-  header.Start     = binary.LittleEndian.Uint32(buffer[ 4: 8])
-  header.End       = binary.LittleEndian.Uint32(buffer[ 8:12])
-  header.Step      = binary.LittleEndian.Uint32(buffer[12:16])
-  header.Span      = binary.LittleEndian.Uint32(buffer[16:20])
+  header.ChromId   = order.Uint32(buffer[ 0: 4])
+  header.Start     = order.Uint32(buffer[ 4: 8])
+  header.End       = order.Uint32(buffer[ 8:12])
+  header.Step      = order.Uint32(buffer[12:16])
+  header.Span      = order.Uint32(buffer[16:20])
   header.Type      = buffer[20]
   header.Reserved  = buffer[21]
-  header.ItemCount = binary.LittleEndian.Uint16(buffer[22:24])
+  header.ItemCount = order.Uint16(buffer[22:24])
 
 }
 
-func (header *BbiDataHeader) WriteBuffer(buffer []byte) {
+func (header *BbiDataHeader) WriteBuffer(buffer []byte, order binary.ByteOrder) {
 
-  binary.LittleEndian.PutUint32(buffer[ 0: 4], header.ChromId)
-  binary.LittleEndian.PutUint32(buffer[ 4: 8], header.Start)
-  binary.LittleEndian.PutUint32(buffer[ 8:12], header.End)
-  binary.LittleEndian.PutUint32(buffer[12:16], header.Step)
-  binary.LittleEndian.PutUint32(buffer[16:20], header.Span)
+  order.PutUint32(buffer[ 0: 4], header.ChromId)
+  order.PutUint32(buffer[ 4: 8], header.Start)
+  order.PutUint32(buffer[ 8:12], header.End)
+  order.PutUint32(buffer[12:16], header.Step)
+  order.PutUint32(buffer[16:20], header.Span)
   buffer[20] = header.Type
   buffer[21] = header.Reserved
-  binary.LittleEndian.PutUint16(buffer[22:24], header.ItemCount)
+  order.PutUint16(buffer[22:24], header.ItemCount)
 
 }
 
@@ -1051,34 +1060,34 @@ func NewRTree() *RTree {
   return &tree
 }
 
-func (tree *RTree) Read(file io.ReadSeeker) error {
+func (tree *RTree) Read(file io.ReadSeeker, order binary.ByteOrder) error {
 
   var magic uint32
 
   // magic number
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, order, &magic); err != nil {
     return err
   }
   if magic != IDX_MAGIC {
     return fmt.Errorf("invalid bbi tree")
   }
 
-  if err := binary.Read(file, binary.LittleEndian, &tree.BlockSize); err != nil {
+  if err := binary.Read(file, order, &tree.BlockSize); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.NItems); err != nil {
+  if err := binary.Read(file, order, &tree.NItems); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.ChrIdxStart); err != nil {
+  if err := binary.Read(file, order, &tree.ChrIdxStart); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.BaseStart); err != nil {
+  if err := binary.Read(file, order, &tree.BaseStart); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.ChrIdxEnd); err != nil {
+  if err := binary.Read(file, order, &tree.ChrIdxEnd); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.BaseEnd); err != nil {
+  if err := binary.Read(file, order, &tree.BaseEnd); err != nil {
     return err
   }
   // get current offset
@@ -1087,27 +1096,27 @@ func (tree *RTree) Read(file io.ReadSeeker) error {
   } else {
     tree.PtrIdxSize = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.IdxSize); err != nil {
+  if err := binary.Read(file, order, &tree.IdxSize); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &tree.NItemsPerSlot); err != nil {
+  if err := binary.Read(file, order, &tree.NItemsPerSlot); err != nil {
     return err
   }
   // padding
-  if err := binary.Read(file, binary.LittleEndian, &magic); err != nil {
+  if err := binary.Read(file, order, &magic); err != nil {
     return err
   }
   tree.Root = new(RVertex)
-  tree.Root.Read(file)
+  tree.Root.Read(file, order)
 
   return nil
 }
 
-func (tree *RTree) WriteSize(file io.WriteSeeker) error {
-  return fileWriteAt(file, binary.LittleEndian, tree.PtrIdxSize, tree.IdxSize)
+func (tree *RTree) WriteSize(file io.WriteSeeker, order binary.ByteOrder) error {
+  return fileWriteAt(file, order, tree.PtrIdxSize, tree.IdxSize)
 }
 
-func (tree *RTree) Write(file io.WriteSeeker) error {
+func (tree *RTree) Write(file io.WriteSeeker, order binary.ByteOrder) error {
   var offsetStart int64
   var offsetEnd   int64
   // get current offset
@@ -1117,25 +1126,25 @@ func (tree *RTree) Write(file io.WriteSeeker) error {
     offsetStart = offset
   }
   // magic number
-  if err := binary.Write(file, binary.LittleEndian, uint32(IDX_MAGIC)); err != nil {
+  if err := binary.Write(file, order, uint32(IDX_MAGIC)); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.BlockSize); err != nil {
+  if err := binary.Write(file, order, tree.BlockSize); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.NItems); err != nil {
+  if err := binary.Write(file, order, tree.NItems); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.ChrIdxStart); err != nil {
+  if err := binary.Write(file, order, tree.ChrIdxStart); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.BaseStart); err != nil {
+  if err := binary.Write(file, order, tree.BaseStart); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.ChrIdxEnd); err != nil {
+  if err := binary.Write(file, order, tree.ChrIdxEnd); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.BaseEnd); err != nil {
+  if err := binary.Write(file, order, tree.BaseEnd); err != nil {
     return err
   }
   // get current offset
@@ -1144,18 +1153,18 @@ func (tree *RTree) Write(file io.WriteSeeker) error {
   } else {
     tree.PtrIdxSize = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.IdxSize); err != nil {
+  if err := binary.Write(file, order, tree.IdxSize); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, tree.NItemsPerSlot); err != nil {
+  if err := binary.Write(file, order, tree.NItemsPerSlot); err != nil {
     return err
   }
   // padding
-  if err := binary.Write(file, binary.LittleEndian, uint32(0)); err != nil {
+  if err := binary.Write(file, order, uint32(0)); err != nil {
     return err
   }
   if tree.Root != nil {
-    tree.Root.Write(file)
+    tree.Root.Write(file, order)
   }
   // get current offset
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1165,7 +1174,7 @@ func (tree *RTree) Write(file io.WriteSeeker) error {
   }
   // update index size
   tree.IdxSize = uint64(offsetEnd-offsetStart)
-  tree.WriteSize(file)
+  tree.WriteSize(file, order)
 
   return nil
 }
@@ -1353,7 +1362,7 @@ type RVertex struct {
 func (vertex *RVertex) ReadBlock(bwf *BbiFile, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
-  if err = fileReadAt(bwf.Fptr, binary.LittleEndian, int64(vertex.DataOffset[i]), &block); err != nil {
+  if err = fileReadAt(bwf.Fptr, bwf.Order, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
   if bwf.Header.UncompressBufSize != 0 {
@@ -1371,7 +1380,7 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
     // exceeds size
     if uint32(len(block)) > bwf.Header.UncompressBufSize {
       bwf.Header.UncompressBufSize = uint32(len(block))
-      if err = bwf.Header.WriteUncompressBufSize(bwf.Fptr); err != nil {
+      if err = bwf.Header.WriteUncompressBufSize(bwf.Fptr, bwf.Order); err != nil {
         return err
       }
     }
@@ -1386,37 +1395,37 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
     vertex.DataOffset[i] = uint64(offset)
     // write updated value to the required position in the file
     if vertex.PtrDataOffset[i] != 0 {
-      if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
+      if err = fileWriteAt(bwf.Fptr, bwf.Order, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
         return err
       }
     }
   }
   // write data
-  if err = binary.Write(bwf.Fptr, binary.LittleEndian, block); err != nil {
+  if err = binary.Write(bwf.Fptr, bwf.Order, block); err != nil {
     return err
   }
   // update size of the data block
   vertex.Sizes[i] = uint64(len(block))
   // write it to the required position in the file
   if vertex.PtrSizes[i] != 0 {
-    if err = fileWriteAt(bwf.Fptr, binary.LittleEndian, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
+    if err = fileWriteAt(bwf.Fptr, bwf.Order, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (vertex *RVertex) Read(file io.ReadSeeker) error {
+func (vertex *RVertex) Read(file io.ReadSeeker, order binary.ByteOrder) error {
 
   var padding uint8
 
-  if err := binary.Read(file, binary.LittleEndian, &vertex.IsLeaf); err != nil {
+  if err := binary.Read(file, order, &vertex.IsLeaf); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &padding); err != nil {
+  if err := binary.Read(file, order, &padding); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &vertex.NChildren); err != nil {
+  if err := binary.Read(file, order, &vertex.NChildren); err != nil {
     return err
   }
   // allocate data
@@ -1434,16 +1443,16 @@ func (vertex *RVertex) Read(file io.ReadSeeker) error {
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {
-    if err := binary.Read(file, binary.LittleEndian, &vertex.ChrIdxStart[i]); err != nil {
+    if err := binary.Read(file, order, &vertex.ChrIdxStart[i]); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &vertex.BaseStart[i]); err != nil {
+    if err := binary.Read(file, order, &vertex.BaseStart[i]); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &vertex.ChrIdxEnd[i]); err != nil {
+    if err := binary.Read(file, order, &vertex.ChrIdxEnd[i]); err != nil {
       return err
     }
-    if err := binary.Read(file, binary.LittleEndian, &vertex.BaseEnd[i]); err != nil {
+    if err := binary.Read(file, order, &vertex.BaseEnd[i]); err != nil {
       return err
     }
     if offset, err := file.Seek(0, 1); err != nil {
@@ -1451,7 +1460,7 @@ func (vertex *RVertex) Read(file io.ReadSeeker) error {
     } else {
       vertex.PtrDataOffset[i] = offset
     }
-    if err := binary.Read(file, binary.LittleEndian, &vertex.DataOffset[i]); err != nil {
+    if err := binary.Read(file, order, &vertex.DataOffset[i]); err != nil {
       return err
     }
     if vertex.IsLeaf != 0 {
@@ -1460,7 +1469,7 @@ func (vertex *RVertex) Read(file io.ReadSeeker) error {
       } else {
         vertex.PtrSizes[i] = offset
       }
-      if err := binary.Read(file, binary.LittleEndian, &vertex.Sizes[i]); err != nil {
+      if err := binary.Read(file, order, &vertex.Sizes[i]); err != nil {
         return err
       }
     }
@@ -1472,13 +1481,13 @@ func (vertex *RVertex) Read(file io.ReadSeeker) error {
         return err
       }
       vertex.Children[i] = new(RVertex)
-      vertex.Children[i].Read(file)
+      vertex.Children[i].Read(file, order)
     }
   }
   return nil
 }
 
-func (vertex *RVertex) Write(file io.WriteSeeker) error {
+func (vertex *RVertex) Write(file io.WriteSeeker, order binary.ByteOrder) error {
 
   if len(vertex.DataOffset) != int(vertex.NChildren) {
     vertex.DataOffset = make([]uint64, vertex.NChildren)
@@ -1493,28 +1502,28 @@ func (vertex *RVertex) Write(file io.WriteSeeker) error {
     vertex.PtrSizes = make([]int64, vertex.NChildren)
   }
 
-  if err := binary.Write(file, binary.LittleEndian, vertex.IsLeaf); err != nil {
+  if err := binary.Write(file, order, vertex.IsLeaf); err != nil {
     return err
   }
   // padding
-  if err := binary.Write(file, binary.LittleEndian, uint8(0)); err != nil {
+  if err := binary.Write(file, order, uint8(0)); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, vertex.NChildren); err != nil {
+  if err := binary.Write(file, order, vertex.NChildren); err != nil {
     return err
   }
 
   for i := 0; i < int(vertex.NChildren); i++ {
-    if err := binary.Write(file, binary.LittleEndian, vertex.ChrIdxStart[i]); err != nil {
+    if err := binary.Write(file, order, vertex.ChrIdxStart[i]); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, vertex.BaseStart[i]); err != nil {
+    if err := binary.Write(file, order, vertex.BaseStart[i]); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, vertex.ChrIdxEnd[i]); err != nil {
+    if err := binary.Write(file, order, vertex.ChrIdxEnd[i]); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, vertex.BaseEnd[i]); err != nil {
+    if err := binary.Write(file, order, vertex.BaseEnd[i]); err != nil {
       return err
     }
     // save current offset
@@ -1523,7 +1532,7 @@ func (vertex *RVertex) Write(file io.WriteSeeker) error {
     } else {
       vertex.PtrDataOffset[i] = offset
     }
-    if err := binary.Write(file, binary.LittleEndian, vertex.DataOffset[i]); err != nil {
+    if err := binary.Write(file, order, vertex.DataOffset[i]); err != nil {
       return err
     }
     // save current offset
@@ -1533,7 +1542,7 @@ func (vertex *RVertex) Write(file io.WriteSeeker) error {
       vertex.PtrSizes[i] = offset
     }
     if vertex.IsLeaf != 0 {
-      if err := binary.Write(file, binary.LittleEndian, vertex.Sizes[i]); err != nil {
+      if err := binary.Write(file, order, vertex.Sizes[i]); err != nil {
         return err
       }
     }
@@ -1546,8 +1555,8 @@ func (vertex *RVertex) Write(file io.WriteSeeker) error {
         // save current offset
         vertex.DataOffset[i] = uint64(offset)
         // and write at the required position
-        fileWriteAt(file, binary.LittleEndian, vertex.PtrDataOffset[i], vertex.DataOffset[i])
-        vertex.Children[i].Write(file)
+        fileWriteAt(file, order, vertex.PtrDataOffset[i], vertex.DataOffset[i])
+        vertex.Children[i].Write(file, order)
       }
     }
   }
@@ -1559,6 +1568,7 @@ func (vertex *RVertex) Write(file io.WriteSeeker) error {
 type RVertexGenerator struct {
   BlockSize    int
   ItemsPerSlot int
+  order        binary.ByteOrder
 }
 
 type RVertexGeneratorType struct {
@@ -1566,7 +1576,7 @@ type RVertexGeneratorType struct {
   Blocks [][]byte
 }
 
-func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error) {
+func NewRVertexGenerator(blockSize, itemsPerSlot int, order binary.ByteOrder) (*RVertexGenerator, error) {
   if blockSize <= 0 {
     return nil, fmt.Errorf("invalid block size `%d'", blockSize)
   }
@@ -1576,6 +1586,7 @@ func NewRVertexGenerator(blockSize, itemsPerSlot int) (*RVertexGenerator, error)
   generator := RVertexGenerator{}
   generator.BlockSize    = blockSize
   generator.ItemsPerSlot = itemsPerSlot
+  generator.order        = order
   return &generator, nil
 }
 
@@ -1593,14 +1604,14 @@ func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, c
   // create block encoder
   if reductionLevel > binsize {
     // use a zoom block encoder
-    if tmp, err := NewBbiZoomBlockEncoder(generator.ItemsPerSlot, reductionLevel); err != nil {
+    if tmp, err := NewBbiZoomBlockEncoder(generator.ItemsPerSlot, reductionLevel, generator.order); err != nil {
       return err
     } else {
       encoder = tmp
     }
   } else {
     // use a raw block encoder
-    if tmp, err := NewBbiRawBlockEncoder(generator.ItemsPerSlot, fixedStep); err != nil {
+    if tmp, err := NewBbiRawBlockEncoder(generator.ItemsPerSlot, fixedStep, generator.order); err != nil {
       return err
     } else {
       encoder = tmp
@@ -1655,12 +1666,12 @@ type BbiHeaderZoom struct {
   PtrIndexOffset     int64
 }
 
-func (zoomHeader *BbiHeaderZoom) Read(file io.ReadSeeker) error {
+func (zoomHeader *BbiHeaderZoom) Read(file io.ReadSeeker, order binary.ByteOrder) error {
 
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.ReductionLevel); err != nil {
+  if err := binary.Read(file, order, &zoomHeader.ReductionLevel); err != nil {
     return err
   }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.Reserved); err != nil {
+  if err := binary.Read(file, order, &zoomHeader.Reserved); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1668,7 +1679,7 @@ func (zoomHeader *BbiHeaderZoom) Read(file io.ReadSeeker) error {
   } else {
     zoomHeader.PtrDataOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.DataOffset); err != nil {
+  if err := binary.Read(file, order, &zoomHeader.DataOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1676,22 +1687,22 @@ func (zoomHeader *BbiHeaderZoom) Read(file io.ReadSeeker) error {
   } else {
     zoomHeader.PtrIndexOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &zoomHeader.IndexOffset); err != nil {
+  if err := binary.Read(file, order, &zoomHeader.IndexOffset); err != nil {
     return err
   }
   // read NBlocks
-  if err := fileReadAt(file, binary.LittleEndian, int64(zoomHeader.DataOffset), &zoomHeader.NBlocks); err != nil {
+  if err := fileReadAt(file, order, int64(zoomHeader.DataOffset), &zoomHeader.NBlocks); err != nil {
     return err
   }
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) Write(file io.WriteSeeker) error {
+func (zoomHeader *BbiHeaderZoom) Write(file io.WriteSeeker, order binary.ByteOrder) error {
 
-  if err := binary.Write(file, binary.LittleEndian, zoomHeader.ReductionLevel); err != nil {
+  if err := binary.Write(file, order, zoomHeader.ReductionLevel); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, zoomHeader.Reserved); err != nil {
+  if err := binary.Write(file, order, zoomHeader.Reserved); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1699,7 +1710,7 @@ func (zoomHeader *BbiHeaderZoom) Write(file io.WriteSeeker) error {
   } else {
     zoomHeader.PtrDataOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, zoomHeader.DataOffset); err != nil {
+  if err := binary.Write(file, order, zoomHeader.DataOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1707,28 +1718,28 @@ func (zoomHeader *BbiHeaderZoom) Write(file io.WriteSeeker) error {
   } else {
     zoomHeader.PtrIndexOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, zoomHeader.IndexOffset); err != nil {
+  if err := binary.Write(file, order, zoomHeader.IndexOffset); err != nil {
     return err
   }
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) WriteOffsets(file io.WriteSeeker) error {
+func (zoomHeader *BbiHeaderZoom) WriteOffsets(file io.WriteSeeker, order binary.ByteOrder) error {
   if zoomHeader.PtrDataOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
+    if err := fileWriteAt(file, order, zoomHeader.PtrDataOffset, zoomHeader.DataOffset); err != nil {
       return err
     }
   }
   if zoomHeader.PtrIndexOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, zoomHeader.PtrIndexOffset, zoomHeader.IndexOffset); err != nil {
+    if err := fileWriteAt(file, order, zoomHeader.PtrIndexOffset, zoomHeader.IndexOffset); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (zoomHeader *BbiHeaderZoom) WriteNBlocks(file io.WriteSeeker) error {
-  return fileWriteAt(file, binary.LittleEndian, int64(zoomHeader.DataOffset), zoomHeader.NBlocks)
+func (zoomHeader *BbiHeaderZoom) WriteNBlocks(file io.WriteSeeker, order binary.ByteOrder) error {
+  return fileWriteAt(file, order, int64(zoomHeader.DataOffset), zoomHeader.NBlocks)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1769,160 +1780,176 @@ func NewBbiHeader() *BbiHeader {
   return &header
 }
 
-func (header *BbiHeader) Read(file io.ReadSeeker) error {
+func (header *BbiHeader) Read(file io.ReadSeeker, magic uint32) (binary.ByteOrder, error) {
 
-  if err := binary.Read(file, binary.LittleEndian, &header.Magic); err != nil {
-    return err
+  var order binary.ByteOrder = binary.LittleEndian
+
+  if err := binary.Read(file, order, &header.Magic); err != nil {
+    return nil, err
+  } else {
+    if header.Magic != magic {
+      order = binary.BigEndian
+      // return to initial position and try again with big endian
+      if _, err := file.Seek(-32/8, 1); err != nil {
+        return nil, err
+      }
+      if err := binary.Read(file, order, &header.Magic); err != nil {
+        return nil, err
+      }
+      if header.Magic != magic {
+        return nil, fmt.Errorf("invalid magic number")
+      }
+    }
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.Version); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.Version); err != nil {
+    return order, err
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.ZoomLevels); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.ZoomLevels); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrCtOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.CtOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.CtOffset); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrDataOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.DataOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.DataOffset); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrIndexOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.IndexOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.IndexOffset); err != nil {
+    return order, err
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.FieldCould); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.FieldCould); err != nil {
+    return order, err
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.DefinedFieldCount); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.DefinedFieldCount); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrSqlOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.SqlOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.SqlOffset); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrSummaryOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.SummaryOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.SummaryOffset); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrUncompressBufSize = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.UncompressBufSize); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.UncompressBufSize); err != nil {
+    return order, err
   }
   if offset, err := file.Seek(0, 1); err != nil {
-    return err
+    return order, err
   } else {
     header.PtrExtensionOffset = offset
   }
-  if err := binary.Read(file, binary.LittleEndian, &header.ExtensionOffset); err != nil {
-    return err
+  if err := binary.Read(file, order, &header.ExtensionOffset); err != nil {
+    return order, err
   }
   // zoom levels
   header.ZoomHeaders = make([]BbiHeaderZoom, header.ZoomLevels)
   for i := 0; i < int(header.ZoomLevels); i++ {
-    if err := header.ZoomHeaders[i].Read(file); err != nil {
-      return err
+    if err := header.ZoomHeaders[i].Read(file, order); err != nil {
+      return order, err
     }
   }
   // summary
   if header.SummaryOffset > 0 {
     if _, err := file.Seek(int64(header.SummaryOffset), 0); err != nil {
-      return err
+      return order, err
     }
 
-    if err := binary.Read(file, binary.LittleEndian, &header.NBasesCovered); err != nil {
-      return err
+    if err := binary.Read(file, order, &header.NBasesCovered); err != nil {
+      return order, err
     }
-    if err := binary.Read(file, binary.LittleEndian, &header.MinVal); err != nil {
-      return err
+    if err := binary.Read(file, order, &header.MinVal); err != nil {
+      return order, err
     }
-    if err := binary.Read(file, binary.LittleEndian, &header.MaxVal); err != nil {
-      return err
+    if err := binary.Read(file, order, &header.MaxVal); err != nil {
+      return order, err
     }
-    if err := binary.Read(file, binary.LittleEndian, &header.SumData); err != nil {
-      return err
+    if err := binary.Read(file, order, &header.SumData); err != nil {
+      return order, err
     }
-    if err := binary.Read(file, binary.LittleEndian, &header.SumSquares); err != nil {
-      return err
+    if err := binary.Read(file, order, &header.SumSquares); err != nil {
+      return order, err
     }
   }
   // read NBlocks
-  if err := fileReadAt(file, binary.LittleEndian, int64(header.DataOffset), &header.NBlocks); err != nil {
-    return err
+  if err := fileReadAt(file, order, int64(header.DataOffset), &header.NBlocks); err != nil {
+    return order, err
   }
-  return nil
+  return order, nil
 }
 
-func (header *BbiHeader) WriteOffsets(file io.WriteSeeker) error {
+func (header *BbiHeader) WriteOffsets(file io.WriteSeeker, order binary.ByteOrder) error {
   if header.PtrCtOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, header.PtrCtOffset, header.CtOffset); err != nil {
+    if err := fileWriteAt(file, order, header.PtrCtOffset, header.CtOffset); err != nil {
       return err
     }
   }
   if header.PtrDataOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, header.PtrDataOffset, header.DataOffset); err != nil {
+    if err := fileWriteAt(file, order, header.PtrDataOffset, header.DataOffset); err != nil {
       return err
     }
   }
   if header.PtrIndexOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, header.PtrIndexOffset, header.IndexOffset); err != nil {
+    if err := fileWriteAt(file, order, header.PtrIndexOffset, header.IndexOffset); err != nil {
       return err
     }
   }
   if header.PtrSqlOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, header.PtrSqlOffset, header.SqlOffset); err != nil {
+    if err := fileWriteAt(file, order, header.PtrSqlOffset, header.SqlOffset); err != nil {
       return err
     }
   }
   if header.PtrExtensionOffset != 0 {
-    if err := fileWriteAt(file, binary.LittleEndian, header.PtrExtensionOffset, header.ExtensionOffset); err != nil {
+    if err := fileWriteAt(file, order, header.PtrExtensionOffset, header.ExtensionOffset); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (header *BbiHeader) WriteUncompressBufSize(file io.WriteSeeker) error {
+func (header *BbiHeader) WriteUncompressBufSize(file io.WriteSeeker, order binary.ByteOrder) error {
   if header.PtrUncompressBufSize != 0 {
-    return fileWriteAt(file, binary.LittleEndian, header.PtrUncompressBufSize, header.UncompressBufSize)
+    return fileWriteAt(file, order, header.PtrUncompressBufSize, header.UncompressBufSize)
   }
   return nil
 }
 
-func (header *BbiHeader) Write(file io.WriteSeeker) error {
+func (header *BbiHeader) Write(file io.WriteSeeker, order binary.ByteOrder) error {
 
-  if err := binary.Write(file, binary.LittleEndian, header.Magic); err != nil {
+  if err := binary.Write(file, order, header.Magic); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, header.Version); err != nil {
+  if err := binary.Write(file, order, header.Version); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, header.ZoomLevels); err != nil {
+  if err := binary.Write(file, order, header.ZoomLevels); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1930,7 +1957,7 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrCtOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.CtOffset); err != nil {
+  if err := binary.Write(file, order, header.CtOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1938,7 +1965,7 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrDataOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.DataOffset); err != nil {
+  if err := binary.Write(file, order, header.DataOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1946,13 +1973,13 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrIndexOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.IndexOffset); err != nil {
+  if err := binary.Write(file, order, header.IndexOffset); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, header.FieldCould); err != nil {
+  if err := binary.Write(file, order, header.FieldCould); err != nil {
     return err
   }
-  if err := binary.Write(file, binary.LittleEndian, header.DefinedFieldCount); err != nil {
+  if err := binary.Write(file, order, header.DefinedFieldCount); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1960,7 +1987,7 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrSqlOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.SqlOffset); err != nil {
+  if err := binary.Write(file, order, header.SqlOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1968,7 +1995,7 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrSummaryOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.SummaryOffset); err != nil {
+  if err := binary.Write(file, order, header.SummaryOffset); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1976,7 +2003,7 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrUncompressBufSize = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.UncompressBufSize); err != nil {
+  if err := binary.Write(file, order, header.UncompressBufSize); err != nil {
     return err
   }
   if offset, err := file.Seek(0, 1); err != nil {
@@ -1984,12 +2011,12 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
   } else {
     header.PtrExtensionOffset = offset
   }
-  if err := binary.Write(file, binary.LittleEndian, header.ExtensionOffset); err != nil {
+  if err := binary.Write(file, order, header.ExtensionOffset); err != nil {
     return err
   }
   // zoom levels
   for i := 0; i < int(header.ZoomLevels); i++ {
-    if err := header.ZoomHeaders[i].Write(file); err != nil {
+    if err := header.ZoomHeaders[i].Write(file, order); err != nil {
       return err
     }
   }
@@ -2001,31 +2028,31 @@ func (header *BbiHeader) Write(file io.WriteSeeker) error {
     } else {
       header.SummaryOffset = uint64(offset)
       // write curent offset to the position of SummaryOffset
-      if err := fileWriteAt(file, binary.LittleEndian, header.PtrSummaryOffset, header.SummaryOffset); err != nil {
+      if err := fileWriteAt(file, order, header.PtrSummaryOffset, header.SummaryOffset); err != nil {
         return err
       }
     }
-    if err := binary.Write(file, binary.LittleEndian, header.NBasesCovered); err != nil {
+    if err := binary.Write(file, order, header.NBasesCovered); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, header.MinVal); err != nil {
+    if err := binary.Write(file, order, header.MinVal); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, header.MaxVal); err != nil {
+    if err := binary.Write(file, order, header.MaxVal); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, header.SumData); err != nil {
+    if err := binary.Write(file, order, header.SumData); err != nil {
       return err
     }
-    if err := binary.Write(file, binary.LittleEndian, header.SumSquares); err != nil {
+    if err := binary.Write(file, order, header.SumSquares); err != nil {
       return err
     }
   }
   return nil
 }
 
-func (header *BbiHeader) WriteNBlocks(file io.WriteSeeker) error {
-  return fileWriteAt(file, binary.LittleEndian, int64(header.DataOffset), header.NBlocks)
+func (header *BbiHeader) WriteNBlocks(file io.WriteSeeker, order binary.ByteOrder) error {
+  return fileWriteAt(file, order, int64(header.DataOffset), header.NBlocks)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2036,6 +2063,7 @@ type BbiFile struct {
   Index       RTree
   IndexZoom []RTree
   Fptr       *os.File
+  Order       binary.ByteOrder
 }
 
 type BbiQueryType struct {
@@ -2051,6 +2079,7 @@ func NewBbiFile() *BbiFile {
   bwf := new(BbiFile)
   bwf.Header    = *NewBbiHeader()
   bwf.ChromData = *NewBData()
+  bwf.Order     = binary.LittleEndian
   return bwf
 }
 
@@ -2071,7 +2100,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
       channel <- BbiQueryType{Error: err}
       return
     }
-    decoder := NewBbiZoomBlockDecoder(block)
+    decoder := NewBbiZoomBlockDecoder(block, bwf.Order)
 
     it := decoder.Decode()
     for record := it.Get(); it.Ok(); it.Next() {
@@ -2113,7 +2142,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
       channel <- BbiQueryType{Error: err}
       return
     }
-    decoder, err := NewBbiRawBlockDecoder(block)
+    decoder, err := NewBbiRawBlockDecoder(block, bwf.Order)
     if err != nil {
       channel <- BbiQueryType{Error: err}
       return

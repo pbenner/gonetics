@@ -2112,10 +2112,11 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
       }
       // check if current result record is full or if there is
       // a gap
-      if result.To != result.From &&
-        (result.To  - result.From >= binsize || result.From + binsize < record.From) {
-        // send resulting zoom record
-        channel <- result
+      if result.To  - result.From >= binsize || result.From + binsize < record.From {
+        if result.From != result.To {
+          // send resulting zoom record
+          channel <- result
+        }
         // prepare new zoom record
         result.Reset()
         result.ChromId = chromId
@@ -2157,10 +2158,11 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
       }
       // check if current result record is full or if there is
       // a gap
-      if result.To != result.From &&
-        (result.To  - result.From >= binsize || result.From + binsize < record.From) {
-        // send resulting zoom record
-        channel <- result
+      if result.To  - result.From >= binsize || result.From + binsize < record.From {
+        if result.From != result.To {
+          // send resulting zoom record
+          channel <- result
+        }
         // prepare new zoom record
         result.Reset()
         result.ChromId = chromId

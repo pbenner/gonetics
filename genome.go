@@ -46,6 +46,18 @@ func NewGenome(seqnames []string, lengths []int) Genome {
 
 /* -------------------------------------------------------------------------- */
 
+func (genome Genome) Clone() Genome {
+  seqnames := make([]string, len(genome.Seqnames))
+  lengths  := make([]int,    len(genome.Lengths))
+  for i := 0; i < len(genome.Seqnames); i++ {
+    seqnames[i] = genome.Seqnames[i]
+    lengths [i] = genome.Lengths [i]
+  }
+  return NewGenome(seqnames, lengths)
+}
+
+/* -------------------------------------------------------------------------- */
+
 // Number of chromosomes in the structure.
 func (genome Genome) Length() int {
   return len(genome.Seqnames)

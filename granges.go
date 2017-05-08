@@ -287,23 +287,23 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
     to   := r.Ranges[i].To
     seq  := r.Seqnames[i]
     if m == -1 {
-      m = divIntUp(to - from, track.Binsize)
-    } else if m != divIntUp(to - from, track.Binsize) {
+      m = divIntUp(to - from, track.GetBinsize())
+    } else if m != divIntUp(to - from, track.GetBinsize()) {
       return fmt.Errorf("varying window sizes are not allowed")
     }
     // all rows are using the same binsize
-    binsize[i] = track.Binsize
+    binsize[i] = track.GetBinsize()
     // loop over window
     data[i] = make([]float64, m)
     if r.Strand[i] == '+' || revNegStrand == false {
-      for j, k := 0, from; k < to; k, j = k+track.Binsize, j+1 {
+      for j, k := 0, from; k < to; k, j = k+track.GetBinsize(), j+1 {
         value, err := track.At(seq, k)
         if err == nil {
           data[i][j] = value
         }
       }
     } else if r.Strand[i] == '-' {
-      for j, k := 0, to-1; k >= from; k, j = k-track.Binsize, j+1 {
+      for j, k := 0, to-1; k >= from; k, j = k-track.GetBinsize(), j+1 {
         value, err := track.At(seq, k)
         if err == nil {
           data[i][j] = value
@@ -314,7 +314,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
     }
   }
   r.AddMeta("binsize", binsize)
-  r.AddMeta(track.Name, data)
+  r.AddMeta(track.GetName(), data)
   return nil
 }
 

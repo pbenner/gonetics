@@ -30,7 +30,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) error {
+func (track SimpleTrack) writeWiggle_fixedStep(w io.Writer, seqname string, sequence []float64) error {
   for i, gap := 0, true; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) {
       if gap {
@@ -49,7 +49,7 @@ func (track Track) writeWiggle_fixedStep(w io.Writer, seqname string, sequence [
   return nil
 }
 
-func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) error {
+func (track SimpleTrack) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) error {
   if _, err := fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize); err != nil {
     return err
   }
@@ -65,7 +65,7 @@ func (track Track) writeWiggle_variableStep(w io.Writer, seqname string, sequenc
 
 // Export the track to wiggle format. For sparse tracks (more than half
 // of the values are zero), variable step formatting is used.
-func (track Track) WriteWiggle(filename, description string) error {
+func (track SimpleTrack) WriteWiggle(filename, description string) error {
   f, err := os.Create(filename)
   if err != nil {
     return err
@@ -102,7 +102,7 @@ func (track Track) WriteWiggle(filename, description string) error {
   return nil
 }
 
-func readWiggle_header(scanner *bufio.Scanner, result *Track) error {
+func readWiggle_header(scanner *bufio.Scanner, result *SimpleTrack) error {
   fields := fieldsQuoted(scanner.Text())
 
   for i := 1; i < len(fields); i++ {
@@ -122,7 +122,7 @@ func readWiggle_header(scanner *bufio.Scanner, result *Track) error {
   return nil
 }
 
-func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
+func readWiggle_fixedStep(scanner *bufio.Scanner, result *SimpleTrack) error {
   fields   := fieldsQuoted(scanner.Text())
   seqname  := ""
   sequence := []float64{}
@@ -181,7 +181,7 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *Track) error {
   return nil
 }
 
-func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
+func readWiggle_variableStep(scanner *bufio.Scanner, result *SimpleTrack) error {
   fields   := fieldsQuoted(scanner.Text())
   seqname  := ""
   sequence := []float64{}
@@ -236,7 +236,7 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *Track) error {
 }
 
 // Import data from wiggle files.
-func (track *Track) ReadWiggle(filename string) error {
+func (track *SimpleTrack) ReadWiggle(filename string) error {
 
   header := false
   fields := []string{}

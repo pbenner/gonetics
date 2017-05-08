@@ -30,8 +30,6 @@ type Track interface {
   GetSeqNames ()               []string
   GetSlice    (r GRangesRow)   ([]float64, error)
   CloneTrack  ()               Track
-  At (seqname string, position int) (float64, error)
-  Set(seqname string, position int, value float64) error
   ReadBigWig  (filename, name string, f BinSummaryStatistics, binsize int) error
   WriteBigWig (filename, description string, genome Genome, args... interface{}) error
 }

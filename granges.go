@@ -285,11 +285,14 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
   for i := 0; i < n; i++ {
     from := r.Ranges[i].From
     to   := r.Ranges[i].To
-    seq  := r.Seqnames[i]
+    name := r.Seqnames[i]
     if m == -1 {
       m = divIntUp(to - from, track.GetBinsize())
     } else if m != divIntUp(to - from, track.GetBinsize()) {
       return fmt.Errorf("varying window sizes are not allowed")
+    }
+    seq, err := track.GetSequence(name); if err != nil {
+      return err
     }
     // all rows are using the same binsize
     binsize[i] = track.GetBinsize()
@@ -297,16 +300,14 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
     data[i] = make([]float64, m)
     if r.Strand[i] == '+' || revNegStrand == false {
       for j, k := 0, from; k < to; k, j = k+track.GetBinsize(), j+1 {
-        value, err := track.At(seq, k)
-        if err == nil {
-          data[i][j] = value
+        if t := k/track.GetBinsize(); t < len(seq) {
+          data[i][j] = seq[t]
         }
       }
     } else if r.Strand[i] == '-' {
       for j, k := 0, to-1; k >= from; k, j = k-track.GetBinsize(), j+1 {
-        value, err := track.At(seq, k)
-        if err == nil {
-          data[i][j] = value
+        if t := k/track.GetBinsize(); t < len(seq) {
+          data[i][j] = seq[t]
         }
       }
     } else {

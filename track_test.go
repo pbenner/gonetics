@@ -31,9 +31,8 @@ func TestTrack1(t *testing.T) {
   track  := AllocSimpleTrack("test", genome, 100)
 
   track.Set("chrX", 100, 13.0)
-  track.Add("chrX", 100, 10.0)
 
-  if v, _ := track.At("chrX", 180); v != 23 {
+  if v, _ := track.At("chrX", 180); v != 13 {
     t.Error("TestTrack1 failed!")
   }
 

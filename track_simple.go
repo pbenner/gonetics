@@ -129,34 +129,6 @@ func (track *SimpleTrack) Set(seqname string, position int, value float64) error
   return nil
 }
 
-func (track *SimpleTrack) Add(seqname string, position int, value float64) error {
-  seq, ok := track.Data[seqname]
-  if !ok {
-    return errors.New("invalid seqname")
-  }
-  idx := track.Index(position)
-  if idx < 0 || idx >= len(seq) {
-    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
-  }
-  seq[idx] += value
-
-  return nil
-}
-
-func (track *SimpleTrack) Sub(seqname string, position int, value float64) error {
-  seq, ok := track.Data[seqname]
-  if !ok {
-    return errors.New("invalid seqname")
-  }
-  idx := track.Index(position)
-  if idx < 0 || idx >= len(seq) {
-    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
-  }
-  seq[idx] -= value
-
-  return nil
-}
-
 func (track *SimpleTrack) GetName() string {
   return track.Name
 }

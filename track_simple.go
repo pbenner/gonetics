@@ -72,7 +72,7 @@ func EmptySimpleTrack(name string) SimpleTrack {
 
 /* -------------------------------------------------------------------------- */
 
-func (track SimpleTrack) Clone() *SimpleTrack {
+func (track SimpleTrack) Clone() SimpleTrack {
   name    := track.Name
   binsize := track.Binsize
   data    := make(TMapType)
@@ -83,7 +83,7 @@ func (track SimpleTrack) Clone() *SimpleTrack {
     copy(t, sequence)
     data[name] = t
   }
-  return &SimpleTrack{name, genome, data, binsize}
+  return SimpleTrack{name, genome, data, binsize}
 }
 
 func (track SimpleTrack) CloneTrack() Track {
@@ -121,12 +121,11 @@ func (track SimpleTrack) GetGenome() Genome {
 }
 
 func (track SimpleTrack) GetSequence(query string) (TrackSequence, error) {
-  for name, seq := range track.Data {
-    if name == query {
-      return TrackSequence{seq, track.Binsize}, nil
-    }
+  if seq, ok := track.Data[query]; !ok {
+    return TrackSequence{}, fmt.Errorf("sequence `%s' not found", query)
+  } else {
+    return TrackSequence{seq, track.Binsize}, nil
   }
-  return TrackSequence{}, fmt.Errorf("sequence `%s' not found", query)
 }
 
 func (track SimpleTrack) GetMutableSequence(query string) (TrackMutableSequence, error) {

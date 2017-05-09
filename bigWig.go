@@ -277,7 +277,7 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
   return nil
 }
 
-func (reader *BigWigReader) Query(seqname string, from, to , binsize int) <- chan BbiQueryType {
+func (reader *BigWigReader) Query(seqname string, from, to, binsize int) <- chan BbiQueryType {
   if idx, err := reader.Genome.GetIdx(seqname); err != nil {
     return nil
   } else {

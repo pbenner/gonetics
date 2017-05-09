@@ -239,14 +239,14 @@ func TrackAutocorrelation(track Track, from, to int, normalize bool) (x []int, y
 
 /* -------------------------------------------------------------------------- */
 
-type TrackSummaryStatisticsType struct {
+type TrackSummaryStatistics struct {
   Name string
   Mean float64
   Max  float64
   Min  float64
 }
 
-func (statistics TrackSummaryStatisticsType) String() string {
+func (statistics TrackSummaryStatistics) String() string {
   s := "Track `%s' summary statistics\n"
   s += "- Maximum: %f\n"
   s += "- Minimum: %f\n"
@@ -254,8 +254,8 @@ func (statistics TrackSummaryStatisticsType) String() string {
   return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
 }
 
-func SummaryStatistics(track Track) TrackSummaryStatisticsType {
-  statistics := TrackSummaryStatisticsType{}
+func (track GenericTrack) SummaryStatistics() TrackSummaryStatistics {
+  statistics := TrackSummaryStatistics{}
   statistics.Name = track.GetName()
   statistics.Max  = math.Inf(-1)
   statistics.Min  = math.Inf(+1)
@@ -348,7 +348,7 @@ func (track GenericTrack) Histogram(from, to float64, bins int) TrackHistogram {
   return histogram
 }
 
-func CumulativeHistogram(track Track, from, to float64, bins int) TrackHistogram {
+func (track GenericTrack) CumulativeHistogram(from, to float64, bins int) TrackHistogram {
 
   histogram := GenericTrack{track}.Histogram(from, to, bins)
   // cumulative sum

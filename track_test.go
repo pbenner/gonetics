@@ -24,20 +24,6 @@ import   "testing"
 
 /* -------------------------------------------------------------------------- */
 
-func TestTrack1(t *testing.T) {
-
-  genome := Genome{}
-  genome.ReadFile("Data/hg19.genome")
-  track  := AllocSimpleTrack("test", genome, 100)
-
-  track.Set("chrX", 100, 13.0)
-
-  if v, _ := track.At("chrX", 180); v != 13 {
-    t.Error("TestTrack1 failed!")
-  }
-
-}
-
 func TestTrack2(t *testing.T) {
 
   genome := Genome{}
@@ -59,24 +45,26 @@ func TestTrack2(t *testing.T) {
   strand   := []byte{'+', '+', '+'}
   reads    := NewGRanges(seqnames, from, to, strand)
 
-  TrackAddReads(track, reads, 0)
+  GenericMutableTrack{track}.AddReads(reads, 0)
+
+  seq, _ := track.GetSequence("chr1")
   
-  if v, _ := track.At("chr1",   0); math.Abs(v - 0.35) > 1e-8 {
+  if v := seq.At(  0); math.Abs(v - 0.35) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1",  99); math.Abs(v - 0.35) > 1e-8 {
+  if v := seq.At( 99); math.Abs(v - 0.35) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 100); math.Abs(v - 1.27) > 1e-8 {
+  if v := seq.At(100); math.Abs(v - 1.27) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 199); math.Abs(v - 1.27) > 1e-8 {
+  if v := seq.At(199); math.Abs(v - 1.27) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 200); math.Abs(v - 1.17) > 1e-8 {
+  if v := seq.At(200); math.Abs(v - 1.17) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
-  if v, _ := track.At("chr1", 299); math.Abs(v - 1.17) > 1e-8 {
+  if v := seq.At(299); math.Abs(v - 1.17) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }
 
@@ -94,7 +82,7 @@ func TestTrack3(t *testing.T) {
   track1.WriteWiggle(filename, "test description")
 
   track2 := AllocSimpleTrack("", genome, 10)
-  TrackMap(track2, track2, func(name string, i int, x float64) float64 { return math.NaN() })
+  GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 { return math.NaN() })
   if err := track2.ReadWiggle(filename); err != nil {
     t.Error(err)
   }
@@ -125,7 +113,7 @@ func TestTrack4(t *testing.T) {
     100)
   result := []float64{10.0, 10.0, 10.0, 20.0, 20.0, 15.0, 20.0/3.0, 5.5, 5.5}
 
-  TrackSmoothen(track, 20, []int{1,2,3,4})
+  GenericMutableTrack{track}.Smoothen(20, []int{1,2,3,4})
 
   seq := track.Data["chr1"]
 
@@ -144,7 +132,7 @@ func TestTrack5(t *testing.T) {
     100)
   result := []float64{4.2, 4.2, 4.2, 2.4, 3.0, 3.0, 3.0, 3.0, 3.0}
 
-  TrackSmoothen(track, 20, []int{1,2,3,4,5})
+  GenericMutableTrack{track}.Smoothen(20, []int{1,2,3,4,5})
 
   seq := track.Data["chr1"]
 
@@ -163,7 +151,7 @@ func TestTrack6(t *testing.T) {
     100)
   result := []float64{17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0, 17.0/9.0}
 
-  TrackSmoothen(track, 20, []int{1,2,3,4,5,6,7,8,9,10})
+  GenericMutableTrack{track}.Smoothen(20, []int{1,2,3,4,5,6,7,8,9,10})
 
   seq := track.Data["chr1"]
 
@@ -225,7 +213,7 @@ func TestTrack9(t *testing.T) {
   track1.WriteBigWig(filename, "test description", genome)
 
   track2 := AllocSimpleTrack("", genome, 10)
-  TrackMap(track2, track2, func(name string, i int, x float64) float64 { return math.NaN() })
+  GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 { return math.NaN() })
   err1 := track2.ReadBigWig(filename, "", BinMean, 10)
   if err1 != nil {
     t.Error(err1)

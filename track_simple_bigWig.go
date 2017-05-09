@@ -22,7 +22,7 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
+func (track SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
 
   bwr, err := NewBigWigReader(filename)
   if err != nil {
@@ -49,14 +49,14 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   if tmp, err := NewSimpleTrack(name, seqnames, sequences, binsize); err != nil {
     return err
   } else {
-    *track = *tmp
+    track = tmp
   }
   return nil
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) writeBigWig_reductionLevels(parameters BigWigParameters) []int {
+func (track SimpleTrack) writeBigWig_reductionLevels(parameters BigWigParameters) []int {
   c := BbiResIncrement*track.Binsize
   // reduction levels
   n := []int{}
@@ -82,7 +82,7 @@ func (track *SimpleTrack) writeBigWig_reductionLevels(parameters BigWigParameter
   return n
 }
 
-func (track *SimpleTrack) WriteBigWig(filename, description string, genome Genome, args... interface{}) error {
+func (track SimpleTrack) WriteBigWig(filename, description string, genome Genome, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
 

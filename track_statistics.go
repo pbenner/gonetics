@@ -44,8 +44,8 @@ func BinMin (sum, sumSquares, min, max, n float64) float64 {
 // [normalize] is true the result is normalized by mean and variance. The
 // arguments [from] and [to] specify the range of the delay in basepairs.
 func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (x []int, y []float64, err error) {
-  var sequence1 []float64
-  var sequence2 []float64
+  var sequence1 TrackSequence
+  var sequence2 TrackSequence
   if from < 0 || to < from {
     err = fmt.Errorf("Crosscorrelation(): invalid parameters")
     return
@@ -62,7 +62,7 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
     sequence2, err = track2.GetSequence(name); if err != nil {
       continue
     }
-    if len(sequence1) != len(sequence2) {
+    if sequence1.NBins() != sequence2.NBins() {
       err = fmt.Errorf("Crosscorrelation(): track sequence lengths do not match")
       return
     }
@@ -97,13 +97,13 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
       t1 := 0.0
       t2 := 0.0
       // loop over sequence
-      for i := 0; i < len(sequence1); i++ {
-        s1 += sequence1[i]
-        s2 += sequence2[i]
-        t1 += sequence1[i]*sequence1[i]
-        t2 += sequence2[i]*sequence2[i]
+      for i := 0; i < sequence1.NBins(); i++ {
+        s1 += sequence1.AtBin(i)
+        s2 += sequence2.AtBin(i)
+        t1 += sequence1.AtBin(i)*sequence1.AtBin(i)
+        t2 += sequence2.AtBin(i)*sequence2.AtBin(i)
       }
-      k := float64(len(sequence1))
+      k := float64(sequence1.NBins())
       mean1     = m/(m+k)*mean1     + 1/(m+k)*s1
       mean2     = m/(m+k)*mean2     + 1/(m+k)*s2
       variance1 = m/(m+k)*variance1 + 1/(m+k)*t1
@@ -125,12 +125,12 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
     }
     s := make([]float64, n)
     // loop over sequence
-    for i := 0; i < len(sequence1); i++ {
-      for j := 0; j < n && i+x[j] < len(sequence1); j++ {
-        s[j] += (sequence1[i]-mean1)*(sequence2[i+x[j]]-mean2)
+    for i := 0; i < sequence1.NBins(); i++ {
+      for j := 0; j < n && i+x[j] < sequence1.NBins(); j++ {
+        s[j] += (sequence1.AtBin(i)-mean1)*(sequence2.AtBin(i+x[j])-mean2)
       }
     }
-    k := float64(len(sequence1))
+    k := float64(sequence1.NBins())
     for j := 0; j < n ; j++ {
       y[j] = m/(m+k)*y[j] + 1/(m+k)*s[j]
     }
@@ -162,8 +162,8 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
   // split reads into forward and reverse strand
   forward := s.FilterStrand('+')
   reverse := s.FilterStrand('-')
-  TrackAddReads(track1, forward, 0)
-  TrackAddReads(track2, reverse, 0)
+  GenericMutableTrack{track1}.AddReads(forward, 0)
+  GenericMutableTrack{track2}.AddReads(reverse, 0)
 
   return TrackCrosscorrelation(track1, track2, 0, maxDelay, true)
 }
@@ -254,7 +254,7 @@ func (statistics TrackSummaryStatisticsType) String() string {
   return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
 }
 
-func TrackSummaryStatistics(track Track) TrackSummaryStatisticsType {
+func SummaryStatistics(track Track) TrackSummaryStatisticsType {
   statistics := TrackSummaryStatisticsType{}
   statistics.Name = track.GetName()
   statistics.Max  = math.Inf(-1)
@@ -266,8 +266,8 @@ func TrackSummaryStatistics(track Track) TrackSummaryStatisticsType {
     sequence, err := track.GetSequence(name); if err != nil {
       continue
     }
-    for i := 0; i < len(sequence); i++ {
-      if !math.IsNaN(sequence[i]) {
+    for i := 0; i < sequence.NBins(); i++ {
+      if !math.IsNaN(sequence.AtBin(i)) {
         n++
       }
     }
@@ -277,19 +277,19 @@ func TrackSummaryStatistics(track Track) TrackSummaryStatisticsType {
     sequence, err := track.GetSequence(name); if err != nil {
       continue
     }
-    for i := 0; i < len(sequence); i++ {
+    for i := 0; i < sequence.NBins(); i++ {
       // skip NaN values
-      if math.IsNaN(sequence[i]) {
+      if math.IsNaN(sequence.AtBin(i)) {
         continue
       }
-      if sequence[i] < statistics.Min {
-        statistics.Min = sequence[i]
+      if sequence.AtBin(i) < statistics.Min {
+        statistics.Min = sequence.AtBin(i)
       }
-      if sequence[i] > statistics.Max {
-        statistics.Max = sequence[i]
+      if sequence.AtBin(i) > statistics.Max {
+        statistics.Max = sequence.AtBin(i)
       }
       // update mean
-      statistics.Mean += 1.0/float64(n)*sequence[i]
+      statistics.Mean += 1.0/float64(n)*sequence.AtBin(i)
     }
   }
   return statistics
@@ -297,22 +297,22 @@ func TrackSummaryStatistics(track Track) TrackSummaryStatisticsType {
 
 /* -------------------------------------------------------------------------- */
 
-type TrackHistogramType struct {
+type TrackHistogram struct {
   Name string
   X    []float64
   Y    []float64
 }
 
-func (histogram TrackHistogramType) String() string {
+func (histogram TrackHistogram) String() string {
   s := "Track `%s' histogram\n"
   s += "- X: %v\n"
   s += "- Y: %v"
   return fmt.Sprintf(s, histogram.Name, histogram.X, histogram.Y)
 }
 
-func TrackHistogram(track Track, from, to float64, bins int) TrackHistogramType {
+func (track GenericTrack) Histogram(from, to float64, bins int) TrackHistogram {
 
-  histogram := TrackHistogramType{}
+  histogram := TrackHistogram{}
 
   if from >= to || bins <= 0 {
     return histogram
@@ -333,12 +333,12 @@ func TrackHistogram(track Track, from, to float64, bins int) TrackHistogramType 
     sequence, err := track.GetSequence(name); if err != nil {
       continue
     }
-    for i := 0; i < len(sequence); i++ {
+    for i := 0; i < sequence.NBins(); i++ {
       // skip NaN values
-      if math.IsNaN(sequence[i]) {
+      if math.IsNaN(sequence.AtBin(i)) {
         continue
       }
-      j := int(math.Floor((sequence[i] - from)*c))
+      j := int(math.Floor((sequence.AtBin(i) - from)*c))
 
       if j >= 0 && j < bins {
         histogram.Y[j] += 1.0
@@ -348,9 +348,9 @@ func TrackHistogram(track Track, from, to float64, bins int) TrackHistogramType 
   return histogram
 }
 
-func TrackCumulativeHistogram(track Track, from, to float64, bins int) TrackHistogramType {
+func CumulativeHistogram(track Track, from, to float64, bins int) TrackHistogram {
 
-  histogram := TrackHistogram(track, from, to, bins)
+  histogram := GenericTrack{track}.Histogram(from, to, bins)
   // cumulative sum
   sum := 0.0
 

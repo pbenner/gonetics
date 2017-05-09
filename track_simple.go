@@ -18,7 +18,6 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "errors"
 import "fmt"
 
 /* -------------------------------------------------------------------------- */
@@ -38,9 +37,9 @@ type SimpleTrack struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binsize int) (*SimpleTrack, error) {
+func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binsize int) (SimpleTrack, error) {
   if len(seqnames) != len(sequences) {
-    return nil, fmt.Errorf("invalid arguments")
+    return SimpleTrack{}, fmt.Errorf("invalid arguments")
   }
   data    := make(TMapType)
   lengths := make([]int, len(sequences))
@@ -50,10 +49,10 @@ func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binsi
   }
   genome := NewGenome(seqnames, lengths)
 
-  return &SimpleTrack{name, genome, data, binsize}, nil
+  return SimpleTrack{name, genome, data, binsize}, nil
 }
 
-func AllocSimpleTrack(name string, genome Genome, binsize int) *SimpleTrack {
+func AllocSimpleTrack(name string, genome Genome, binsize int) SimpleTrack {
   data := make(TMapType)
 
   for i := 0; i < genome.Length(); i++ {
@@ -63,18 +62,17 @@ func AllocSimpleTrack(name string, genome Genome, binsize int) *SimpleTrack {
     data[genome.Seqnames[i]] = make([]float64,
       divIntDown(genome.Lengths[i], binsize))
   }
-  return &SimpleTrack{name, genome, data, binsize}
+  return SimpleTrack{name, genome, data, binsize}
 }
 
-func EmptySimpleTrack(name string) *SimpleTrack {
+func EmptySimpleTrack(name string) SimpleTrack {
   data := make(TMapType)
-  return &SimpleTrack{name, Genome{}, data, 0}
+  return SimpleTrack{name, Genome{}, data, 0}
 }
 
-/* access methods
- * -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) Clone() *SimpleTrack {
+func (track SimpleTrack) Clone() *SimpleTrack {
   name    := track.Name
   binsize := track.Binsize
   data    := make(TMapType)
@@ -88,69 +86,59 @@ func (track *SimpleTrack) Clone() *SimpleTrack {
   return &SimpleTrack{name, genome, data, binsize}
 }
 
-func (track *SimpleTrack) CloneTrack() Track {
+func (track SimpleTrack) CloneTrack() Track {
   return track.Clone()
 }
 
-func (track *SimpleTrack) GetBinsize() int {
+func (track SimpleTrack) CloneMutableTrack() MutableTrack {
+  return track.Clone()
+}
+
+/* access methods
+ * -------------------------------------------------------------------------- */
+
+func (track SimpleTrack) GetBinsize() int {
   return track.Binsize
 }
 
-func (track *SimpleTrack) Index(position int) int {
+func (track SimpleTrack) Index(position int) int {
   if position < 0 {
     panic("negative position")
   }
   return position/track.Binsize
 }
 
-func (track *SimpleTrack) At(seqname string, position int) (float64, error) {
-  seq, ok := track.Data[seqname]
-  if !ok {
-    return 0, fmt.Errorf("invalid seqname `%s'", seqname)
-  }
-  idx := track.Index(position)
-  if idx < 0 || idx >= len(seq) {
-    return 0, fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
-  }
-  return seq[idx], nil
-}
-
-func (track *SimpleTrack) Set(seqname string, position int, value float64) error {
-  seq, ok := track.Data[seqname]
-  if !ok {
-    return errors.New("invalid seqname")
-  }
-  idx := track.Index(position)
-  if idx < 0 || idx >= len(seq) {
-    return fmt.Errorf("invalid position `%d' on sequence `%s'", position, seqname)
-  }
-  seq[idx] = value
-
-  return nil
-}
-
-func (track *SimpleTrack) GetName() string {
+func (track SimpleTrack) GetName() string {
   return track.Name
 }
 
-func (track *SimpleTrack) GetSeqNames() []string {
+func (track SimpleTrack) GetSeqNames() []string {
   return track.Genome.Seqnames
 }
 
-func (track *SimpleTrack) GetGenome() Genome {
+func (track SimpleTrack) GetGenome() Genome {
   return track.Genome
 }
 
-func (track *SimpleTrack) GetSequence(query string) ([]float64, error) {
+func (track SimpleTrack) GetSequence(query string) (TrackSequence, error) {
   for name, seq := range track.Data {
     if name == query {
-      return seq, nil
+      return TrackSequence{seq, track.Binsize}, nil
     }
   }
-  return nil, fmt.Errorf("sequence `%s' not found", query)
+  return TrackSequence{}, fmt.Errorf("sequence `%s' not found", query)
 }
 
-func (track *SimpleTrack) GetSlice(r GRangesRow) ([]float64, error) {
+func (track SimpleTrack) GetMutableSequence(query string) (TrackMutableSequence, error) {
+  for name, seq := range track.Data {
+    if name == query {
+      return TrackMutableSequence{TrackSequence{seq, track.Binsize}}, nil
+    }
+  }
+  return TrackMutableSequence{}, fmt.Errorf("sequence `%s' not found", query)
+}
+
+func (track SimpleTrack) GetSlice(r GRangesRow) ([]float64, error) {
   seq, ok := track.Data[r.Seqname]
   if !ok {
     return nil, fmt.Errorf("GetSlice(): invalid seqname `%s'", r.Seqname)

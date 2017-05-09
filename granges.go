@@ -300,14 +300,14 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
     data[i] = make([]float64, m)
     if r.Strand[i] == '+' || revNegStrand == false {
       for j, k := 0, from; k < to; k, j = k+track.GetBinsize(), j+1 {
-        if t := k/track.GetBinsize(); t < len(seq) {
-          data[i][j] = seq[t]
+        if t := k/track.GetBinsize(); t < seq.NBins() {
+          data[i][j] = seq.AtBin(t)
         }
       }
     } else if r.Strand[i] == '-' {
       for j, k := 0, to-1; k >= from; k, j = k-track.GetBinsize(), j+1 {
-        if t := k/track.GetBinsize(); t < len(seq) {
-          data[i][j] = seq[t]
+        if t := k/track.GetBinsize(); t < seq.NBins() {
+          data[i][j] = seq.AtBin(t)
         }
       }
     } else {

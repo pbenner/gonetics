@@ -162,8 +162,8 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
   // split reads into forward and reverse strand
   forward := s.FilterStrand('+')
   reverse := s.FilterStrand('-')
-  GenericMutableTrack{track1}.AddReads(forward, 0)
-  GenericMutableTrack{track2}.AddReads(reverse, 0)
+  GenericMutableTrack{track1}.AddReads(forward, 0, true)
+  GenericMutableTrack{track2}.AddReads(reverse, 0, true)
 
   return TrackCrosscorrelation(track1, track2, 0, maxDelay, true)
 }

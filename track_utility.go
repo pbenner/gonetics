@@ -27,8 +27,9 @@ import "sort"
 
 // Add reads to track. All reads are extended in 3' direction to have
 // a length of [d]. This is the same as the macs2 `extsize' parameter.
-// Reads are not extended if [d] is zero.
-func (track GenericMutableTrack) AddReads(reads GRanges, d int) error {
+// Reads are not extended if [d] is zero. If [addOverlap] is true, the
+// percentage of overlap between reads and bins is added.
+func (track GenericMutableTrack) AddReads(reads GRanges, d int, addOverlap bool) error {
   for i := 0; i < reads.Length(); i++ {
     seq, err := track.GetSequence(reads.Seqnames[i]); if err != nil {
       continue
@@ -53,7 +54,11 @@ func (track GenericMutableTrack) AddReads(reads GRanges, d int) error {
       if j >= seq.NBins() {
         break
       } else {
-        seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binsize))
+        if addOverlap {
+          seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binsize))
+        } else {
+          seq.SetBin(j, seq.AtBin(j) + 1.0)
+        }
       }
     }
   }

@@ -22,6 +22,7 @@ import "fmt"
 import "math"
 import "encoding/binary"
 import "os"
+import "regexp"
 import "sort"
 import "strings"
 
@@ -277,22 +278,36 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
   return nil
 }
 
-func (reader *BigWigReader) Query(seqname string, from, to, binsize int) <- chan BbiQueryType {
-  if idx, err := reader.Genome.GetIdx(seqname); err != nil {
-    return nil
-  } else {
-    return reader.Bwf.Query(idx, from, to, binsize)
-  }
+func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- chan BbiQueryType {
+  channel := make(chan BbiQueryType, 100)
+  go func() {
+    if r, err := regexp.Compile("^"+seqRegex+"$"); err != nil {
+      return
+    } else {
+      for _, seqname := range reader.Genome.Seqnames {
+        if !r.MatchString(seqname) {
+          continue
+        }
+        if idx, err := reader.Genome.GetIdx(seqname); err != nil {
+          return
+        } else {
+          reader.Bwf.query(channel, idx, from, to, binsize)
+        }
+      }
+    }
+    close(channel)
+  }()
+  return channel
 }
 
-func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics, binsize int) ([]float64, error) {
-  if seqlength, err := reader.Genome.SeqLength(seqname); err != nil {
+func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int) ([]float64, error) {
+  if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, err
   } else {
     var s []float64
     // a binsize of 0 means that the raw data is returned as is
     if binsize == 0 {
-      for record := range reader.Query(seqname, 0, seqlength, binsize) {
+      for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, record.Error
         }
@@ -308,7 +323,7 @@ func (reader *BigWigReader) QuerySequence(seqname string, f BinSummaryStatistics
       }
     } else {
       s = make([]float64, divIntDown(seqlength, binsize))
-      for record := range reader.Query(seqname, 0, seqlength, binsize) {
+      for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, record.Error
         }

@@ -152,7 +152,7 @@ BigWig files contain data in a binary format optimized for fast random access. I
     log.Fatal(err)
   }
   // query details
-  seqname := "chr4"
+  seqname := "chr4" // (regular expression)
   from    := 11774000
   to      := 11778000
   binsize := 20

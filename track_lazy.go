@@ -33,17 +33,17 @@ type LazyTrack struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewLazyTrack(filename, name string, binsize int) (LazyTrack, error) {
+func NewLazyTrack(filename, name string, f BinSummaryStatistics, binsize int) (LazyTrack, error) {
   bwr, err := NewBigWigReader(filename); if err != nil {
     return LazyTrack{}, err
   }
-  return LazyTrack{name, binsize, *bwr, filename, BinMean}, nil
+  return LazyTrack{name, binsize, *bwr, filename, f}, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (track LazyTrack) Clone() LazyTrack {
-  track, err := NewLazyTrack(track.Filename, track.Name, track.Binsize); if err != nil {
+  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.Binsize); if err != nil {
     panic(err)
   }
   return track
@@ -93,4 +93,15 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
     }
   }
   return seq, nil
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
+  if tmp, err := NewLazyTrack(filename, name, f, binsize); err != nil {
+    return err
+  } else {
+    *track = tmp
+  }
+  return nil
 }

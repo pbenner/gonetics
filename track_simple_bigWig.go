@@ -69,7 +69,7 @@ func (track GenericTrack) writeBigWig_reductionLevels(parameters BigWigParameter
   // length of the longest track
   l := 0
   // get length of longest track
-  for length := range track.GetGenome().Lengths {
+  for _, length := range track.GetGenome().Lengths {
     if length/track.GetBinsize() > l {
       l = length/track.GetBinsize()
     }

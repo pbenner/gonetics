@@ -2179,6 +2179,12 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
 }
 
 func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binsize int) {
+  // a binsize of zero is used to query raw data without
+  // any further summary
+  if binsize != 0 {
+    from = divIntDown(from, binsize)*binsize
+    to   = divIntUp  (to,   binsize)*binsize
+  }
   // index of a matching zoom level for the given binsize
   zoomIdx := -1
   for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
@@ -2195,12 +2201,6 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binsize 
 }
 
 func (bwf *BbiFile) Query(chromId, from, to, binsize int) <- chan BbiQueryType {
-  // a binsize of zero is used to query raw data without
-  // any further summary
-  if binsize != 0 {
-    from = divIntDown(from, binsize)*binsize
-    to   = divIntUp  (to,   binsize)*binsize
-  }
   channel := make(chan BbiQueryType, 100)
   go func() {
     bwf.query(channel, chromId, from, to, binsize)

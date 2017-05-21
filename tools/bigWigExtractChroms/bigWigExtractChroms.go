@@ -58,7 +58,7 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
         genome.AddSequence(chromName, length)
       }
     }
-    t := NewTrack("", genome.Seqnames, sequences, binsize)
+    t, _ := NewSimpleTrack("", genome.Seqnames, sequences, binsize)
     if verbose {
       log.Printf("writing track `%s'", filenameOut)
     }

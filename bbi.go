@@ -653,7 +653,7 @@ func (it *BbiRawBlockEncoderIterator) Next() {
   } else {
     // variable step
     for ; it.position < len(it.sequence); it.position++ {
-      if it.sequence[it.position] != 0.0 && !math.IsNaN(it.sequence[it.position]) {
+      if !math.IsNaN(it.sequence[it.position]) {
         it.encodeVariable(it.tmp[0:8], header.End, it.sequence[it.position])
         if _, err := b.Write(it.tmp[0:8]); err != nil {
           panic(err)

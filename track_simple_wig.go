@@ -54,7 +54,7 @@ func (track SimpleTrack) writeWiggle_variableStep(w io.Writer, seqname string, s
     return err
   }
   for i := 0; i < len(sequence); i++ {
-    if !math.IsNaN(sequence[i]) && sequence[i] != 0.0 {
+    if !math.IsNaN(sequence[i]) {
       if _, err := fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, sequence[i]); err != nil {
         return err
       }

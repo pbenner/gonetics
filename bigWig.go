@@ -394,7 +394,7 @@ func (bww *BigWigWriter) useFixedStep(sequence []float64) bool {
   n := 0
   // check if sequence is dense or sparse
   for i := 0; i < len(sequence); i++ {
-    if math.IsNaN(sequence[i]) || sequence[i] == 0 {
+    if math.IsNaN(sequence[i]) {
       n++
     }
   }

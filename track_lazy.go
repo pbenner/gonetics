@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
+import "math"
 
 /* -------------------------------------------------------------------------- */
 
@@ -73,7 +74,7 @@ func (track LazyTrack) GetGenome() Genome {
 }
 
 func (track LazyTrack) GetSequence(query string) (TrackSequence, error) {
-  if seq, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize); err != nil {
+  if seq, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, math.NaN()); err != nil {
     return TrackSequence{}, err
   } else {
     return TrackSequence{seq, track.Binsize}, nil

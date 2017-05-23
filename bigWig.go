@@ -300,7 +300,7 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- cha
   return channel
 }
 
-func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int) ([]float64, error) {
+func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int, init float64) ([]float64, error) {
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, err
   } else {
@@ -316,6 +316,11 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
         if binsize == 0 {
           binsize = record.To - record.From
           s = make([]float64, divIntDown(seqlength, binsize))
+          if init != 0.0 {
+            for i := 0; i < len(s); i++ {
+              s[i] = init
+            }
+          }
         }
         if idx := record.From/binsize; idx >= 0 && idx < len(s) {
           s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
@@ -323,6 +328,11 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
       }
     } else {
       s = make([]float64, divIntDown(seqlength, binsize))
+      if init != 0.0 {
+        for i := 0; i < len(s); i++ {
+          s[i] = init
+        }
+      }
       for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, record.Error

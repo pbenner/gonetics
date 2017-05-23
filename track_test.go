@@ -230,6 +230,9 @@ func TestTrack9(t *testing.T) {
       if math.Abs(seq1[i] - seq2[i]) > 1e-4 {
         t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
       }
+      if math.IsNaN(seq1[i]) != math.IsNaN(seq2[i]) {
+        t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
+      }
     }
   }
 }

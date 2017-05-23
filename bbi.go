@@ -614,6 +614,10 @@ func (it *BbiRawBlockEncoderIterator) Ok() bool {
 func (it *BbiRawBlockEncoderIterator) Next() {
   // create a new buffer (the returned block should not be overwritten by later calls)
   b := new(bytes.Buffer)
+  // skip NaN values
+  for it.position < len(it.sequence) && math.IsNaN(it.sequence[it.position]) {
+    it.position++
+  }
   // reset result
   it.r.From  = 0
   it.r.To    = 0
@@ -639,6 +643,13 @@ func (it *BbiRawBlockEncoderIterator) Next() {
   if it.fixedStep {
     // fixed step
     for ; it.position < len(it.sequence); it.position++ {
+      // end this block if there is a NaN value
+      if math.IsNaN(it.sequence[it.position]) {
+        for it.position < len(it.sequence) && math.IsNaN(it.sequence[it.position]) {
+          it.position++
+        }
+        break
+      }
       it.encodeFixed(it.tmp[0:4], it.sequence[it.position])
       if _, err := b.Write(it.tmp[0:4]); err != nil {
         panic(err)
@@ -2093,6 +2104,9 @@ func (bwf *BbiFile) Close() error {
 func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binsize int) {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType()
+  // set from to -1 so we are able to detect the first record and
+  // update from accordingly
+  result.From = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2109,6 +2123,11 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
       }
       if record.From < from || record.To > to {
         continue
+      }
+      if result.From == -1 {
+        result.ChromId = record.ChromId
+        result.From    = record.From
+        result.To      = record.From
       }
       // check if current result record is full or if there is
       // a gap
@@ -2136,6 +2155,9 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType()
+  // set from to -1 so we are able to detect the first record and
+  // update from accordingly
+  result.From = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2155,6 +2177,11 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
       }
       if record.From < from || record.To > to {
         continue
+      }
+      if result.From == -1 {
+        result.ChromId = record.ChromId
+        result.From    = record.From
+        result.To      = record.From
       }
       // check if current result record is full or if there is
       // a gap

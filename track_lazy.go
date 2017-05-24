@@ -74,7 +74,7 @@ func (track LazyTrack) GetGenome() Genome {
 }
 
 func (track LazyTrack) GetSequence(query string) (TrackSequence, error) {
-  if seq, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, track.Init); err != nil {
+  if seq, _, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, track.Init); err != nil {
     return TrackSequence{}, err
   } else {
     return TrackSequence{seq, track.Binsize}, nil

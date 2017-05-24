@@ -300,16 +300,16 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- cha
   return channel
 }
 
-func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int, init float64) ([]float64, error) {
+func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int, init float64) ([]float64, int, error) {
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
-    return nil, err
+    return nil, -1, err
   } else {
     var s []float64
     // a binsize of 0 means that the raw data is returned as is
     if binsize == 0 {
       for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
-          return nil, record.Error
+          return nil, -1, record.Error
         }
         // try to determine binsize from the first record (this most likely
         // fails for bedGraph files)
@@ -335,14 +335,14 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
       }
       for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
-          return nil, record.Error
+          return nil, -1, record.Error
         }
         if idx := record.From/binsize; idx >= 0 && idx < len(s) {
           s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
         }
       }
     }
-    return s, nil
+    return s, binsize, nil
   }
 }
 

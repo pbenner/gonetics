@@ -34,7 +34,7 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   for i := 0; i < bwr.Genome.Length(); i++ {
     length  := bwr.Genome.Lengths [i]
     seqname := bwr.Genome.Seqnames[i]
-    if s, err := bwr.QuerySequence(seqname, f, binsize, init); err != nil {
+    if s, _, err := bwr.QuerySequence(seqname, f, binsize, init); err != nil {
       return err
     } else {
       if binsize == 0 {

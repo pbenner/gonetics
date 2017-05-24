@@ -196,8 +196,7 @@ type BbiSummaryRecord struct {
 
 func NewBbiSummaryRecord() BbiSummaryRecord {
   record := BbiSummaryRecord{}
-  record.Min = math.Inf( 1)
-  record.Max = math.Inf(-1)
+  record.Reset()
   return record
 }
 
@@ -2104,10 +2103,6 @@ func (bwf *BbiFile) Close() error {
 func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binsize int) {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType()
-  // set from to -1 so we are able to detect the first record and
-  // update from accordingly
-  result.From = -1
-  result.To   = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2125,7 +2120,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
       if record.From < from || record.To > to {
         continue
       }
-      if result.From == -1 {
+      if result.ChromId == -1 {
         result.ChromId = record.ChromId
         result.From    = record.From
         result.To      = record.From
@@ -2156,10 +2151,6 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType()
-  // set from to -1 so we are able to detect the first record and
-  // update from accordingly
-  result.From = -1
-  result.To   = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2180,7 +2171,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
       if record.From < from || record.To > to {
         continue
       }
-      if result.From == -1 {
+      if result.ChromId == -1 {
         result.ChromId = record.ChromId
         result.From    = record.From
         result.To      = record.From

@@ -2107,6 +2107,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
   // set from to -1 so we are able to detect the first record and
   // update from accordingly
   result.From = -1
+  result.To   = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2138,7 +2139,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
         }
         // prepare new zoom record
         result.Reset()
-        result.ChromId = chromId
+        result.ChromId = record.ChromId
         result.From    = record.From
         result.To      = record.From
       }
@@ -2158,6 +2159,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
   // set from to -1 so we are able to detect the first record and
   // update from accordingly
   result.From = -1
+  result.To   = -1
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(bwf, r.Idx)
@@ -2192,7 +2194,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
         }
         // prepare new zoom record
         result.Reset()
-        result.ChromId = chromId
+        result.ChromId = record.ChromId
         result.From    = record.From
         result.To      = record.From
       }

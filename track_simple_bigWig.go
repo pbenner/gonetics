@@ -19,11 +19,10 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "math"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
+func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int, init float64) error {
 
   bwr, err := NewBigWigReader(filename)
   if err != nil {
@@ -35,7 +34,7 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   for i := 0; i < bwr.Genome.Length(); i++ {
     length  := bwr.Genome.Lengths [i]
     seqname := bwr.Genome.Seqnames[i]
-    if s, err := bwr.QuerySequence(seqname, f, binsize, math.NaN()); err != nil {
+    if s, err := bwr.QuerySequence(seqname, f, binsize, init); err != nil {
       return err
     } else {
       if binsize == 0 {

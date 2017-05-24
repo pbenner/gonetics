@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
-import "math"
 
 /* -------------------------------------------------------------------------- */
 
@@ -29,22 +28,23 @@ type LazyTrack struct {
   Bwr        BigWigReader
   Filename   string
   BinSumStat BinSummaryStatistics
+  Init       float64
 }
 
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewLazyTrack(filename, name string, f BinSummaryStatistics, binsize int) (LazyTrack, error) {
+func NewLazyTrack(filename, name string, f BinSummaryStatistics, binsize int, init float64) (LazyTrack, error) {
   bwr, err := NewBigWigReader(filename); if err != nil {
     return LazyTrack{}, err
   }
-  return LazyTrack{name, binsize, *bwr, filename, f}, nil
+  return LazyTrack{name, binsize, *bwr, filename, f, init}, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (track LazyTrack) Clone() LazyTrack {
-  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.Binsize); if err != nil {
+  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.Binsize, track.Init); if err != nil {
     panic(err)
   }
   return track
@@ -74,7 +74,7 @@ func (track LazyTrack) GetGenome() Genome {
 }
 
 func (track LazyTrack) GetSequence(query string) (TrackSequence, error) {
-  if seq, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, math.NaN()); err != nil {
+  if seq, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, track.Init); err != nil {
     return TrackSequence{}, err
   } else {
     return TrackSequence{seq, track.Binsize}, nil
@@ -98,8 +98,8 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int) error {
-  if tmp, err := NewLazyTrack(filename, name, f, binsize); err != nil {
+func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int, init float64) error {
+  if tmp, err := NewLazyTrack(filename, name, f, binsize, init); err != nil {
     return err
   } else {
     *track = tmp

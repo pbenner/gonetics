@@ -184,7 +184,6 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *SimpleTrack) error {
 func readWiggle_variableStep(scanner *bufio.Scanner, result *SimpleTrack) error {
   fields   := fieldsQuoted(scanner.Text())
   seqname  := ""
-  sequence := []float64{}
   // parse header
   for i := 1; i < len(fields); i++ {
     headerFields := strings.FieldsFunc(fields[i], func(r rune) bool { return r == '=' })

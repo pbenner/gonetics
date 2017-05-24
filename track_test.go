@@ -82,7 +82,9 @@ func TestTrack3(t *testing.T) {
   track1.WriteWiggle(filename, "test description")
 
   track2 := AllocSimpleTrack("", genome, 10)
+  // initialize all values to NaN
   GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 { return math.NaN() })
+
   if err := track2.ReadWiggle(filename); err != nil {
     t.Error(err)
   }
@@ -95,11 +97,11 @@ func TestTrack3(t *testing.T) {
       t.Error("TestTrack3 failed")
     }
     for i := 0; i < len(seq1); i++ {
-      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
-        continue
+      if math.IsNaN(seq1[i]) != math.IsNaN(seq2[i]) {
+        t.Errorf("test failed for sequence `%s' at position `%d'", name, i)
       }
-      if seq1[i] != seq2[i] {
-        t.Error("TestTrack3 failed")
+      if !math.IsNaN(seq1[i]) && seq1[i] != seq2[i] {
+        t.Errorf("test failed for sequence `%s' at position `%d'", name, i)
       }
     }
   }
@@ -169,7 +171,7 @@ func TestTrack7(t *testing.T) {
   genome := Genome{}
   genome.ReadFile("track_test.1.genome")
 
-  if err := track.ReadBigWig("track_test.1.bw", "", BinMean, 10); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)
   }
   if err := track.WriteBigWig("track_test.1.bw.tmp", "", genome); err != nil {
@@ -177,7 +179,7 @@ func TestTrack7(t *testing.T) {
   }
   // reset track and read file again
   track = SimpleTrack{}
-  if err := track.ReadBigWig("track_test.1.bw.tmp", "", BinMean, 10); err != nil {
+  if err := track.ReadBigWig("track_test.1.bw.tmp", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)
   }
 }
@@ -190,13 +192,13 @@ func TestTrack8(t *testing.T) {
   genome := Genome{}
   genome.ReadFile("track_test.3.genome")
 
-  if err := track1.ReadBigWig("track_test.3.bw", "", BinMean, 10); err != nil {
+  if err := track1.ReadBigWig("track_test.3.bw", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)
   }
   if err := track1.WriteBigWig("track_test.3.bw.tmp", "", genome); err != nil {
     t.Error(err)
   }
-  if err := track2.ReadBigWig("track_test.3.bw.tmp", "", BinMean, 10); err != nil {
+  if err := track2.ReadBigWig("track_test.3.bw.tmp", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)
   }
 }
@@ -213,25 +215,22 @@ func TestTrack9(t *testing.T) {
   track1.WriteBigWig(filename, "test description", genome)
 
   track2 := AllocSimpleTrack("", genome, 10)
-  GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 { return math.NaN() })
-  err1 := track2.ReadBigWig(filename, "", BinMean, 10)
+
+  err1 := track2.ReadBigWig(filename, "", BinMean, 10, math.NaN())
   if err1 != nil {
     t.Error(err1)
   }
   for name, seq1 := range track1.Data {
     seq2 := track2.Data[name]
     if seq2 == nil {
-      t.Error("TestTrack3 failed")
+      t.Error("test failed")
     }
     for i := 0; i < len(seq1); i++ {
-      if math.IsNaN(seq1[i]) && math.IsNaN(seq2[i]) {
-        continue
-      }
-      if math.Abs(seq1[i] - seq2[i]) > 1e-4 {
-        t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
-      }
       if math.IsNaN(seq1[i]) != math.IsNaN(seq2[i]) {
-        t.Errorf("TestTrack3 failed for sequence `%s' at position `%d'", name, i)
+        t.Errorf("test failed for sequence `%s' at position `%d'", name, i)
+      }
+      if !math.IsNaN(seq1[i]) && math.Abs(seq1[i] - seq2[i]) > 1e-4 {
+        t.Errorf("test failed for sequence `%s' at position `%d'", name, i)
       }
     }
   }

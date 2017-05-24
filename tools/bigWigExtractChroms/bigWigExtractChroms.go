@@ -20,6 +20,7 @@ package main
 
 import   "fmt"
 import   "log"
+import   "math"
 import   "os"
 import   "strings"
 
@@ -47,7 +48,7 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
         if verbose {
           log.Printf("reading sequence %s", chromName)
         }
-        if s, err := reader.QuerySequence(chromName, BinMean, binsize); err != nil {
+        if s, err := reader.QuerySequence(chromName, BinMean, binsize, math.NaN()); err != nil {
           log.Fatal (err)
         } else {
           if binsize == 0 {

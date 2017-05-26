@@ -71,7 +71,7 @@ func (granges GRanges) WriteBed6(filename string, compress bool) error {
     if len(granges.Strand) > 0 {
       fmt.Fprintf(w, "\t%c", granges.Strand[i])
     } else {
-      fmt.Fprintf(w, "\t%c", '*')
+      fmt.Fprintf(w, "\t%s", ".")
     }
     fmt.Fprintf(w, "\n")
   }

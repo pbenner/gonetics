@@ -18,11 +18,11 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) WriteBed(filename string, compress, valuesAsName bool) error {
+func (track GenericTrack) WriteBed(filename string, compress, discretizeValues bool) error {
   binsize  := track.GetBinsize()
   seqnames := []string{}
   from     := []int{}
@@ -59,8 +59,12 @@ func (track GenericTrack) WriteBed(filename string, compress, valuesAsName bool)
     values   = append(values, c_val)
   }
   r := NewGRanges(seqnames, from, to, nil)
-  if valuesAsName {
-    r.AddMeta("name", values)
+  if discretizeValues {
+    v_str := make([]string, len(values))
+    for i := 0; i < len(v_str); i++ {
+      v_str[i] = fmt.Sprintf("%d", int(values[i]))
+    }
+    r.AddMeta("name", v_str)
   } else {
     r.AddMeta("score", values)
   }

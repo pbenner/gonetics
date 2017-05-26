@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) WriteBed(filename string, compress bool) error {
+func (track GenericTrack) WriteBed(filename string, compress, valuesAsName bool) error {
   binsize  := track.GetBinsize()
   seqnames := []string{}
   from     := []int{}
@@ -59,7 +59,11 @@ func (track GenericTrack) WriteBed(filename string, compress bool) error {
     values   = append(values, c_val)
   }
   r := NewGRanges(seqnames, from, to, nil)
-  r.AddMeta("score", values)
+  if valuesAsName {
+    r.AddMeta("name", values)
+  } else {
+    r.AddMeta("score", values)
+  }
   // write to file
   return r.WriteBed6(filename, compress)
 }

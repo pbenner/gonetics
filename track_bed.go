@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) WriteBed3(filename string, compress bool) error {
+func (track GenericTrack) WriteBed(filename string, compress bool) error {
   binsize  := track.GetBinsize()
   seqnames := []string{}
   from     := []int{}

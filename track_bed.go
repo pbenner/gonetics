@@ -1,4 +1,4 @@
-/* Copyright (C) 2016 Philipp Benner
+/* Copyright (C) 2016, 2017 Philipp Benner
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,55 +18,13 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
+//import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) WriteBed(filename string, compress, discretizeValues bool) error {
-  binsize  := track.GetBinsize()
-  seqnames := []string{}
-  from     := []int{}
-  to       := []int{}
-  values   := []float64{}
-  for _, name := range track.GetSeqNames() {
-    sequence, err := track.GetSequence(name); if err != nil {
-      return err
-    }
-    if sequence.NBins() == 0 {
-      continue
-    }
-    // current values
-    c_from := 0
-    c_to   := binsize
-    c_val  := sequence.AtBin(0)
-    for i := 1; i < sequence.NBins(); i++ {
-      if v := sequence.AtBin(i); v != c_val {
-        seqnames = append(seqnames, name)
-        from     = append(from,   c_from)
-        to       = append(to,     c_to)
-        values   = append(values, c_val)
-        c_from   = c_to
-        c_to     = c_from + binsize
-        c_val    = v
-      } else {
-        c_to    += binsize
-      }
-    }
-    // append last result
-    seqnames = append(seqnames, name)
-    from     = append(from, c_from)
-    to       = append(to,   c_to)
-    values   = append(values, c_val)
-  }
-  r := NewGRanges(seqnames, from, to, nil)
-  if discretizeValues {
-    v_str := make([]string, len(values))
-    for i := 0; i < len(v_str); i++ {
-      v_str[i] = fmt.Sprintf("%d", int(values[i]))
-    }
-    r.AddMeta("name", v_str)
-  } else {
-    r.AddMeta("score", values)
+func (track GenericTrack) WriteBed(filename string, compress bool) error {
+  r, err := track.GRanges(); if err != nil {
+    return err
   }
   // write to file
   return r.WriteBed6(filename, compress)

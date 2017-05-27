@@ -118,7 +118,7 @@ func (granges GRanges) WriteBed9(filename string, compress bool) error {
     if len(thickEnd) > 0 {
       fmt.Fprintf(w, "\t%d", thickEnd[i])
     } else {
-      fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
+      fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
     }
     if len(itemRgb) > 0 {
       fmt.Fprintf(w, "\t%s", itemRgb[i])

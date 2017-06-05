@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "io"
 import "log"
 import "database/sql"
 
@@ -89,10 +90,18 @@ func ImportCpGIslandsFromUCSC(genome string) GRanges {
   return r
 }
 
-func ReadCpGIslandsFromTable(filename string) GRanges {
+func ReadCpGIslandsFromTable(r io.ReadSeeker) (GRanges, error) {
   cpg := GRanges{}
-  cpg.ReadTable(filename,
+  err := cpg.ReadTable(r,
     []string{"length", "cpgNum", "gcNum", "perCpg", "perGc", "obsExp"},
     []string{"[]int", "[]int", "[]int", "[]float64", "[]float64", "[]float64"})
-  return cpg
+  return cpg, err
+}
+
+func ImportCpGIslandsFromTable(filename string) (GRanges, error) {
+  cpg := GRanges{}
+  err := cpg.ImportTable(filename,
+    []string{"length", "cpgNum", "gcNum", "perCpg", "perGc", "obsExp"},
+    []string{"[]int", "[]int", "[]int", "[]float64", "[]float64", "[]float64"})
+  return cpg, err
 }

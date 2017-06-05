@@ -20,9 +20,7 @@ package gonetics
 
 import "fmt"
 import "bufio"
-import "compress/gzip"
 import "io"
-import "os"
 import "strconv"
 import "strings"
 
@@ -78,7 +76,9 @@ func (meta Meta) WriteTableRow(w io.Writer, i int) {
   }
 }
 
-func (meta *Meta) ReadTable(filename string, names, types []string) error {
+func (meta *Meta) ReadTable(r io.Reader, names, types []string) error {
+  scanner := bufio.NewScanner(r)
+
   if len(names) != len(types) {
     panic("invalid arguments")
   }
@@ -97,33 +97,12 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
     default: panic("invalid types argument")
     }
   }
-
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
-
   // scan header
   if scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     // get number of columns
     if len(fields) < 4 {
-      return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
+      return fmt.Errorf("invalid table")
     }
     for i := 0; i < len(fields); i++ {
       if _, ok := idxMap[fields[i]]; ok {
@@ -142,7 +121,7 @@ func (meta *Meta) ReadTable(filename string, names, types []string) error {
         continue
       }
       if idx >= len(fields) {
-        return fmt.Errorf("ReadTable(): invalid table `%s'", filename)
+        return fmt.Errorf("invalid table")
       }
       switch entry := metaMap[name].(type) {
       case []string:

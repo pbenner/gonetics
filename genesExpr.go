@@ -22,6 +22,7 @@ import "fmt"
 import "bufio"
 import "compress/gzip"
 import "os"
+import "io"
 import "strconv"
 import "strings"
 
@@ -33,9 +34,9 @@ import "strings"
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func (genes *Genes) ReadGTFExpr(filename, geneIdName, exprIdName string) error {
+func (genes *Genes) ReadGTFExpr(r io.Reader, geneIdName, exprIdName string) error {
   granges := GRanges{}
-  granges.ReadGTF(filename, []string{geneIdName, exprIdName}, []string{"[]string", "[]float64"})
+  granges.ReadGTF(r, []string{geneIdName, exprIdName}, []string{"[]string", "[]float64"})
 
   // slice containing expression values
   expr := make([]float64, genes.Length())
@@ -59,10 +60,8 @@ func (genes *Genes) ReadGTFExpr(filename, geneIdName, exprIdName string) error {
   return nil
 }
 
-// Import expression data from cufflinks. The data is added to the gene
-// list as a meta column named "expr".
-func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) error {
-  var scanner *bufio.Scanner
+func (genes *Genes) ImportGTFExpr(filename string, geneIdName, exprIdName string) error {
+  var r io.Reader
   // open file
   f, err := os.Open(filename)
   if err != nil {
@@ -76,12 +75,19 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) err
       return err
     }
     defer g.Close()
-    scanner = bufio.NewScanner(g)
+    r = g
   } else {
-    scanner = bufio.NewScanner(f)
+    r = f
   }
-  expr := make([]float64, genes.Length())
+  return genes.ReadGTFExpr(r, geneIdName, exprIdName)
+}
 
+// Import expression data from cufflinks. The data is added to the gene
+// list as a meta column named "expr".
+func (genes *Genes) ReadCufflinksFPKMTracking(r io.Reader, verbose bool) error {
+  scanner := bufio.NewScanner(r)
+
+  expr := make([]float64, genes.Length())
   // parse header
   scanner.Scan();
   if err := scanner.Err(); err != nil {
@@ -123,4 +129,26 @@ func (genes *Genes) ReadCufflinksFPKMTracking(filename string, verbose bool) err
   genes.AddMeta("expr", expr)
 
   return nil
+}
+
+func (genes *Genes) ImportCufflinksFPKMTracking(filename string, verbose bool) error {
+  var r io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    r = g
+  } else {
+    r = f
+  }
+  return genes.ReadCufflinksFPKMTracking(r, verbose)
 }

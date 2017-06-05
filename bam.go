@@ -389,8 +389,7 @@ type BamReaderType2 struct {
   Error error
 }
 
-func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
-  file   := new(os.File)
+func NewBamReader(r io.Reader, args... interface{}) (*BamReader, error) {
   reader := new(BamReader)
   magic  := make([]byte, 4)
   // default options
@@ -411,12 +410,7 @@ func NewBamReader(filename string, args... interface{}) (*BamReader, error) {
   // temporary space for reading bytes
   var tmp []byte
 
-  if f, err := os.Open(filename);  err != nil {
-    return nil, err
-  } else {
-    file = f
-  }
-  if tmp, err := NewBgzfReader(file); err != nil {
+  if tmp, err := NewBgzfReader(r); err != nil {
     return nil, err
   } else {
     reader.BgzfReader = *tmp

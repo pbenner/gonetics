@@ -27,7 +27,7 @@ import   "testing"
 func TestTrack2(t *testing.T) {
 
   genome := Genome{}
-  genome.ReadFile("Data/hg19.genome")
+  genome.Import("Data/hg19.genome")
   track  := AllocSimpleTrack("test", genome, 100)
 
   // bin                                         bin                                         bin                                         bin
@@ -169,7 +169,7 @@ func TestTrack7(t *testing.T) {
   track := SimpleTrack{}
 
   genome := Genome{}
-  genome.ReadFile("track_test.1.genome")
+  genome.Import("track_test.1.genome")
 
   if err := track.ReadBigWig("track_test.1.bw", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)
@@ -190,7 +190,7 @@ func TestTrack8(t *testing.T) {
   track2 := SimpleTrack{}
 
   genome := Genome{}
-  genome.ReadFile("track_test.3.genome")
+  genome.Import("track_test.3.genome")
 
   if err := track1.ReadBigWig("track_test.3.bw", "", BinMean, 10, math.NaN()); err != nil {
     t.Error(err)

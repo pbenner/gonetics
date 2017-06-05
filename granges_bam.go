@@ -19,10 +19,12 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "io"
+import "os"
 
 /* -------------------------------------------------------------------------- */
 
-func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) error {
+func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error {
   var reader *BamReader
   // catch options for the bam reader
   options := BamReaderOptions{}
@@ -41,7 +43,7 @@ func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) e
       options = a
     }
   }
-  if r, err := NewBamReader(filename, options); err != nil {
+  if r, err := NewBamReader(r, options); err != nil {
     return err
   } else {
     reader = r
@@ -67,7 +69,7 @@ func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) e
       continue
     }
     if block.RefID < 0 || int(block.RefID) > len(reader.Genome.Seqnames) {
-      return fmt.Errorf("bam file `%s' contains invalid RefID `%d'", filename, block.RefID)
+      return fmt.Errorf("bam file contains invalid RefID `%d'", block.RefID)
     }
     seqnames = append(seqnames, reader.Genome.Seqnames[block.RefID])
     from     = append(from,     int(block.Position))
@@ -100,7 +102,16 @@ func (granges *GRanges) ReadBamSingleEnd(filename string, args... interface{}) e
   return nil
 }
 
-func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) error {
+func (granges *GRanges) ImportBamSingleEnd(filename string) error {
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  return granges.ReadBamSingleEnd(f)
+}
+
+func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error {
   var reader *BamReader
 
   // catch options for the bam reader
@@ -120,7 +131,7 @@ func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) e
       options = a
     }
   }
-  if r, err := NewBamReader(filename, options); err != nil {
+  if r, err := NewBamReader(r, options); err != nil {
     return err
   } else {
     reader = r
@@ -149,7 +160,7 @@ func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) e
       continue
     }
     if block1.RefID < 0 || int(block1.RefID) > len(reader.Genome.Seqnames) {
-      return fmt.Errorf("bam file `%s' contains invalid RefID `%d'", filename, block1.RefID)
+      return fmt.Errorf("bam file contains invalid RefID `%d'", block1.RefID)
     }
     seqnames  = append(seqnames,  reader.Genome.Seqnames[block1.RefID])
     from      = append(from,      int(block1.Position))
@@ -183,4 +194,13 @@ func (granges *GRanges) ReadBamPairedEnd(filename string, args... interface{}) e
     granges.AddMeta("cigar2", cigar2)
   }
   return nil
+}
+
+func (granges *GRanges) ImportBamPairedEnd(filename string) error {
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  return granges.ReadBamPairedEnd(f)
 }

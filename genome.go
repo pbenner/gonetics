@@ -22,6 +22,7 @@ import "bufio"
 import "bytes"
 import "errors"
 import "fmt"
+import "io"
 import "os"
 import "strconv"
 import "strings"
@@ -125,26 +126,20 @@ func (genome Genome) String() string {
 // Import chromosome sizes from a UCSC text file. The format is a whitespace
 // separated table where the first column is the name of the chromosome and
 // the second column the chromosome length.
-func (genome *Genome) ReadFile(filename string) error {
-
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-
+func (genome *Genome) Read(r io.Reader) error {
+  scanner := bufio.NewScanner(r)
   // it seems that buffering the data does not increase
   // performance
   seqnames := []string{}
   lengths  := []int{}
 
-  scanner := bufio.NewScanner(f)
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
       continue
     }
     if len(fields) < 2 {
-      return fmt.Errorf("ReadFile(): invalid genome file `%s'", filename)
+      return fmt.Errorf("invalid genome file")
     }
     t1, e1 := strconv.ParseInt(fields[1], 10, 64)
     if e1 != nil {
@@ -155,5 +150,19 @@ func (genome *Genome) ReadFile(filename string) error {
   }
   *genome = NewGenome(seqnames, lengths)
 
+  return nil
+}
+
+func (genome *Genome) Import(filename string) error {
+
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  if err := genome.Read(f); err != nil {
+    return fmt.Errorf("reading genome from `%s' failed: %v", filename, err)
+  }
   return nil
 }

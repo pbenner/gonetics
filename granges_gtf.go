@@ -22,6 +22,7 @@ import "fmt"
 import "bufio"
 import "compress/gzip"
 import "os"
+import "io"
 import "strconv"
 import "strings"
 import "unicode"
@@ -97,25 +98,9 @@ func readGTFParseLine(line string) []string {
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) error {
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
+func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error {
+  scanner := bufio.NewScanner(r)
+
   if len(optNames) != len(optTypes) {
     return fmt.Errorf("ReadGTF(): invalid arguments")
   }
@@ -207,19 +192,35 @@ func (granges *GRanges) ReadGTF(filename string, optNames, optTypes []string) er
   return nil
 }
 
+func (granges *GRanges) ImportGTF(filename string, optNames, optTypes []string) error {
+  var r io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    r = g
+  } else {
+    r = f
+  }
+  return granges.ReadGTF(r, optNames, optTypes)
+}
+
 /* -------------------------------------------------------------------------- */
 
 // Export GRanges as GTF file. Required GTF fields should be provided
 // as meta columns named sources, features, scores, and frames. All other
 // meta columns are exported as optional fields.
-func (granges GRanges) WriteGTF(filename string) error {
-  f, err := os.Create(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-
-  w := bufio.NewWriter(f)
+func (granges GRanges) WriteGTF(w_ io.Writer) error {
+  w := bufio.NewWriter(w_)
   defer w.Flush()
 
   sources  := granges.GetMetaStr("sources")
@@ -319,4 +320,17 @@ func (granges GRanges) WriteGTF(filename string) error {
     w.WriteString("\n")
   }
   return nil
+}
+
+func (granges GRanges) ExportGTF(filename string) error {
+  f, err := os.Create(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  w := bufio.NewWriter(f)
+  defer w.Flush()
+
+  return granges.WriteGTF(f)
 }

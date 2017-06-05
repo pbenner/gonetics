@@ -22,6 +22,7 @@ import "bufio"
 import "bytes"
 import "fmt"
 import "compress/gzip"
+import "io"
 import "os"
 import "strconv"
 import "strings"
@@ -29,62 +30,97 @@ import "strings"
 /* -------------------------------------------------------------------------- */
 
 // Export GRanges object as bed file with three columns.
-func (granges GRanges) WriteBed3(filename string, compress bool) error {
+func (granges GRanges) WriteBed3(w io.Writer) error {
+  for i := 0; i < granges.Length(); i++ {
+    if _, err := fmt.Fprintf(w,   "%s", granges.Seqnames[i]); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].To); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\n"); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (granges GRanges) ExportBed3(filename string, compress bool) error {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
-
-  // print data
-  for i := 0; i < granges.Length(); i++ {
-    fmt.Fprintf(w,   "%s", granges.Seqnames[i])
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
-    fmt.Fprintf(w, "\n")
+  if err := granges.WriteBed3(w); err != nil {
+    return err
   }
   w.Flush()
 
   return writeFile(filename, &buffer, compress)
 }
 
-func (granges GRanges) WriteBed6(filename string, compress bool) error {
-  var buffer bytes.Buffer
-
-  w := bufio.NewWriter(&buffer)
-
+func (granges GRanges) WriteBed6(w io.Writer) error {
   name  := granges.GetMetaStr  ("name")
   score := granges.GetMetaFloat("score")
 
   for i := 0; i < granges.Length(); i++ {
-    fmt.Fprintf(w,   "%s", granges.Seqnames[i])
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
+    if _, err := fmt.Fprintf(w,   "%s", granges.Seqnames[i]); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].To); err != nil {
+      return err
+    }
     if len(name) > 0 {
-      fmt.Fprintf(w, "\t%s", name[i])
+      if _, err := fmt.Fprintf(w, "\t%s", name[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%s", ".")
+      if _, err := fmt.Fprintf(w, "\t%s", "."); err != nil {
+        return err
+      }
     }
     if len(score) > 0 {
-      fmt.Fprintf(w, "\t%f", score[i])
+      if _, err := fmt.Fprintf(w, "\t%f", score[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%d", 0)
+      if _, err := fmt.Fprintf(w, "\t%d", 0); err != nil {
+        return err
+      }
     }
     if len(granges.Strand) > 0 && granges.Strand[i] != '*' {
-      fmt.Fprintf(w, "\t%c", granges.Strand[i])
+      if _, err := fmt.Fprintf(w, "\t%c", granges.Strand[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%s", ".")
+      if _, err := fmt.Fprintf(w, "\t%s", "."); err != nil {
+        return err
+      }
     }
-    fmt.Fprintf(w, "\n")
+    if _, err := fmt.Fprintf(w, "\n"); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (granges GRanges) ExportBed6(filename string, compress bool) error {
+  var buffer bytes.Buffer
+
+  w := bufio.NewWriter(&buffer)
+  if err := granges.WriteBed6(w); err != nil {
+    return err
   }
   w.Flush()
 
   return writeFile(filename, &buffer, compress)
 }
 
-func (granges GRanges) WriteBed9(filename string, compress bool) error {
-  var buffer bytes.Buffer
-
-  w := bufio.NewWriter(&buffer)
-
+func (granges GRanges) WriteBed9(w io.Writer) error {
   name       := granges.GetMetaStr  ("name")
   score      := granges.GetMetaFloat("score")
   thickStart := granges.GetMetaInt  ("thickStart")
@@ -92,40 +128,82 @@ func (granges GRanges) WriteBed9(filename string, compress bool) error {
   itemRgb    := granges.GetMetaStr  ("itemRgb")
 
   for i := 0; i < granges.Length(); i++ {
-    fmt.Fprintf(w,   "%s", granges.Seqnames[i])
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
-    fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
+    if _, err := fmt.Fprintf(w,   "%s", granges.Seqnames[i]); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].To); err != nil {
+      return err
+    }
     if len(name) > 0 {
-      fmt.Fprintf(w, "\t%s", name[i])
+      if _, err := fmt.Fprintf(w, "\t%s", name[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%s", ".")
+      if _, err := fmt.Fprintf(w, "\t%s", "."); err != nil {
+        return err
+      }
     }
     if len(score) > 0 {
-      fmt.Fprintf(w, "\t%f", score[i])
+      if _, err := fmt.Fprintf(w, "\t%f", score[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%d", 0)
+      if _, err := fmt.Fprintf(w, "\t%d", 0); err != nil {
+        return err
+      }
     }
     if len(granges.Strand) > 0 && granges.Strand[i] != '*' {
-      fmt.Fprintf(w, "\t%c", granges.Strand[i])
+      if _, err := fmt.Fprintf(w, "\t%c", granges.Strand[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%s", ".")
+      if _, err := fmt.Fprintf(w, "\t%s", "."); err != nil {
+        return err
+      }
     }
     if len(thickStart) > 0 {
-      fmt.Fprintf(w, "\t%d", thickStart[i])
+      if _, err := fmt.Fprintf(w, "\t%d", thickStart[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
+      if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+        return err
+      }
     }
     if len(thickEnd) > 0 {
-      fmt.Fprintf(w, "\t%d", thickEnd[i])
+      if _, err := fmt.Fprintf(w, "\t%d", thickEnd[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
+      if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+        return err
+      }
     }
     if len(itemRgb) > 0 {
-      fmt.Fprintf(w, "\t%s", itemRgb[i])
+      if _, err := fmt.Fprintf(w, "\t%s", itemRgb[i]); err != nil {
+        return err
+      }
     } else {
-      fmt.Fprintf(w, "\t%s", "0,0,0")
+      if _, err := fmt.Fprintf(w, "\t%s", "0,0,0"); err != nil {
+        return err
+      }
     }
-    fmt.Fprintf(w, "\n")
+    if _, err := fmt.Fprintf(w, "\n"); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (granges GRanges) ExportBed9(filename string, compress bool) error {
+  var buffer bytes.Buffer
+
+  w := bufio.NewWriter(&buffer)
+  if err := granges.WriteBed9(w); err != nil {
+    return err
   }
   w.Flush()
 
@@ -133,25 +211,8 @@ func (granges GRanges) WriteBed9(filename string, compress bool) error {
 }
 
 // Import GRanges from a Bed file with 3 columns.
-func (g *GRanges) ReadBed3(filename string) error {
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
+func (g *GRanges) ReadBed3(r io.Reader) error {
+  scanner := bufio.NewScanner(r)
   // it seems that buffering the data does not increase
   // performance
   seqnames := []string{}
@@ -181,9 +242,8 @@ func (g *GRanges) ReadBed3(filename string) error {
   return nil
 }
 
-// Import GRanges from a Bed file with 6 columns.
-func (g *GRanges) ReadBed6(filename string) error {
-  var scanner *bufio.Scanner
+func (g *GRanges) ImportBed3(filename string) error {
+  var r io.Reader
   // open file
   f, err := os.Open(filename)
   if err != nil {
@@ -194,13 +254,19 @@ func (g *GRanges) ReadBed6(filename string) error {
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
-      return nil
+      return err
     }
     defer g.Close()
-    scanner = bufio.NewScanner(g)
+    r = g
   } else {
-    scanner = bufio.NewScanner(f)
+    r = f
   }
+  return g.ReadBed3(r)
+}
+
+// Import GRanges from a Bed file with 6 columns.
+func (g *GRanges) ReadBed6(r io.Reader) error {
+  scanner := bufio.NewScanner(r)
   // it seems that buffering the data does not increase
   // performance
   seqnames := []string{}
@@ -245,8 +311,8 @@ func (g *GRanges) ReadBed6(filename string) error {
   return nil
 }
 
-func (g *GRanges) ReadBed9(filename string) error {
-  var scanner *bufio.Scanner
+func (g *GRanges) ImportBed6(filename string) error {
+  var r io.Reader
   // open file
   f, err := os.Open(filename)
   if err != nil {
@@ -257,13 +323,18 @@ func (g *GRanges) ReadBed9(filename string) error {
   if isGzip(filename) {
     g, err := gzip.NewReader(f)
     if err != nil {
-      return nil
+      return err
     }
     defer g.Close()
-    scanner = bufio.NewScanner(g)
+    r = g
   } else {
-    scanner = bufio.NewScanner(f)
+    r = f
   }
+  return g.ReadBed6(r)
+}
+
+func (g *GRanges) ReadBed9(r io.Reader) error {
+  scanner := bufio.NewScanner(r)
   // it seems that buffering the data does not increase
   // performance
   seqnames   := []string{}
@@ -321,4 +392,26 @@ func (g *GRanges) ReadBed9(filename string) error {
   g.AddMeta("itemRgb",    itemRgb)
 
   return nil
+}
+
+func (g *GRanges) ImportBed9(filename string) error {
+  var r io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    r = g
+  } else {
+    r = f
+  }
+  return g.ReadBed9(r)
 }

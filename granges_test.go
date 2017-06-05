@@ -26,7 +26,7 @@ import   "testing"
 func TestGRanges1(t *testing.T) {
 
   granges := NewEmptyGRanges(0)
-  granges.ReadBed6("granges_test.bed")
+  granges.ImportBed6("granges_test.bed")
   granges.AddMeta("TestMeta",
     []int{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20})
 
@@ -44,7 +44,7 @@ func TestGRanges1(t *testing.T) {
 func TestGRanges2(t *testing.T) {
 
   granges := NewEmptyGRanges(0)
-  granges.ReadBed6("granges_test.bed")
+  granges.ImportBed6("granges_test.bed")
   granges.AddMeta("TestMeta1",
     [][]int{
       { 1, 2},{ 2, 3},{ 3, 4},{ 4, 5},{ 5, 6},{ 6, 7},{ 7, 8},{ 8, 9},{ 9,10},{10,11},
@@ -77,7 +77,7 @@ func TestGRanges3(t *testing.T) {
 
 func TestGRangesRandom(t *testing.T) {
   genome  := Genome{}
-  genome.ReadFile("Data/hg19.genome")
+  genome.Import("Data/hg19.genome")
   granges := RandomGRanges(1000, 10000, genome, true)
 
   if granges.Length() != 1000 {

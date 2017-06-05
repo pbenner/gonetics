@@ -34,7 +34,7 @@ func TestGenesExpr1(t *testing.T) {
     t.Error("TestGenesExpr1 failed!")
   }
 
-  err2 := genes.ReadGTFExpr("genesExpr_test.gtf.gz", "transcript_id", "FPKM")
+  err2 := genes.ImportGTFExpr("genesExpr_test.gtf.gz", "transcript_id", "FPKM")
   if err2 != nil {
     t.Error("TestGenesExpr1 failed!")
   }

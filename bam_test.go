@@ -26,7 +26,7 @@ import   "testing"
 func TestBam1(t *testing.T) {
 
   granges := GRanges{}
-  if err := granges.ReadBamSingleEnd("bam_test.1.bam"); err != nil {
+  if err := granges.ImportBamSingleEnd("bam_test.1.bam"); err != nil {
     t.Error(err)
   }
   if granges.Length() != 12 {
@@ -40,7 +40,7 @@ func TestBam1(t *testing.T) {
 func TestBam2(t *testing.T) {
 
   granges := GRanges{}
-  if err := granges.ReadBamPairedEnd("bam_test.2.bam"); err != nil {
+  if err := granges.ImportBamPairedEnd("bam_test.2.bam"); err != nil {
     t.Error(err)
   }
   if granges.Length() != 2335 {

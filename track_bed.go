@@ -19,13 +19,22 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
+import "io"
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) WriteBed(filename string, compress bool) error {
+func (track GenericTrack) WriteBed(w io.Writer) error {
   r, err := track.GRanges(); if err != nil {
     return err
   }
   // write to file
-  return r.WriteBed6(filename, compress)
+  return r.WriteBed6(w)
+}
+
+func (track GenericTrack) ExportBed(filename string, compress bool) error {
+  r, err := track.GRanges(); if err != nil {
+    return err
+  }
+  // write to file
+  return r.ExportBed6(filename, compress)
 }

@@ -55,9 +55,9 @@ func TestTrackCrosscorrelation(t *testing.T) {
   // }
 
   genome := Genome{}
-  genome.ReadFile("track_statistics_test.genome")
+  genome.Import("track_statistics_test.genome")
   reads  := NewEmptyGRanges(0)
-  reads.ReadBed6("track_statistics_test.bed")
+  reads.ImportBed6("track_statistics_test.bed")
 
   _, y2, err := CrosscorrelateReads(reads, genome, 21, 1)
 

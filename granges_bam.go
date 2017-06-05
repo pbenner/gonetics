@@ -102,13 +102,13 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
   return nil
 }
 
-func (granges *GRanges) ImportBamSingleEnd(filename string) error {
+func (granges *GRanges) ImportBamSingleEnd(filename string, args... interface{}) error {
   f, err := os.Open(filename)
   if err != nil {
     return err
   }
   defer f.Close()
-  return granges.ReadBamSingleEnd(f)
+  return granges.ReadBamSingleEnd(f, args...)
 }
 
 func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error {
@@ -196,11 +196,11 @@ func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error
   return nil
 }
 
-func (granges *GRanges) ImportBamPairedEnd(filename string) error {
+func (granges *GRanges) ImportBamPairedEnd(filename string, args... interface{}) error {
   f, err := os.Open(filename)
   if err != nil {
     return err
   }
   defer f.Close()
-  return granges.ReadBamPairedEnd(f)
+  return granges.ReadBamPairedEnd(f, args...)
 }

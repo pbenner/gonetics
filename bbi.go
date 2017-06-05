@@ -110,10 +110,13 @@ type BbiZoomRecord struct {
 }
 
 func (record *BbiZoomRecord) AddValue(x float64) {
-  if record.Min > float32(x) {
+  if math.IsNaN(x) {
+    return
+  }
+  if math.IsNaN(float64(record.Min)) || record.Min > float32(x) {
     record.Min = float32(x)
   }
-  if record.Max < float32(x) {
+  if math.IsNaN(float64(record.Max)) || record.Max < float32(x) {
     record.Max = float32(x)
   }
   record.Valid      += 1
@@ -513,8 +516,8 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     record.ChromId = uint32(it.chromid)
     record.Start   = uint32(p)
     record.End     = uint32(p + it.reductionLevel)
-    record.Min     =  math.MaxFloat32
-    record.Max     = -math.MaxFloat32
+    record.Min     = float32(math.NaN())
+    record.Max     = float32(math.NaN())
     // crop record end if it is longer than the actual sequence
     if record.End > uint32(it.binsize*len(it.sequence)) {
       record.End = uint32(it.binsize*len(it.sequence))
@@ -523,8 +526,8 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     for j := 0; j < n && i+j < len(it.sequence); j++ {
       record.AddValue(it.sequence[i+j])
     }
-    // check if there was some non-zero data
-    if !(record.Min == 0 && record.Max == 0) {
+    // check if there was some data
+    if record.Valid > 0 {
       // if yes, save record
       if err := record.Write(b, it.order); err != nil {
         panic(err)

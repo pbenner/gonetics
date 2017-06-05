@@ -21,6 +21,7 @@ package gonetics
 import "fmt"
 import "bufio"
 import "os"
+import "io"
 import "strconv"
 import "strings"
 
@@ -68,15 +69,10 @@ func (p GPeaks) Qvalue() []float64 {
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func ReadXlsPeaks(filename string) (GPeaks, error) {
+func ReadXlsPeaks(r io.Reader) (GPeaks, error) {
 
   var gpeaks GPeaks
 
-  f, err := os.Open(filename)
-  if err != nil {
-    return gpeaks, err
-  }
-  defer f.Close()
   // check if we already saw the header
   header := false
 
@@ -89,7 +85,7 @@ func ReadXlsPeaks(filename string) (GPeaks, error) {
   foldEnrichment := []float64{}
   qvalue         := []float64{}
 
-  scanner := bufio.NewScanner(f)
+  scanner := bufio.NewScanner(r)
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
@@ -153,4 +149,14 @@ func ReadXlsPeaks(filename string) (GPeaks, error) {
   gpeaks = NewGPeaks(seqnames, from, to, absSummit, pileup, pvalue, foldEnrichment, qvalue)
 
   return gpeaks, nil
+}
+
+func ImportXlsPeaks(filename string) (GPeaks, error) {
+  f, err := os.Open(filename)
+  if err != nil {
+    return GPeaks{}, err
+  }
+  defer f.Close()
+
+  return ReadXlsPeaks(f)
 }

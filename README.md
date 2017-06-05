@@ -75,7 +75,7 @@ Download gene list from UCSC and export it to file:
 Import expression data from a GTF file:
 
 ```go
-  genes.ReadGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", false)
+  genes.ImportGTF("genesExpr_test.gtf.gz", "transcript_id", "FPKM", false)
 ```
 
 	                 names seqnames          transcripts                  cds strand |          expr
@@ -96,7 +96,7 @@ Import expression data from a GTF file:
 Import peaks from a MACS xls file:
 
 ```go
-  peaks := ReadXlsPeaks("peaks_test.xls")
+  peaks := ImportXlsPeaks("peaks_test.xls")
 ```
 	   seqnames             ranges strand |  abs_summit     pileup -log10(pvalue) fold_enrichment -log10(qvalue)
 	 1       2L [   5757,    6001)      * |        5865  33.000000      19.809300        6.851880      17.722200
@@ -118,17 +118,17 @@ Import ChIP-seq reads from bed files and create a track with the normalized sign
 ```go
   fmt.Fprintf(os.Stderr, "Parsing reads (treatment) ...\n")
   treatment1 := GRanges{}
-  treatment1.ReadBed6("SRR094207.bed")
+  treatment1.ImportBed6("SRR094207.bed")
   treatment2 := GRanges{}
-  treatment2.ReadBed6("SRR094208.bed")
+  treatment2.ImportBed6("SRR094208.bed")
   fmt.Fprintf(os.Stderr, "Parsing reads (control)   ...\n")
   control1   := GRanges{}
-  control1.ReadBed6("SRR094215.bed")
+  control1.ImportBed6("SRR094215.bed")
   control2   := GRanges{}
-  control2.ReadBed6("SRR094216.bed")
+  control2.ImportBed6("SRR094216.bed")
 
   genome  := Genome{}
-  genome.ReadFile("Data/hg19.genome")
+  genome.Import("Data/hg19.genome")
   d       := 200 // d=200 (see *_peaks.xls)
   binsize := 100 // binsize of the track
   pcounts := 1   // pseudocounts

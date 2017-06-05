@@ -25,7 +25,7 @@ import   "testing"
 
 func TestGPeaks1(t *testing.T) {
 
-  peaks, err := ReadXlsPeaks("peaks_test.xls")
+  peaks, err := ImportXlsPeaks("peaks_test.xls")
 
   //fmt.Println(peaks)
 

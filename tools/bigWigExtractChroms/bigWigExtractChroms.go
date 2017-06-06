@@ -38,7 +38,7 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
   if reader, err := NewBigWigReader(filenameIn); err != nil {
     log.Fatal(err)
   } else {
-    binsize   := 0
+    binSize   := 0
     sequences := [][]float64{}
     genome    := Genome{}
     for _, chromName := range chromNames {
@@ -48,16 +48,16 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
         if verbose {
           log.Printf("reading sequence %s", chromName)
         }
-        if s, b, err := reader.QuerySequence(chromName, BinMean, binsize, math.NaN()); err != nil {
+        if s, b, err := reader.QuerySequence(chromName, BinMean, binSize, 0, math.NaN()); err != nil {
           log.Fatal (err)
         } else {
-          binsize   = b
+          binSize   = b
           sequences = append(sequences, s)
         }
         genome.AddSequence(chromName, length)
       }
     }
-    t, _ := NewSimpleTrack("", genome.Seqnames, sequences, binsize)
+    t, _ := NewSimpleTrack("", genome.Seqnames, sequences, binSize)
     if verbose {
       log.Printf("writing track `%s'", filenameOut)
     }

@@ -319,30 +319,59 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
   return nil
 }
 
-func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, s BinSummaryStatistics, binsize int, revNegStrand bool)  error {
+func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64, revNegStrand bool)  error {
   counts := [][]float64{}
   for i := 0; i < r.Length(); i++ {
     seqname := r.Seqnames[i]
     from    := r.Ranges[i].From
     to      := r.Ranges[i].To
     strand  := r.Strand[i]
-    n   := (to - from)/binsize
-    seq := make([]float64, n)
-    for record := range reader.Query(seqname, from, to, binsize) {
+    n := (to - from)/binSize
+    r := make([]BbiSummaryRecord, n)
+    s := make([]float64, n)
+    // first collect all records
+    for record := range reader.Query(seqname, from, to, binSize) {
       if record.Error != nil {
         return fmt.Errorf("%v", record.Error)
       }
       if revNegStrand == false || strand == '+' {
-        if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[idx] = s(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
+        if idx := (record.From - from)/binSize; idx >= 0 && idx < n {
+          r[idx] = record.BbiSummaryRecord
         }
       } else {
-        if idx := (record.From - from)/binsize; idx >= 0 && idx < n {
-          seq[n-1-idx] = s(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
+        if idx := (record.From - from)/binSize; idx >= 0 && idx < n {
+          r[n-1-idx] = record.BbiSummaryRecord
         }
       }
     }
-    counts = append(counts, seq)
+    // convert summary records to sequence
+    if init != 0.0 {
+      for i := 0; i < len(s); i++ {
+        s[i] = init
+      }
+    }
+    if binOverlap != 0 {
+      t := BbiSummaryRecord{}
+      for i := 0; i < len(s); i++ {
+        t.Reset()
+        for j := i-binOverlap; j <= i+binOverlap; j++ {
+          if j < 0 || j >= len(s) {
+            continue
+          }
+          t.AddRecord(r[j])
+        }
+        if t.Valid > 0 {
+          s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
+        }
+      }
+    } else {
+      for i, t := range r {
+        if t.Valid > 0 {
+          s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
+        }
+      }
+    }
+    counts = append(counts, s)
   }
   r.AddMeta(name, counts)
   return nil

@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int, init float64) error {
+func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
 
   bwr, err := NewBigWigReader(filename)
   if err != nil {
@@ -34,11 +34,11 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   for i := 0; i < bwr.Genome.Length(); i++ {
     length  := bwr.Genome.Lengths [i]
     seqname := bwr.Genome.Seqnames[i]
-    if s, _, err := bwr.QuerySequence(seqname, f, binsize, init); err != nil {
+    if s, _, err := bwr.QuerySequence(seqname, f, binSize, binOverlap, init); err != nil {
       return err
     } else {
-      if binsize == 0 {
-        binsize = divIntUp(length, len(s))
+      if binSize == 0 {
+        binSize = divIntUp(length, len(s))
       }
       sequences = append(sequences, s)
     }
@@ -46,7 +46,7 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   bwr.Close()
 
   // create new track
-  if tmp, err := NewSimpleTrack(name, seqnames, sequences, binsize); err != nil {
+  if tmp, err := NewSimpleTrack(name, seqnames, sequences, binSize); err != nil {
     return err
   } else {
     *track = tmp

@@ -300,11 +300,12 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- cha
   return channel
 }
 
-func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize int, init float64) ([]float64, int, error) {
+func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize, binoverlap int, init float64) ([]float64, int, error) {
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, -1, err
   } else {
-    var s []float64
+    // first collect all records
+    r := []BbiSummaryRecord{}
     // a binsize of 0 means that the raw data is returned as is
     if binsize == 0 {
       for record := range reader.Query(seqregex, 0, seqlength, binsize) {
@@ -315,30 +316,48 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
         // fails for bedGraph files)
         if binsize == 0 {
           binsize = record.To - record.From
-          s = make([]float64, divIntDown(seqlength, binsize))
-          if init != 0.0 {
-            for i := 0; i < len(s); i++ {
-              s[i] = init
-            }
-          }
+          r = make([]BbiSummaryRecord, divIntDown(seqlength, binsize))
         }
-        if idx := record.From/binsize; idx >= 0 && idx < len(s) {
-          s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
+        if idx := record.From/binsize; idx >= 0 && idx < len(r) {
+          r[idx] = record.BbiSummaryRecord
         }
       }
     } else {
-      s = make([]float64, divIntDown(seqlength, binsize))
-      if init != 0.0 {
-        for i := 0; i < len(s); i++ {
-          s[i] = init
-        }
-      }
+      r = make([]BbiSummaryRecord, divIntDown(seqlength, binsize))
       for record := range reader.Query(seqregex, 0, seqlength, binsize) {
         if record.Error != nil {
           return nil, -1, record.Error
         }
-        if idx := record.From/binsize; idx >= 0 && idx < len(s) {
-          s[idx] = f(record.Sum, record.SumSquares, record.Min, record.Max, record.Valid)
+        if idx := record.From/binsize; idx >= 0 && idx < len(r) {
+          r[idx] = record.BbiSummaryRecord
+        }
+      }
+    }
+    // convert summary records to sequence
+    s := make([]float64, len(r))
+    if init != 0.0 {
+      for i := 0; i < len(s); i++ {
+        s[i] = init
+      }
+    }
+    if binoverlap != 0 {
+      t := BbiSummaryRecord{}
+      for i := 0; i < len(s); i++ {
+        t.Reset()
+        for j := i-binoverlap; j <= i+binoverlap; j++ {
+          if j < 0 || j >= len(s) {
+            continue
+          }
+          t.AddRecord(r[j])
+        }
+        if t.Valid > 0 {
+          s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
+        }
+      }
+    } else {
+      for i, t := range r {
+        if t.Valid > 0 {
+          s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
         }
       }
     }

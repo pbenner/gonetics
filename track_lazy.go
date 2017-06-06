@@ -24,7 +24,8 @@ package gonetics
 
 type LazyTrack struct {
   Name       string
-  Binsize    int
+  BinSize    int
+  BinOverlap int
   Bwr        BigWigReader
   Filename   string
   BinSumStat BinSummaryStatistics
@@ -34,17 +35,17 @@ type LazyTrack struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewLazyTrack(filename, name string, f BinSummaryStatistics, binsize int, init float64) (LazyTrack, error) {
+func NewLazyTrack(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) (LazyTrack, error) {
   bwr, err := NewBigWigReader(filename); if err != nil {
     return LazyTrack{}, err
   }
-  return LazyTrack{name, binsize, *bwr, filename, f, init}, nil
+  return LazyTrack{name, binSize, binOverlap, *bwr, filename, f, init}, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (track LazyTrack) Clone() LazyTrack {
-  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.Binsize, track.Init); if err != nil {
+  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.BinSize, track.BinOverlap, track.Init); if err != nil {
     panic(err)
   }
   return track
@@ -58,7 +59,7 @@ func (track LazyTrack) CloneTrack() Track {
  * -------------------------------------------------------------------------- */
 
 func (track LazyTrack) GetBinsize() int {
-  return track.Binsize
+  return track.BinSize
 }
 
 func (track LazyTrack) GetName() string {
@@ -74,23 +75,23 @@ func (track LazyTrack) GetGenome() Genome {
 }
 
 func (track LazyTrack) GetSequence(query string) (TrackSequence, error) {
-  if seq, _, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.Binsize, track.Init); err != nil {
+  if seq, _, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.BinSize, track.BinOverlap, track.Init); err != nil {
     return TrackSequence{}, err
   } else {
-    return TrackSequence{seq, track.Binsize}, nil
+    return TrackSequence{seq, track.BinSize}, nil
   }
 }
 
 func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
-  binFrom := r.Range.From/track.Binsize
-  binTo   := r.Range.To  /track.Binsize
+  binFrom := r.Range.From/track.BinSize
+  binTo   := r.Range.To  /track.BinSize
   seq     := make([]float64, binTo-binFrom)
-  for r := range track.Bwr.Query(r.Seqname, r.Range.From, r.Range.To, track.Binsize) {
+  for r := range track.Bwr.Query(r.Seqname, r.Range.From, r.Range.To, track.BinSize) {
     if r.Error != nil {
       return nil, r.Error
     }
-    for i := r.From; i < r.To; i += track.Binsize {
-      seq[i/track.Binsize] = r.Sum/r.Valid
+    for i := r.From; i < r.To; i += track.BinSize {
+      seq[i/track.BinSize] = r.Sum/r.Valid
     }
   }
   return seq, nil
@@ -98,8 +99,8 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binsize int, init float64) error {
-  if tmp, err := NewLazyTrack(filename, name, f, binsize, init); err != nil {
+func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+  if tmp, err := NewLazyTrack(filename, name, f, binSize, binOverlap, init); err != nil {
     return err
   } else {
     *track = tmp

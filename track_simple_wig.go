@@ -34,7 +34,7 @@ func (track SimpleTrack) writeWiggle_fixedStep(w io.Writer, seqname string, sequ
   for i, gap := 0, true; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) {
       if gap {
-        if _, err := fmt.Fprintf(w, "fixedStep chrom=%s start=%d span=%d step=%d\n", seqname, i*track.Binsize+1, track.Binsize, track.Binsize); err != nil {
+        if _, err := fmt.Fprintf(w, "fixedStep chrom=%s start=%d span=%d step=%d\n", seqname, i*track.BinSize+1, track.BinSize, track.BinSize); err != nil {
           return err
         }
         gap = false
@@ -50,12 +50,12 @@ func (track SimpleTrack) writeWiggle_fixedStep(w io.Writer, seqname string, sequ
 }
 
 func (track SimpleTrack) writeWiggle_variableStep(w io.Writer, seqname string, sequence []float64) error {
-  if _, err := fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.Binsize); err != nil {
+  if _, err := fmt.Fprintf(w, "variableStep chrom=%s span=%d\n", seqname, track.BinSize); err != nil {
     return err
   }
   for i := 0; i < len(sequence); i++ {
     if !math.IsNaN(sequence[i]) {
-      if _, err := fmt.Fprintf(w, "%d %f\n", i*track.Binsize+1, sequence[i]); err != nil {
+      if _, err := fmt.Fprintf(w, "%d %f\n", i*track.BinSize+1, sequence[i]); err != nil {
         return err
       }
     }
@@ -146,8 +146,8 @@ func readWiggle_fixedStep(scanner *bufio.Scanner, result *SimpleTrack) error {
       if err != nil {
         return err
       }
-      if result.Binsize != int(t) {
-        return errors.New("step sizes does not match the binsize of the track")
+      if result.BinSize != int(t) {
+        return errors.New("step sizes does not match the binSize of the track")
       }
     }
   }
@@ -197,8 +197,8 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *SimpleTrack) error 
       if err != nil {
         return err
       }
-      if result.Binsize != int(t) {
-        return errors.New("span does not match the binsize of the track")
+      if result.BinSize != int(t) {
+        return errors.New("span does not match the binSize of the track")
       }
     }
   }

@@ -278,7 +278,7 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
   return nil
 }
 
-func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- chan BbiQueryType {
+func (reader *BigWigReader) Query(seqRegex string, from, to, binSize int) <- chan BbiQueryType {
   channel := make(chan BbiQueryType, 100)
   go func() {
     if r, err := regexp.Compile("^"+seqRegex+"$"); err != nil {
@@ -291,7 +291,7 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- cha
         if idx, err := reader.Genome.GetIdx(seqname); err != nil {
           return
         } else {
-          reader.Bwf.query(channel, idx, from, to, binsize)
+          reader.Bwf.query(channel, idx, from, to, binSize)
         }
       }
     }
@@ -300,35 +300,35 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binsize int) <- cha
   return channel
 }
 
-func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binsize, binoverlap int, init float64) ([]float64, int, error) {
+func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistics, binSize, binOverlap int, init float64) ([]float64, int, error) {
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, -1, err
   } else {
     // first collect all records
     r := []BbiSummaryRecord{}
-    // a binsize of 0 means that the raw data is returned as is
-    if binsize == 0 {
-      for record := range reader.Query(seqregex, 0, seqlength, binsize) {
+    // a binSize of 0 means that the raw data is returned as is
+    if binSize == 0 {
+      for record := range reader.Query(seqregex, 0, seqlength, binSize) {
         if record.Error != nil {
           return nil, -1, record.Error
         }
-        // try to determine binsize from the first record (this most likely
+        // try to determine binSize from the first record (this most likely
         // fails for bedGraph files)
-        if binsize == 0 {
-          binsize = record.To - record.From
-          r = make([]BbiSummaryRecord, divIntDown(seqlength, binsize))
+        if binSize == 0 {
+          binSize = record.To - record.From
+          r = make([]BbiSummaryRecord, divIntDown(seqlength, binSize))
         }
-        if idx := record.From/binsize; idx >= 0 && idx < len(r) {
+        if idx := record.From/binSize; idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }
       }
     } else {
-      r = make([]BbiSummaryRecord, divIntDown(seqlength, binsize))
-      for record := range reader.Query(seqregex, 0, seqlength, binsize) {
+      r = make([]BbiSummaryRecord, divIntDown(seqlength, binSize))
+      for record := range reader.Query(seqregex, 0, seqlength, binSize) {
         if record.Error != nil {
           return nil, -1, record.Error
         }
-        if idx := record.From/binsize; idx >= 0 && idx < len(r) {
+        if idx := record.From/binSize; idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }
       }
@@ -340,11 +340,11 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
         s[i] = init
       }
     }
-    if binoverlap != 0 {
+    if binOverlap != 0 {
       t := BbiSummaryRecord{}
       for i := 0; i < len(s); i++ {
         t.Reset()
-        for j := i-binoverlap; j <= i+binoverlap; j++ {
+        for j := i-binOverlap; j <= i+binOverlap; j++ {
           if j < 0 || j >= len(s) {
             continue
           }
@@ -361,7 +361,7 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
         }
       }
     }
-    return s, binsize, nil
+    return s, binSize, nil
   }
 }
 
@@ -430,14 +430,14 @@ func (bww *BigWigWriter) useFixedStep(sequence []float64) bool {
   return n < len(sequence)/2
 }
 
-func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, error) {
+func (bww *BigWigWriter) write(idx int, sequence []float64, binSize int) (int, error) {
   // number of blocks written
   n := 0
   // determine if fixed step sizes should be used
   // (this is false if data is sparse)
   fixedStep := bww.useFixedStep(sequence)
   // split sequence into small blocks of data and write them to file
-  for tmp := range bww.generator.Generate(idx, sequence, binsize, 0, fixedStep) {
+  for tmp := range bww.generator.Generate(idx, sequence, binSize, 0, fixedStep) {
     // write data to file
     for i := 0; i < int(tmp.Vertex.NChildren); i++ {
       if err := tmp.Vertex.WriteBlock(&bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
@@ -452,11 +452,11 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binsize int) (int, e
   return n, nil
 }
 
-func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) error {
+func (bww *BigWigWriter) Write(seqname string, sequence []float64, binSize int) error {
   if idx, err := bww.Genome.GetIdx(seqname); err != nil {
     return err
   } else {
-    if n, err := bww.write(idx, sequence, binsize); err != nil {
+    if n, err := bww.write(idx, sequence, binSize); err != nil {
       return err
     } else {
       bww.Bwf.Header.NBlocks += uint64(n)
@@ -465,11 +465,11 @@ func (bww *BigWigWriter) Write(seqname string, sequence []float64, binsize int) 
   return nil
 }
 
-func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reductionLevel int) (int, error) {
+func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binSize, reductionLevel int) (int, error) {
   // number of blocks written
   n := 0
   // split sequence into small blocks of data and write them to file
-  for tmp := range bww.generator.Generate(idx, sequence, binsize, reductionLevel, true) {
+  for tmp := range bww.generator.Generate(idx, sequence, binSize, reductionLevel, true) {
     // write data to file
     for i := 0; i < int(tmp.Vertex.NChildren); i++ {
       if err := tmp.Vertex.WriteBlock(&bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
@@ -484,11 +484,11 @@ func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binsize, reducti
   return n, nil
 }
 
-func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binsize, reductionLevel, i int) error {
+func (bww *BigWigWriter) WriteZoom(seqname string, sequence []float64, binSize, reductionLevel, i int) error {
   if idx, err := bww.Genome.GetIdx(seqname); err != nil {
     return err
   } else {
-    if n, err := bww.writeZoom(idx, sequence, binsize, reductionLevel); err != nil {
+    if n, err := bww.writeZoom(idx, sequence, binSize, reductionLevel); err != nil {
       return err
     } else {
       bww.Bwf.Header.ZoomHeaders[i].NBlocks += uint32(n)

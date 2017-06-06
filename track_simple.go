@@ -31,28 +31,28 @@ type SimpleTrack struct {
   Name    string
   Genome  Genome
   Data    TMapType
-  Binsize int
+  BinSize int
 }
 
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binsize int) (SimpleTrack, error) {
+func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binSize int) (SimpleTrack, error) {
   if len(seqnames) != len(sequences) {
     return SimpleTrack{}, fmt.Errorf("invalid arguments")
   }
   data    := make(TMapType)
   lengths := make([]int, len(sequences))
   for i, sequence := range sequences {
-    lengths[i] = binsize*len(sequence)
+    lengths[i] = binSize*len(sequence)
     data[seqnames[i]] = sequence
   }
   genome := NewGenome(seqnames, lengths)
 
-  return SimpleTrack{name, genome, data, binsize}, nil
+  return SimpleTrack{name, genome, data, binSize}, nil
 }
 
-func AllocSimpleTrack(name string, genome Genome, binsize int) SimpleTrack {
+func AllocSimpleTrack(name string, genome Genome, binSize int) SimpleTrack {
   data := make(TMapType)
 
   for i := 0; i < genome.Length(); i++ {
@@ -60,9 +60,9 @@ func AllocSimpleTrack(name string, genome Genome, binsize int) SimpleTrack {
     // cover the last bin (i.e. round down), this is required by
     // wig related tools
     data[genome.Seqnames[i]] = make([]float64,
-      divIntDown(genome.Lengths[i], binsize))
+      divIntDown(genome.Lengths[i], binSize))
   }
-  return SimpleTrack{name, genome, data, binsize}
+  return SimpleTrack{name, genome, data, binSize}
 }
 
 func EmptySimpleTrack(name string) SimpleTrack {
@@ -74,7 +74,7 @@ func EmptySimpleTrack(name string) SimpleTrack {
 
 func (track SimpleTrack) Clone() SimpleTrack {
   name    := track.Name
-  binsize := track.Binsize
+  binSize := track.BinSize
   data    := make(TMapType)
   genome  := track.Genome.Clone()
 
@@ -83,7 +83,7 @@ func (track SimpleTrack) Clone() SimpleTrack {
     copy(t, sequence)
     data[name] = t
   }
-  return SimpleTrack{name, genome, data, binsize}
+  return SimpleTrack{name, genome, data, binSize}
 }
 
 func (track SimpleTrack) CloneTrack() Track {
@@ -97,15 +97,15 @@ func (track SimpleTrack) CloneMutableTrack() MutableTrack {
 /* access methods
  * -------------------------------------------------------------------------- */
 
-func (track SimpleTrack) GetBinsize() int {
-  return track.Binsize
+func (track SimpleTrack) GetBinSize() int {
+  return track.BinSize
 }
 
 func (track SimpleTrack) Index(position int) int {
   if position < 0 {
     panic("negative position")
   }
-  return position/track.Binsize
+  return position/track.BinSize
 }
 
 func (track SimpleTrack) GetName() string {
@@ -124,14 +124,14 @@ func (track SimpleTrack) GetSequence(query string) (TrackSequence, error) {
   if seq, ok := track.Data[query]; !ok {
     return TrackSequence{}, fmt.Errorf("sequence `%s' not found", query)
   } else {
-    return TrackSequence{seq, track.Binsize}, nil
+    return TrackSequence{seq, track.BinSize}, nil
   }
 }
 
 func (track SimpleTrack) GetMutableSequence(query string) (TrackMutableSequence, error) {
   for name, seq := range track.Data {
     if name == query {
-      return TrackMutableSequence{TrackSequence{seq, track.Binsize}}, nil
+      return TrackMutableSequence{TrackSequence{seq, track.BinSize}}, nil
     }
   }
   return TrackMutableSequence{}, fmt.Errorf("sequence `%s' not found", query)
@@ -142,8 +142,8 @@ func (track SimpleTrack) GetSlice(r GRangesRow) ([]float64, error) {
   if !ok {
     return nil, fmt.Errorf("GetSlice(): invalid seqname `%s'", r.Seqname)
   }
-  from := r.Range.From/track.Binsize
-  to   := r.Range.To  /track.Binsize
+  from := r.Range.From/track.BinSize
+  to   := r.Range.To  /track.BinSize
   if from >= len(seq) {
     return nil, nil
   }

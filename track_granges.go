@@ -23,7 +23,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 func (track GenericTrack) GRanges() (GRanges, error) {
-  binsize  := track.GetBinsize()
+  binSize  := track.GetBinSize()
   seqnames := []string{}
   from     := []int{}
   to       := []int{}
@@ -37,7 +37,7 @@ func (track GenericTrack) GRanges() (GRanges, error) {
     }
     // current values
     c_from := 0
-    c_to   := binsize
+    c_to   := binSize
     c_val  := sequence.AtBin(0)
     for i := 1; i < sequence.NBins(); i++ {
       if v := sequence.AtBin(i); v != c_val {
@@ -46,10 +46,10 @@ func (track GenericTrack) GRanges() (GRanges, error) {
         to       = append(to,     c_to)
         values   = append(values, c_val)
         c_from   = c_to
-        c_to     = c_from + binsize
+        c_to     = c_from + binSize
         c_val    = v
       } else {
-        c_to    += binsize
+        c_to    += binSize
       }
     }
     // append last result

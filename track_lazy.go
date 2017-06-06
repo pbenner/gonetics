@@ -58,7 +58,7 @@ func (track LazyTrack) CloneTrack() Track {
 /* access methods
  * -------------------------------------------------------------------------- */
 
-func (track LazyTrack) GetBinsize() int {
+func (track LazyTrack) GetBinSize() int {
   return track.BinSize
 }
 

@@ -47,15 +47,15 @@ func (track GenericMutableTrack) AddReads(reads GRanges, d int, addOverlap bool)
         return fmt.Errorf("strand information is missing for read `%d'", i)
       }
     }
-    binsize := track.GetBinsize()
-    for j := from/binsize; j <= to/binsize; j++ {
-      jfrom := iMax(from, (j+0)*binsize)
-      jto   := iMin(to  , (j+1)*binsize)
+    binSize := track.GetBinSize()
+    for j := from/binSize; j <= to/binSize; j++ {
+      jfrom := iMax(from, (j+0)*binSize)
+      jto   := iMin(to  , (j+1)*binSize)
       if j >= seq.NBins() {
         break
       } else {
         if addOverlap {
-          seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binsize))
+          seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binSize))
         } else {
           seq.SetBin(j, seq.AtBin(j) + 1.0)
         }
@@ -150,10 +150,10 @@ func (track GenericMutableTrack) Smoothen(minCounts float64, windowSizes []int) 
  * -------------------------------------------------------------------------- */
 
 func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64) float64) error {
-  if track1.GetBinsize() != track2.GetBinsize() {
-    return fmt.Errorf("binsizes do not match")
+  if track1.GetBinSize() != track2.GetBinSize() {
+    return fmt.Errorf("binSizes do not match")
   }
-  binsize := track1.GetBinsize()
+  binSize := track1.GetBinSize()
   for _, name := range track1.GetSeqNames() {
     seq1, err := track1.GetMutableSequence(name); if err != nil {
       return err
@@ -165,7 +165,7 @@ func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64)
       return fmt.Errorf("sequence lengths do not match for `%d'", name)
     }
     for i := 0; i < seq2.NBins(); i++ {
-      seq1.SetBin(i, f(name, i*binsize, seq2.AtBin(i)))
+      seq1.SetBin(i, f(name, i*binSize, seq2.AtBin(i)))
     }
   }
   return nil
@@ -177,11 +177,11 @@ func (track GenericMutableTrack) MapList(tracks []Track, f func(string, int, ...
   v := make([]float64, n)
   // check bin sizes
   for _, t := range tracks {
-    if track.GetBinsize() != t.GetBinsize() {
-      return fmt.Errorf("binsizes do not match")
+    if track.GetBinSize() != t.GetBinSize() {
+      return fmt.Errorf("binSizes do not match")
     }
   }
-  binsize := track.GetBinsize()
+  binSize := track.GetBinSize()
   for _, name := range track.GetSeqNames() {
     dst, err := track.GetMutableSequence(name); if err != nil {
       return err
@@ -205,7 +205,7 @@ func (track GenericMutableTrack) MapList(tracks []Track, f func(string, int, ...
         v[j] = sequences[j].AtBin(i)
       }
       // apply function
-      dst.SetBin(i, f(name, i*binsize, v...))
+      dst.SetBin(i, f(name, i*binSize, v...))
     }
   }
   return nil
@@ -213,7 +213,7 @@ func (track GenericMutableTrack) MapList(tracks []Track, f func(string, int, ...
 
 func (track GenericTrack) Reduce(f func(string, int, float64, float64) float64, x0 float64) map[string]float64 {
   result  := make(map[string]float64)
-  binsize := track.GetBinsize()
+  binSize := track.GetBinSize()
 
   for _, name := range track.GetSeqNames() {
     sequence, err := track.GetSequence(name); if err != nil {
@@ -225,7 +225,7 @@ func (track GenericTrack) Reduce(f func(string, int, float64, float64) float64, 
     tmp := f(name, 0, x0, sequence.AtBin(0))
 
     for i := 1; i < sequence.NBins(); i++ {
-      tmp = f(name, i*binsize, tmp, sequence.AtBin(i))
+      tmp = f(name, i*binSize, tmp, sequence.AtBin(i))
     }
     result[name] = tmp
   }

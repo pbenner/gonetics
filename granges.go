@@ -280,33 +280,33 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
   n := r.Length()
   m := -1
   data    := make([][]float64, n)
-  binsize := make([]int, n)
+  binSize := make([]int, n)
   // fill matrix
   for i := 0; i < n; i++ {
     from := r.Ranges[i].From
     to   := r.Ranges[i].To
     name := r.Seqnames[i]
     if m == -1 {
-      m = divIntUp(to - from, track.GetBinsize())
-    } else if m != divIntUp(to - from, track.GetBinsize()) {
+      m = divIntUp(to - from, track.GetBinSize())
+    } else if m != divIntUp(to - from, track.GetBinSize()) {
       return fmt.Errorf("varying window sizes are not allowed")
     }
     seq, err := track.GetSequence(name); if err != nil {
       return err
     }
-    // all rows are using the same binsize
-    binsize[i] = track.GetBinsize()
+    // all rows are using the same binSize
+    binSize[i] = track.GetBinSize()
     // loop over window
     data[i] = make([]float64, m)
     if r.Strand[i] == '+' || revNegStrand == false {
-      for j, k := 0, from; k < to; k, j = k+track.GetBinsize(), j+1 {
-        if t := k/track.GetBinsize(); t < seq.NBins() {
+      for j, k := 0, from; k < to; k, j = k+track.GetBinSize(), j+1 {
+        if t := k/track.GetBinSize(); t < seq.NBins() {
           data[i][j] = seq.AtBin(t)
         }
       }
     } else if r.Strand[i] == '-' {
-      for j, k := 0, to-1; k >= from; k, j = k-track.GetBinsize(), j+1 {
-        if t := k/track.GetBinsize(); t < seq.NBins() {
+      for j, k := 0, to-1; k >= from; k, j = k-track.GetBinSize(), j+1 {
+        if t := k/track.GetBinSize(); t < seq.NBins() {
           data[i][j] = seq.AtBin(t)
         }
       }
@@ -314,7 +314,7 @@ func (r *GRanges) ImportTrack(track Track, revNegStrand bool) error {
       return fmt.Errorf("range has no strand information")
     }
   }
-  r.AddMeta("binsize", binsize)
+  r.AddMeta("binSize", binSize)
   r.AddMeta(track.GetName(), data)
   return nil
 }

@@ -24,11 +24,11 @@ package gonetics
 
 type TrackSequence struct {
   sequence []float64
-  binsize    int
+  binSize    int
 }
 
 func (obj TrackSequence) At(i int) float64 {
-  return obj.sequence[i/obj.binsize]
+  return obj.sequence[i/obj.binSize]
 }
 
 func (obj TrackSequence) AtBin(i int) float64 {
@@ -46,7 +46,7 @@ type TrackMutableSequence struct {
 }
 
 func (obj TrackSequence) Set(i int, v float64) {
-  obj.sequence[i/obj.binsize] = v
+  obj.sequence[i/obj.binSize] = v
 }
 
 func (obj TrackSequence) SetBin(i int, v float64) {
@@ -57,7 +57,7 @@ func (obj TrackSequence) SetBin(i int, v float64) {
 
 type Track interface {
   GetName     ()               string
-  GetBinsize  ()               int
+  GetBinSize  ()               int
   GetSequence (seqname string) (TrackSequence, error)
   GetGenome   ()               Genome
   GetSeqNames ()               []string

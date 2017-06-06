@@ -426,7 +426,7 @@ func (it *BbiZoomBlockDecoderIterator) Next() {
 /* -------------------------------------------------------------------------- */
 
 type BbiBlockEncoder interface {
-  Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator
+  Encode(chromid int, sequence []float64, binSize int) BbiBlockEncoderIterator
 }
 
 type BbiBlockEncoderType struct {
@@ -454,7 +454,7 @@ type BbiZoomBlockEncoderIterator struct {
   *BbiZoomBlockEncoder
   chromid        int
   sequence     []float64
-  binsize        int
+  binSize        int
   position       int
   // result
   r BbiBlockEncoderType
@@ -474,12 +474,12 @@ func NewBbiZoomBlockEncoder(itemsPerSlot, reductionLevel int, order binary.ByteO
   return &r, nil
 }
 
-func (encoder *BbiZoomBlockEncoder) Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator {
+func (encoder *BbiZoomBlockEncoder) Encode(chromid int, sequence []float64, binSize int) BbiBlockEncoderIterator {
   r := BbiZoomBlockEncoderIterator{}
   r.BbiZoomBlockEncoder = encoder
   r.chromid             = chromid
   r.sequence            = sequence
-  r.binsize             = binsize
+  r.binSize             = binSize
   r.position            = 0
   r.Next()
   return &r
@@ -497,7 +497,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
   // create a new buffer (the returned block should not be overwritten by later calls)
   b := new(bytes.Buffer)
   // number of bins covered by each record
-  n := divIntUp(it.reductionLevel, it.binsize)
+  n := divIntUp(it.reductionLevel, it.binSize)
   // beginning of region covered by a single block
   f := -1
   // number of records written to block
@@ -507,10 +507,10 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
   it.r.To    = 0
   it.r.Block = nil
   // loop over sequence and generate records
-  for p := it.position; p < it.binsize*len(it.sequence); p += it.reductionLevel {
+  for p := it.position; p < it.binSize*len(it.sequence); p += it.reductionLevel {
     // p: position in base pairs
     // i: position in bins
-    i := p/it.binsize
+    i := p/it.binSize
     // reset record
     record := BbiZoomRecord{}
     record.ChromId = uint32(it.chromid)
@@ -519,8 +519,8 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     record.Min     = float32(math.NaN())
     record.Max     = float32(math.NaN())
     // crop record end if it is longer than the actual sequence
-    if record.End > uint32(it.binsize*len(it.sequence)) {
-      record.End = uint32(it.binsize*len(it.sequence))
+    if record.End > uint32(it.binSize*len(it.sequence)) {
+      record.End = uint32(it.binSize*len(it.sequence))
     }
     // add records
     for j := 0; j < n && i+j < len(it.sequence); j++ {
@@ -541,7 +541,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     }
     // check if block is full or if the end of the
     // sequence is reached
-    if m == it.ItemsPerSlot || p + it.reductionLevel >= it.binsize*len(it.sequence) {
+    if m == it.ItemsPerSlot || p + it.reductionLevel >= it.binSize*len(it.sequence) {
       if tmp := b.Bytes(); len(tmp) > 0 {
         // save result
         it.r.From  = f
@@ -569,7 +569,7 @@ type BbiRawBlockEncoderIterator struct {
   *BbiRawBlockEncoder
   chromid        int
   sequence     []float64
-  binsize        int
+  binSize        int
   position       int
   record         BbiZoomRecord
   // result
@@ -594,12 +594,12 @@ func (encoder *BbiRawBlockEncoder) encodeFixed(buffer []byte, value float64) {
   encoder.order.PutUint32(buffer[0:4], math.Float32bits(float32(value)))
 }
 
-func (encoder *BbiRawBlockEncoder) Encode(chromid int, sequence []float64, binsize int) BbiBlockEncoderIterator {
+func (encoder *BbiRawBlockEncoder) Encode(chromid int, sequence []float64, binSize int) BbiBlockEncoderIterator {
   r := BbiRawBlockEncoderIterator{}
   r.BbiRawBlockEncoder = encoder
   r.chromid    = chromid
   r.sequence   = sequence
-  r.binsize    = binsize
+  r.binSize    = binSize
   r.position   = 0
   r.Next()
   return &r
@@ -627,10 +627,10 @@ func (it *BbiRawBlockEncoderIterator) Next() {
   // create header for this block
   header := BbiDataHeader{}
   header.ChromId = uint32(it.chromid)
-  header.Start   = uint32(it.binsize*it.position)
-  header.End     = uint32(it.binsize*it.position)
-  header.Step    = uint32(it.binsize)
-  header.Span    = uint32(it.binsize)
+  header.Start   = uint32(it.binSize*it.position)
+  header.End     = uint32(it.binSize*it.position)
+  header.Step    = uint32(it.binSize)
+  header.Span    = uint32(it.binSize)
   if it.fixedStep {
     header.Type = 3
   } else {
@@ -1603,19 +1603,19 @@ func NewRVertexGenerator(blockSize, itemsPerSlot int, order binary.ByteOrder) (*
   return &generator, nil
 }
 
-func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binsize, reductionLevel int, fixedStep bool) <- chan RVertexGeneratorType {
+func (generator *RVertexGenerator) Generate(idx int, sequence []float64, binSize, reductionLevel int, fixedStep bool) <- chan RVertexGeneratorType {
   channel := make(chan RVertexGeneratorType, 2)
   go func() {
-    generator.generate(channel, idx, sequence, binsize, reductionLevel, fixedStep)
+    generator.generate(channel, idx, sequence, binSize, reductionLevel, fixedStep)
     close(channel)
   }()
   return channel
 }
 
-func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, chromId int, sequence []float64, binsize, reductionLevel int, fixedStep bool) error {
+func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, chromId int, sequence []float64, binSize, reductionLevel int, fixedStep bool) error {
   var encoder BbiBlockEncoder
   // create block encoder
-  if reductionLevel > binsize {
+  if reductionLevel > binSize {
     // use a zoom block encoder
     if tmp, err := NewBbiZoomBlockEncoder(generator.ItemsPerSlot, reductionLevel, generator.order); err != nil {
       return err
@@ -1636,7 +1636,7 @@ func (generator *RVertexGenerator) generate(channel chan RVertexGeneratorType, c
   // empty list of blocks
   b := [][]byte{}
   // loop over sequence chunks
-  it := encoder.Encode(chromId, sequence, binsize)
+  it := encoder.Encode(chromId, sequence, binSize)
   for chunk := it.Get(); it.Ok(); it.Next() {
     if int(v.NChildren) == generator.BlockSize {
       // vertex is full
@@ -2103,7 +2103,7 @@ func (bwf *BbiFile) Close() error {
 /* query interface
  * -------------------------------------------------------------------------- */
 
-func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binsize int) {
+func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binSize int) {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType()
 
@@ -2130,7 +2130,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
       }
       // check if current result record is full or if there is
       // a gap
-      if result.To  - result.From >= binsize || result.From + binsize < record.From {
+      if result.To  - result.From >= binSize || result.From + binSize < record.From {
         if result.From != result.To {
           // send resulting zoom record
           channel <- result
@@ -2150,7 +2150,7 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
   }
 }
 
-func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsize int) {
+func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binSize int) {
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType()
@@ -2181,7 +2181,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
       }
       // check if current result record is full or if there is
       // a gap
-      if result.To  - result.From >= binsize || result.From + binsize < record.From {
+      if result.To  - result.From >= binSize || result.From + binSize < record.From {
         if result.From != result.To {
           // send resulting zoom record
           channel <- result
@@ -2201,32 +2201,32 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binsi
   }
 }
 
-func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binsize int) {
-  // a binsize of zero is used to query raw data without
+func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binSize int) {
+  // a binSize of zero is used to query raw data without
   // any further summary
-  if binsize != 0 {
-    from = divIntDown(from, binsize)*binsize
-    to   = divIntUp  (to,   binsize)*binsize
+  if binSize != 0 {
+    from = divIntDown(from, binSize)*binSize
+    to   = divIntUp  (to,   binSize)*binSize
   }
-  // index of a matching zoom level for the given binsize
+  // index of a matching zoom level for the given binSize
   zoomIdx := -1
   for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
-    if binsize >= int(bwf.Header.ZoomHeaders[i].ReductionLevel) &&
-      (binsize %  int(bwf.Header.ZoomHeaders[i].ReductionLevel) == 0) {
+    if binSize >= int(bwf.Header.ZoomHeaders[i].ReductionLevel) &&
+      (binSize %  int(bwf.Header.ZoomHeaders[i].ReductionLevel) == 0) {
       zoomIdx = i
     }
   }
   if zoomIdx != -1 {
-    bwf.queryZoom(channel, zoomIdx, chromId, from, to, binsize)
+    bwf.queryZoom(channel, zoomIdx, chromId, from, to, binSize)
   } else {
-    bwf.queryRaw(channel, chromId, from, to, binsize)
+    bwf.queryRaw(channel, chromId, from, to, binSize)
   }
 }
 
-func (bwf *BbiFile) Query(chromId, from, to, binsize int) <- chan BbiQueryType {
+func (bwf *BbiFile) Query(chromId, from, to, binSize int) <- chan BbiQueryType {
   channel := make(chan BbiQueryType, 100)
   go func() {
-    bwf.query(channel, chromId, from, to, binsize)
+    bwf.query(channel, chromId, from, to, binSize)
     close(channel)
   }()
   return channel

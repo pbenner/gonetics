@@ -50,8 +50,8 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
     err = fmt.Errorf("Crosscorrelation(): invalid parameters")
     return
   }
-  if track1.GetBinsize() != track2.GetBinsize() {
-    err = fmt.Errorf("Crosscorrelation(): track binsizes do not match")
+  if track1.GetBinSize() != track2.GetBinSize() {
+    err = fmt.Errorf("Crosscorrelation(): track binSizes do not match")
     return
   }
   for _, name := range track1.GetSeqNames() {
@@ -67,7 +67,7 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
       return
     }
   }
-  b := track1.GetBinsize()
+  b := track1.GetBinSize()
   n := (to-from)/b  // number of points in the resulting  autocorrelation
   m := 0.0          // number of data points
   // sample mean and covariance
@@ -78,7 +78,7 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
   // allocate result
   x = make([]int,     n)
   y = make([]float64, n)
-  // compute delays used for indexing (i.e. normalized by binsize)
+  // compute delays used for indexing (i.e. normalized by binSize)
   for j, l := 0, from; l < to; j, l = j+1, l+b {
     x[j] = l/b
   }
@@ -147,9 +147,9 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
 /* -------------------------------------------------------------------------- */
 
 // Compute crosscorrelation between reads on the forward and reverse strand.
-func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([]int, []float64, error) {
-  track1 := AllocSimpleTrack("forward", genome, binsize)
-  track2 := AllocSimpleTrack("reverse", genome, binsize)
+func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binSize int) ([]int, []float64, error) {
+  track1 := AllocSimpleTrack("forward", genome, binSize)
+  track2 := AllocSimpleTrack("reverse", genome, binSize)
 
   s := reads.SetLengths(1)
   // move reads on the reverse strand one bp to the right
@@ -171,7 +171,7 @@ func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binsize int) ([
 /* estimate mean fragment length
  * -------------------------------------------------------------------------- */
 
-func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int, fraglenRange [2]int) (int, []int, []float64, error) {
+func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binSize int, fraglenRange [2]int) (int, []int, []float64, error) {
 
   if reads.Length() == 0 {
     return -1, nil, nil, fmt.Errorf("no reads given")
@@ -184,7 +184,7 @@ func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binsize int,
   }
   readLength /= uint64(reads.Length())
 
-  x, y, err := CrosscorrelateReads(reads, genome, maxDelay, binsize)
+  x, y, err := CrosscorrelateReads(reads, genome, maxDelay, binSize)
 
   if err != nil {
     return -1, nil, nil, err

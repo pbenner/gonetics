@@ -23,15 +23,15 @@ import "fmt"
 /* -------------------------------------------------------------------------- */
 
 func (track GenericTrack) writeBigWig_reductionLevels(parameters BigWigParameters) []int {
-  c := BbiResIncrement*track.GetBinsize()
+  c := BbiResIncrement*track.GetBinSize()
   // reduction levels
   n := []int{}
   // length of the longest track
   l := 0
   // get length of longest track
   for _, length := range track.GetGenome().Lengths {
-    if length/track.GetBinsize() > l {
-      l = length/track.GetBinsize()
+    if length/track.GetBinSize() > l {
+      l = length/track.GetBinSize()
     }
   }
   // initial zoom level
@@ -75,7 +75,7 @@ func (track GenericTrack) WriteBigWig(filename, description string, genome Genom
     sequence, err := track.GetSequence(name); if err != nil {
       return err
     }
-    if err := writer.Write(name, sequence.sequence, track.GetBinsize()); err != nil {
+    if err := writer.Write(name, sequence.sequence, track.GetBinSize()); err != nil {
       return err
     }
   }
@@ -93,7 +93,7 @@ func (track GenericTrack) WriteBigWig(filename, description string, genome Genom
       sequence, err := track.GetSequence(name); if err != nil {
         return err
       }
-      if err := writer.WriteZoom(name, sequence.sequence, track.GetBinsize(), reductionLevel, i); err != nil {
+      if err := writer.WriteZoom(name, sequence.sequence, track.GetBinSize(), reductionLevel, i); err != nil {
         return err
       }
     }

@@ -1771,10 +1771,10 @@ type BbiHeader struct {
   UncompressBufSize uint32
   ExtensionOffset   uint64
   NBasesCovered     uint64
-  MinVal            uint64
-  MaxVal            uint64
-  SumData           uint64
-  SumSquares        uint64
+  MinVal            float64
+  MaxVal            float64
+  SumData           float64
+  SumSquares        float64
   ZoomHeaders     []BbiHeaderZoom
   NBlocks           uint64
   // offset positions

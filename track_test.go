@@ -85,7 +85,7 @@ func TestTrack3(t *testing.T) {
   // initialize all values to NaN
   GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 { return math.NaN() })
 
-  if err := track2.ReadWiggle(filename); err != nil {
+  if err := track2.ImportWiggle(filename); err != nil {
     t.Error(err)
   }
   if track1.Name != track2.Name {
@@ -248,7 +248,7 @@ func TestTrack10(t *testing.T) {
   track1.WriteWiggle(filename, "test description")
 
   track2 := AllocSimpleTrack("", genome, 10)
-  if err := track2.ReadWiggle(filename); err != nil {
+  if err := track2.ImportWiggle(filename); err != nil {
     t.Error(err)
   }
   if track1.Name != track2.Name {

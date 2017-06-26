@@ -235,30 +235,11 @@ func readWiggle_variableStep(scanner *bufio.Scanner, result *SimpleTrack) error 
 }
 
 // Import data from wiggle files.
-func (track *SimpleTrack) ReadWiggle(filename string) error {
+func (track *SimpleTrack) ReadWiggle(reader io.Reader) error {
 
-  header := false
-  fields := []string{}
-
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
+  header  := false
+  fields  := []string{}
+  scanner := bufio.NewScanner(reader)
 
   if !scanner.Scan() {
     return nil
@@ -302,4 +283,26 @@ func (track *SimpleTrack) ReadWiggle(filename string) error {
     }
   }
   return nil
+}
+
+func (track *SimpleTrack) ImportWiggle(filename string) error {
+  var r io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    r = g
+  } else {
+    r = f
+  }
+  return track.ReadWiggle(r)
 }

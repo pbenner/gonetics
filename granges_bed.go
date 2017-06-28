@@ -61,8 +61,8 @@ func (granges GRanges) ExportBed3(filename string, compress bool) error {
 }
 
 func (granges GRanges) WriteBed6(w io.Writer) error {
-  name  := granges.GetMetaStr  ("name")
-  score := granges.GetMetaFloat("score")
+  name  := granges.GetMetaStr("name")
+  score := granges.GetMetaInt("score")
 
   for i := 0; i < granges.Length(); i++ {
     if _, err := fmt.Fprintf(w,   "%s", granges.Seqnames[i]); err != nil {
@@ -84,7 +84,7 @@ func (granges GRanges) WriteBed6(w io.Writer) error {
       }
     }
     if len(score) > 0 {
-      if _, err := fmt.Fprintf(w, "\t%f", score[i]); err != nil {
+      if _, err := fmt.Fprintf(w, "\t%d", score[i]); err != nil {
         return err
       }
     } else {
@@ -121,11 +121,11 @@ func (granges GRanges) ExportBed6(filename string, compress bool) error {
 }
 
 func (granges GRanges) WriteBed9(w io.Writer) error {
-  name       := granges.GetMetaStr  ("name")
-  score      := granges.GetMetaFloat("score")
-  thickStart := granges.GetMetaInt  ("thickStart")
-  thickEnd   := granges.GetMetaInt  ("thickEnd")
-  itemRgb    := granges.GetMetaStr  ("itemRgb")
+  name       := granges.GetMetaStr("name")
+  score      := granges.GetMetaInt("score")
+  thickStart := granges.GetMetaInt("thickStart")
+  thickEnd   := granges.GetMetaInt("thickEnd")
+  itemRgb    := granges.GetMetaStr("itemRgb")
 
   for i := 0; i < granges.Length(); i++ {
     if _, err := fmt.Fprintf(w,   "%s", granges.Seqnames[i]); err != nil {
@@ -147,7 +147,7 @@ func (granges GRanges) WriteBed9(w io.Writer) error {
       }
     }
     if len(score) > 0 {
-      if _, err := fmt.Fprintf(w, "\t%f", score[i]); err != nil {
+      if _, err := fmt.Fprintf(w, "\t%d", score[i]); err != nil {
         return err
       }
     } else {

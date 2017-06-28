@@ -24,7 +24,7 @@ import "io"
 /* -------------------------------------------------------------------------- */
 
 func (track GenericTrack) WriteBed(w io.Writer) error {
-  r, err := track.GRanges(); if err != nil {
+  r, err := track.GRanges("score"); if err != nil {
     return err
   }
   // write to file
@@ -32,7 +32,7 @@ func (track GenericTrack) WriteBed(w io.Writer) error {
 }
 
 func (track GenericTrack) ExportBed(filename string, compress bool) error {
-  r, err := track.GRanges(); if err != nil {
+  r, err := track.GRanges("score"); if err != nil {
     return err
   }
   // write to file

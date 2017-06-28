@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-func (track GenericTrack) GRanges() (GRanges, error) {
+func (track GenericTrack) GRanges(name string) (GRanges, error) {
   binSize  := track.GetBinSize()
   seqnames := []string{}
   from     := []int{}
@@ -59,6 +59,6 @@ func (track GenericTrack) GRanges() (GRanges, error) {
     values   = append(values, c_val)
   }
   r := NewGRanges(seqnames, from, to, nil)
-  r.AddMeta("score", values)
+  r.AddMeta(name, values)
   return r, nil
 }

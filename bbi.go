@@ -215,6 +215,11 @@ func (record *BbiSummaryRecord) Reset() {
 }
 
 func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
+  if record.ChromId == -1 {
+    record.ChromId   = x.ChromId
+    record.From      = x.From
+    record.To        = x.To
+  }
   if record.To < x.From {
     // fill gaps with zeros
     record.Valid += float64(x.From - record.To)
@@ -2137,15 +2142,12 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
         }
         // prepare new zoom record
         result.Reset()
-        result.ChromId = record.ChromId
-        result.From    = record.From
-        result.To      = record.From
       }
       // add contents of current record to the resulting record
       result.AddRecord(record.BbiSummaryRecord)
     }
   }
-  if result.From != result.To {
+  if result.ChromId != -1 {
     channel <- result
   }
 }
@@ -2188,15 +2190,12 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binSi
         }
         // prepare new zoom record
         result.Reset()
-        result.ChromId = record.ChromId
-        result.From    = record.From
-        result.To      = record.From
       }
       // add contents of current record to the resulting record
       result.AddRecord(record.BbiSummaryRecord)
     }
   }
-  if result.From != result.To {
+  if result.ChromId != -1 {
     channel <- result
   }
 }

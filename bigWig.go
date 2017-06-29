@@ -348,7 +348,9 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
           if j < 0 || j >= len(s) {
             continue
           }
-          t.AddRecord(r[j])
+          if r[j].Valid > 0 {
+            t.AddRecord(r[j])
+          }
         }
         if t.Valid > 0 {
           s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)

@@ -28,6 +28,9 @@ type BinSummaryStatistics func(sum, sumSquares, min, max, n float64) float64
 func BinMean(sum, sumSquares, min, max, n float64) float64 {
   return sum/n
 }
+func BinDiscreteMean(sum, sumSquares, min, max, n float64) float64 {
+  return math.Floor(sum/n + 0.5)
+}
 func BinVariance(sum, sumSquares, min, max, n float64) float64 {
   return sumSquares/n - sum/n*sum/n
 }

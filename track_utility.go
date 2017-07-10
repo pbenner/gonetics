@@ -365,7 +365,7 @@ func (track GenericMutableTrack) WindowMapList(tracks []Track, windowSize int, f
             if t := i - windowSize/2 + k; t < 0 || t >= sequences[j].NBins() {
               v[j][k] = math.NaN()
             } else {
-              v[j][k] = sequences[j].AtBin(k)
+              v[j][k] = sequences[j].AtBin(t)
             }
           }
         }
@@ -405,7 +405,7 @@ func (track GenericMutableTrack) WindowMapList(tracks []Track, windowSize int, f
             if t := i - windowSize/2 + k; t < 0 || t >= sequences[j].NBins() {
               v[j][k] = math.NaN()
             } else {
-              v[j][k] = sequences[j].AtBin(k)
+              v[j][k] = sequences[j].AtBin(t)
             }
           }
         }

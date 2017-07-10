@@ -183,6 +183,62 @@ func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64)
   return nil
 }
 
+func (track1 GenericMutableTrack) WindowMap(track2 Track, windowSize int, f func(string, int, ...float64) float64) error {
+  if windowSize <= 0 {
+    return fmt.Errorf("invalid window size")
+  }
+  v := make([]float64, windowSize)
+  if track1.MutableTrack == nil {
+    binSize := track2.GetBinSize()
+    for _, name := range track2.GetSeqNames() {
+      seq2, err := track2.GetSequence(name); if err != nil {
+        return err
+      }
+      for i := 0; i < seq2.NBins(); i++ {
+        // fill v slice
+        for j := 0; j < windowSize; j++ {
+          if k := i - windowSize/2 + j; k < 0 || k >= seq2.NBins() {
+            v[j] = math.NaN()
+          } else {
+            v[j] = seq2.AtBin(k)
+          }
+        }
+        // call function
+        f(name, i*binSize, v...)
+      }
+    }
+  } else {
+    if track1.GetBinSize() != track2.GetBinSize() {
+      return fmt.Errorf("binSizes do not match")
+    }
+    binSize := track1.GetBinSize()
+    for _, name := range track1.GetSeqNames() {
+      seq1, err := track1.GetMutableSequence(name); if err != nil {
+        return err
+      }
+      seq2, err := track2.GetSequence(name); if err != nil {
+        return err
+      }
+      if seq1.NBins() != seq2.NBins() {
+        return fmt.Errorf("sequence lengths do not match for `%d'", name)
+      }
+      for i := 0; i < seq2.NBins(); i++ {
+        // fill v slice
+        for j := 0; j < windowSize; j++ {
+          if k := i - windowSize/2 + j; k < 0 || k >= seq2.NBins() {
+            v[j] = math.NaN()
+          } else {
+            v[j] = seq2.AtBin(k)
+          }
+        }
+        // call function
+        seq1.SetBin(i, f(name, i*binSize, v...))
+      }
+    }
+  }
+  return nil
+}
+
 func (track GenericMutableTrack) MapList(tracks []Track, f func(string, int, ...float64) float64) error {
   if len(tracks) == 0 {
     return nil
@@ -254,6 +310,104 @@ func (track GenericMutableTrack) MapList(tracks []Track, f func(string, int, ...
         // copy values to local vector
         for j := 0; j < len(sequences); j++ {
           v[j] = sequences[j].AtBin(i)
+        }
+        // apply function
+        dst.SetBin(i, f(name, i*binSize, v...))
+      }
+    }
+  }
+  return nil
+}
+
+func (track GenericMutableTrack) WindowMapList(tracks []Track, windowSize int, f func(string, int, ...[]float64) float64) error {
+  if len(tracks) == 0 {
+    return nil
+  }
+  if windowSize <= 0 {
+    return fmt.Errorf("invalid window size")
+  }
+  // number of tracks
+  n := len(tracks)
+  v := make([][]float64, n)
+  for i := 0; i < n; i++ {
+    v[i] = make([]float64, windowSize)
+  }
+  if track.MutableTrack == nil {
+    // check bin sizes
+    for i := 1; i < n; i++ {
+      if tracks[0].GetBinSize() != tracks[i].GetBinSize() {
+        return fmt.Errorf("binSizes do not match")
+      }
+    }
+    binSize := tracks[0].GetBinSize()
+    for _, name := range tracks[0].GetSeqNames() {
+      sequences := []TrackSequence{}
+      nbins     := -1
+      // collect source sequences
+      for k, t := range tracks {
+        if seq, err := t.GetSequence(name); err == nil {
+          if nbins == -1 {
+            nbins = seq.NBins()
+          }
+          if seq.NBins() != nbins {
+            return fmt.Errorf("sequence `%s' in track `%d' has invalid length (`%d' instead of `%d')", name, k, seq.NBins(), nbins)
+          }
+          sequences = append(sequences, seq)
+        }
+      }
+      // reduce length of v if some tracks are missing a sequence
+      v := v[0:len(sequences)]
+      // loop over sequence
+      for i := 0; i < nbins; i++ {
+        // copy values to local vector
+        for j := 0; j < len(sequences); j++ {
+          for k := 0; k < windowSize; k++ {
+            if t := i - windowSize/2 + k; t < 0 || t >= sequences[j].NBins() {
+              v[j][k] = math.NaN()
+            } else {
+              v[j][k] = sequences[j].AtBin(k)
+            }
+          }
+        }
+        // apply function
+        f(name, i*binSize, v...)
+      }
+    }
+  } else {
+    // check bin sizes
+    for _, t := range tracks {
+      if track.GetBinSize() != t.GetBinSize() {
+        return fmt.Errorf("binSizes do not match")
+      }
+    }
+    binSize := track.GetBinSize()
+    for _, name := range track.GetSeqNames() {
+      dst, err := track.GetMutableSequence(name); if err != nil {
+        return err
+      }
+      sequences := []TrackSequence{}
+      // collect source sequences
+      for k, t := range tracks {
+        if seq, err := t.GetSequence(name); err == nil {
+          if seq.NBins() != dst.NBins() {
+            return fmt.Errorf("sequence `%s' in track `%d' has invalid length (`%d' instead of `%d')", name, k, seq.NBins(), dst.NBins())
+          }
+          sequences = append(sequences, seq)
+        }
+      }
+      // reduce length of v if some tracks are missing a sequence
+      v := v[0:len(sequences)]
+      // loop over sequence
+      for i := 0; i < dst.NBins(); i++ {
+        // copy values to local vector
+        for j := 0; j < len(sequences); j++ {
+          for k := 0; k < windowSize; k++ {
+            if t := i - windowSize/2 + k; t < 0 || t >= sequences[j].NBins() {
+              v[j][k] = math.NaN()
+            } else {
+              v[j][k] = sequences[j].AtBin(k)
+            }
+          }
         }
         // apply function
         dst.SetBin(i, f(name, i*binSize, v...))

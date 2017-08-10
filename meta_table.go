@@ -26,7 +26,21 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (meta Meta) WriteTableRow(w io.Writer, i int) {
+type OptionGRangesScientific struct {
+  Value bool
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (meta Meta) WriteTableRow(w io.Writer, i int, args ...interface{}) {
+  useScientific := false
+  for _, arg := range args {
+    switch a := arg.(type) {
+    case OptionGRangesScientific:
+      useScientific = a.Value
+    default:
+    }
+  }
   if i == -1 {
     // write header
     for k := 0; k < meta.MetaLength(); k++ {
@@ -36,7 +50,12 @@ func (meta Meta) WriteTableRow(w io.Writer, i int) {
     for k := 0; k < meta.MetaLength(); k++ {
       switch v := meta.MetaData[k].(type) {
       case []string : fmt.Fprintf(w, " %s", v[i])
-      case []float64: fmt.Fprintf(w, " %f", v[i])
+      case []float64:
+        if useScientific {
+          fmt.Fprintf(w, " %e", v[i])
+        } else {
+          fmt.Fprintf(w, " %f", v[i])
+        }
       case []int    : fmt.Fprintf(w, " %d", v[i])
       case [][]string:
         if len(v[i]) == 0 {
@@ -54,10 +73,18 @@ func (meta Meta) WriteTableRow(w io.Writer, i int) {
           fmt.Fprintf(w, " nil")
         }
         for j := 0; j < len(v[i]); j++ {
-          if j == 0 {
-            fmt.Fprintf(w, " %f", v[i][j])
+          if useScientific {
+            if j == 0 {
+              fmt.Fprintf(w, " %e", v[i][j])
+            } else {
+              fmt.Fprintf(w, ",%e", v[i][j])
+            }
           } else {
-            fmt.Fprintf(w, ",%f", v[i][j])
+            if j == 0 {
+              fmt.Fprintf(w, " %f", v[i][j])
+            } else {
+              fmt.Fprintf(w, ",%f", v[i][j])
+            }
           }
         }
       case [][]int:

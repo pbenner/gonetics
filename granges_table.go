@@ -31,7 +31,7 @@ import "strings"
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(w io.Writer, header, strand bool) error {
+func (granges GRanges) WriteTable(w io.Writer, header, strand bool, args ...interface{}) error {
   // print header
   if header {
     if strand {
@@ -70,7 +70,7 @@ func (granges GRanges) WriteTable(w io.Writer, header, strand bool) error {
         }
       }
     }
-    granges.Meta.WriteTableRow(w, i)
+    granges.Meta.WriteTableRow(w, i, args...)
     if _, err := fmt.Fprintf(w, "\n"); err != nil {
       return err
     }
@@ -78,11 +78,11 @@ func (granges GRanges) WriteTable(w io.Writer, header, strand bool) error {
   return nil
 }
 
-func (granges GRanges) ExportTable(filename string, header, strand, compress bool) error {
+func (granges GRanges) ExportTable(filename string, header, strand, compress bool, args ...interface{}) error {
   var buffer bytes.Buffer
 
   w := bufio.NewWriter(&buffer)
-  if err := granges.WriteTable(w, header, strand); err != nil {
+  if err := granges.WriteTable(w, header, strand, args...); err != nil {
     return err
   }
   w.Flush()

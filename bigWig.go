@@ -318,8 +318,10 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
           binSize = record.To - record.From
           r = make([]BbiSummaryRecord, divIntDown(seqlength, binSize))
         }
-        if idx := record.From/binSize; idx >= 0 && idx < len(r) {
-          r[idx] = record.BbiSummaryRecord
+        for idx := record.From/binSize; idx < record.To/binSize; idx++ {
+          if idx >= 0 && idx < len(r) {
+            r[idx] = record.BbiSummaryRecord
+          }
         }
       }
     } else {
@@ -328,8 +330,10 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
         if record.Error != nil {
           return nil, -1, record.Error
         }
-        if idx := record.From/binSize; idx >= 0 && idx < len(r) {
-          r[idx] = record.BbiSummaryRecord
+        for idx := record.From/binSize; idx < record.To/binSize; idx++ {
+          if idx >= 0 && idx < len(r) {
+            r[idx] = record.BbiSummaryRecord
+          }
         }
       }
     }

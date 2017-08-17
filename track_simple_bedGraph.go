@@ -40,7 +40,7 @@ func (track *SimpleTrack) ReadBedGraph(reader io.Reader) error {
   // current sequence and name
   cur_seq  := []float64{}
   cur_name := ""
-  for {
+  for scanner.Scan() {
     fields = strings.Fields(scanner.Text())
     if len(fields) == 0 {
       break

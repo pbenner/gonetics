@@ -71,8 +71,8 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
     }
   }
   b := track1.GetBinSize()
-  n := (to-from)/b  // number of points in the resulting  autocorrelation
-  m := 0.0          // number of data points
+  n := divIntUp(to-from, b) // number of points in the resulting  autocorrelation
+  m := 0.0                  // number of data points
   // sample mean and covariance
   mean1     := 0.0
   mean2     := 0.0

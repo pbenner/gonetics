@@ -632,7 +632,7 @@ func (bww *BigWigWriter) Close() error {
 func BigWigReadGenome(filename string) (Genome, error) {
   reader, err := NewBigWigReader(filename)
   if err != nil {
-    return Genome{}, nil
+    return Genome{}, err
   }
   return reader.Genome, nil
 }

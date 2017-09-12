@@ -225,7 +225,7 @@ func (g *GRanges) ReadBed3(r io.Reader) error {
       continue
     }
     if len(fields) < 3 {
-      return fmt.Errorf("ReadBed3(): Bed file must have at least three columns!")
+      return fmt.Errorf("ReadBed3(): Bed file must have at least 3 columns")
     }
     t1, err := strconv.ParseInt(fields[1], 10, 64); if err != nil {
       return err
@@ -282,7 +282,7 @@ func (g *GRanges) ReadBed6(r io.Reader) error {
       continue
     }
     if len(fields) < 6 {
-      return fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
+      return fmt.Errorf("ReadBed6(): Bed file must have at least 6 columns")
     }
     t1, err := strconv.ParseInt(fields[1], 10, 64); if err != nil {
       return err
@@ -353,7 +353,7 @@ func (g *GRanges) ReadBed9(r io.Reader) error {
       continue
     }
     if len(fields) < 6 {
-      return fmt.Errorf("ReadBed6(): Bed file must have at least six columns!")
+      return fmt.Errorf("ReadBed9(): Bed file must have at least 9 columns")
     }
     t1, err := strconv.ParseInt(fields[1], 10, 64); if err != nil {
       return err

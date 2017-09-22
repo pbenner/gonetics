@@ -51,7 +51,7 @@ func NewGRanges(seqnames []string, from, to []int, strand []byte) GRanges {
     ranges[i] = NewRange(from[i], to[i])
     // check if strand is valid
     if strand[i] != '+' && strand[i] != '-' && strand[i] != '*' {
-      panic("NewGRanges(): Invalid strand!")
+      panic(fmt.Sprintf("NewGRanges(): invalid strand `%c' at row `%d'", strand[i], i))
     }
   }
   return GRanges{seqnames, ranges, strand, Meta{}}

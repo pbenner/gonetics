@@ -161,7 +161,11 @@ func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error 
         score = append(score, v)
       }
     }
-    strand = append(strand, fields[6][0])
+    if fields[6] == "." {
+      strand = append(strand, '*')
+    } else {
+      strand = append(strand, fields[6][0])
+    }
     if fields[7] == "." {
       frame = append(frame, -1)
     } else {

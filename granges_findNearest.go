@@ -75,6 +75,8 @@ func (r1 *endPoint) distance(r2 *endPoint) (int, int) {
 /* FindNearest
  * -------------------------------------------------------------------------- */
 
+// For every query region find the k nearest subject regions including
+// all overlapping regions.
 func FindNearest(query, subject GRanges, k int) ([]int, []int, []int) {
 
   n :=   query.Length()

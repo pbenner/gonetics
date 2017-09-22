@@ -149,6 +149,9 @@ func (track GenericMutableTrack) Smoothen(minCounts float64, windowSizes []int) 
 /* map/reduce
  * -------------------------------------------------------------------------- */
 
+// Apply a function f to the sequences of track2. The function is given as
+// arguments the name of the sequence, the position, and the value at that
+// position. The return value is stored in track1 if it is not nil.
 func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64) float64) error {
   if track1.MutableTrack == nil {
     binSize := track2.GetBinSize()
@@ -183,6 +186,9 @@ func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64)
   return nil
 }
 
+// Apply a window function f to the sequences of track2. The function is given
+// as arguments the name of the sequence, the position, and the value at that
+// position. The return value is stored in track1 if it is not nil.
 func (track1 GenericMutableTrack) WindowMap(track2 Track, windowSize int, f func(string, int, ...float64) float64) error {
   if windowSize <= 0 {
     return fmt.Errorf("invalid window size")

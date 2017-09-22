@@ -27,10 +27,10 @@ func TestOverlapsList(t *testing.T) {
 
   s := NewEndPointList()
 
-  r1 := endPoint{100, nil, 1, true}
-  r2 := endPoint{200, nil, 1, true}
-  r3 := endPoint{300, nil, 1, true}
-  r4 := endPoint{300, nil, 1, true}
+  r1 := endPoint{100, nil, nil, 1, true}
+  r2 := endPoint{200, nil, nil, 1, true}
+  r3 := endPoint{300, nil, nil, 1, true}
+  r4 := endPoint{300, nil, nil, 1, true}
 
   s.Append(r1)
   s.Append(r2)

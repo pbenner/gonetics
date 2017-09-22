@@ -18,16 +18,45 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
 
 type endPoint struct {
-  position int
+  position  int
   start    *endPoint
-  srcIdx   int
-  isQuery  bool
+  end      *endPoint
+  srcIdx    int
+  isQuery   bool
+}
+
+func (obj *endPoint) isStart() bool {
+  return obj.start == nil
+}
+
+func (obj *endPoint) isEnd() bool {
+  return obj.end == nil
+}
+
+func (obj *endPoint) getStart() int {
+  if obj.start == nil {
+    return obj.position
+  } else {
+    return obj.start.position
+  }
+}
+
+func (obj *endPoint) getEnd() int {
+  if obj.end == nil {
+    return obj.position
+  } else {
+    return obj.end.position
+  }
+}
+
+func (obj *endPoint) String() string {
+  return fmt.Sprintf("<%d,%d>", obj.getStart(), obj.getEnd())
 }
 
 /* endPointList
@@ -75,6 +104,41 @@ func (s *endPointList) Remove(r endPoint) {
 /* FindOverlaps
  * -------------------------------------------------------------------------- */
 
+func findOverlapsEntry(queryHits, subjectHits []int, entry endPointList) ([]int, []int) {
+    queryList := NewEndPointList()
+  subjectList := NewEndPointList()
+  for _, r := range entry {
+    if r.isQuery {
+      if r.start == nil {
+        queryList.Append(r)
+        // record overlaps (all elements in subjectList overlap with this
+        // position)
+        for i := 0; i < len(subjectList); i++ {
+            queryHits = append(  queryHits, r.srcIdx)
+          subjectHits = append(subjectHits, subjectList[i].srcIdx)
+        }
+      } else {
+        // remove start position from stack
+        queryList.Remove(*r.start)
+      }
+    } else {
+      if r.start == nil {
+        subjectList.Append(r)
+        // record overlaps (all elements in queryList overlap with this
+        // position)
+        for i := 0; i < len(queryList); i++ {
+            queryHits = append(  queryHits, queryList[i].srcIdx)
+          subjectHits = append(subjectHits, r.srcIdx)
+        }
+      } else {
+        // remove start position from stack
+        subjectList.Remove(*r.start)
+      }
+    }
+  }
+  return queryHits, subjectHits
+}
+
 func FindOverlaps(query, subject GRanges) ([]int, []int) {
 
   n :=   query.Length()
@@ -86,17 +150,16 @@ func FindOverlaps(query, subject GRanges) ([]int, []int) {
   rmap := make(map[string]endPointList)
   // fill map
   for i := 0; i < n; i++ {
-    start := endPoint{query.Ranges[i].From,    nil, i, true}
-    end   := endPoint{query.Ranges[i].To,   &start, i, true}
+    start := endPoint{query.Ranges[i].From,  nil, nil, i, true}
+    end   := endPoint{query.Ranges[i].To, &start, nil, i, true}
     entry := rmap[query.Seqnames[i]]
     entry  = append(entry, start)
     entry  = append(entry, end)
     rmap[query.Seqnames[i]] = entry
   }
   for i := 0; i < m; i++ {
-    start := endPoint{subject.Ranges[i].From,    nil, i, false}
-    end   := endPoint{subject.Ranges[i].To,   &start, i, false}
-
+    start := endPoint{subject.Ranges[i].From,  nil, nil, i, false}
+    end   := endPoint{subject.Ranges[i].To, &start, nil, i, false}
     entry := rmap[subject.Seqnames[i]]
     entry  = append(entry, start)
     entry  = append(entry, end)
@@ -108,37 +171,7 @@ func FindOverlaps(query, subject GRanges) ([]int, []int) {
   }
   // find overlaps
   for _, entry := range rmap {
-      queryList := NewEndPointList()
-    subjectList := NewEndPointList()
-    for _, r := range entry {
-      if r.isQuery {
-        if r.start == nil {
-          queryList.Append(r)
-          // record overlaps (all elements in subjectList overlap with this
-          // position)
-          for i := 0; i < len(subjectList); i++ {
-              queryHits = append(  queryHits, r.srcIdx)
-            subjectHits = append(subjectHits, subjectList[i].srcIdx)
-          }
-        } else {
-          // remove start position from stack
-          queryList.Remove(*r.start)
-        }
-      } else {
-        if r.start == nil {
-          subjectList.Append(r)
-          // record overlaps (all elements in queryList overlap with this
-          // position)
-          for i := 0; i < len(queryList); i++ {
-              queryHits = append(  queryHits, queryList[i].srcIdx)
-            subjectHits = append(subjectHits, r.srcIdx)
-          }
-        } else {
-          // remove start position from stack
-          subjectList.Remove(*r.start)
-        }
-      }
-    }
+    queryHits, subjectHits = findOverlapsEntry(queryHits, subjectHits, entry)
   }
   return queryHits, subjectHits
 }

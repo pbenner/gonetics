@@ -149,7 +149,7 @@ func FindNearest(query, subject GRanges, k int) ([]int, []int, []int) {
             if d1 <= d2 {
               dr = d1*s1; ir = i1; i1--
             } else {
-              dr = d2*s1; ir = i2; i2++
+              dr = d2*s2; ir = i2; i2++
             }
           } else {
             if i1 >= 0 {

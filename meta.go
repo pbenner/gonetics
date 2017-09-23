@@ -18,6 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "fmt"
 import "errors"
 import "sort"
 
@@ -110,38 +111,31 @@ func (m Meta) Row(i int) MetaRow {
 }
 
 func (m *Meta) AddMeta(name string, meta interface{}) {
+  n := -1
+  // determine length
+  switch v := meta.(type) {
+  case [][]string:  n = len(v)
+  case   []string:  n = len(v)
+  case [][]float64: n = len(v)
+  case   []float64: n = len(v)
+  case [][]int:     n = len(v)
+  case   []int:     n = len(v)
+  case   []Range:   n = len(v)
+  default: panic("AddMeta(): invalid type!")
+  }
   if m.MetaLength() > 0 {
     // this is not the first column added; check length
-    switch v := meta.(type) {
-    case [][]string:  if len(v) != m.rows { goto lengthErr }
-    case   []string:  if len(v) != m.rows { goto lengthErr }
-    case [][]float64: if len(v) != m.rows { goto lengthErr }
-    case   []float64: if len(v) != m.rows { goto lengthErr }
-    case [][]int:     if len(v) != m.rows { goto lengthErr }
-    case   []int:     if len(v) != m.rows { goto lengthErr }
-    case   []Range:   if len(v) != m.rows { goto lengthErr }
-    default: panic("AddMeta(): invalid type!")
+    if n != m.rows {
+      panic(fmt.Sprintf("AddMeta(): column `%s' has invalid length: expected length of `%d' but column has length `%d'", name, m.rows, n))
     }
   } else {
-    // this is the first column, determine length
-    switch v := meta.(type) {
-    case [][]string:  m.rows = len(v)
-    case   []string:  m.rows = len(v)
-    case [][]float64: m.rows = len(v)
-    case   []float64: m.rows = len(v)
-    case [][]int:     m.rows = len(v)
-    case   []int:     m.rows = len(v)
-    case   []Range:   m.rows = len(v)
-    default: panic("AddMeta(): invalid type!")
-    }
+    // this is the first column, set length
+    m.rows = n
   }
   // if a meta column with this name already exists delete it
   m.DeleteMeta(name)
   m.MetaData = append(m.MetaData, meta)
   m.MetaName = append(m.MetaName, name)
-  return
-lengthErr:
-  panic("AddMeta(): column has invalid length!")
 }
 
 func (m *Meta) DeleteMeta(name string) {

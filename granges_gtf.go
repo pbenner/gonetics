@@ -32,8 +32,9 @@ import "unicode"
 
 type gtfOptional map[string]interface{}
 type gtfTypeMap  map[string]string
+type gtfDefaults map[string]interface{}
 
-func readGTFParseOptional(fields []string, gtfOpt gtfOptional, typeMap gtfTypeMap, length int) (gtfOptional, error) {
+func readGTFParseOptional(fields []string, gtfOpt gtfOptional, typeMap gtfTypeMap, gtfDef gtfDefaults, length int) (gtfOptional, error) {
   if len(fields) % 2 == 1 {
     return nil, fmt.Errorf("ReadGTF(): invalid file format!")
   }
@@ -72,8 +73,16 @@ func readGTFParseOptional(fields []string, gtfOpt gtfOptional, typeMap gtfTypeMa
     case []float64: thisLength = len(v)
     case []string : thisLength = len(v)
     }
-    if thisLength == length-1 {
-      return nil, fmt.Errorf("optional field `%s' is missing at line `%d'", name, length+1)
+    if thisLength < length {
+      if defVal, ok := gtfDef[name]; ok {
+        switch v := values.(type) {
+        case []int    : v = append(v, defVal.(int))     ; gtfOpt[name] = v
+        case []float64: v = append(v, defVal.(float64)) ; gtfOpt[name] = v
+        case []string : v = append(v, defVal.(string))  ; gtfOpt[name] = v
+        }
+      } else {
+        return nil, fmt.Errorf("optional field `%s' is missing at line `%d' with no default", name, length+1)
+      }
     }
   }
   return gtfOpt, nil
@@ -98,11 +107,14 @@ func readGTFParseLine(line string) []string {
 //  geneIdName: Name of the optional field containing the gene id
 //  exprIdName: Name of the optional field containing the expression data
 //  genes: List of query genes
-func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error {
+func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string, defaults []interface{}) error {
   scanner := bufio.NewScanner(r)
 
   if len(optNames) != len(optTypes) {
     return fmt.Errorf("ReadGTF(): invalid arguments")
+  }
+  if len(defaults) != 0 && len(defaults) != len(optNames) {
+    return fmt.Errorf("ReadGTF(): invalid number of default values")
   }
   // construct type map
   seqname  := []string{}
@@ -114,9 +126,13 @@ func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error 
   strand   := []byte{}
   frame    := []int{}
   gtfOpt   := make(gtfOptional)
+  gtfDef   := make(gtfDefaults)
   typeMap  := make(gtfTypeMap)
   for i := 0; i < len(optNames); i++ {
     typeMap[optNames[i]] = optTypes[i]
+    if len(defaults) != 0 {
+      gtfDef[optNames[i]] = defaults[i]
+    }
   }
   for name, typeStr := range typeMap {
     switch typeStr {
@@ -176,7 +192,7 @@ func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error 
       }
     }
     // parse optional fields
-    if tmp, err := readGTFParseOptional(fields[8:len(fields)], gtfOpt, typeMap, i); err != nil {
+    if tmp, err := readGTFParseOptional(fields[8:len(fields)], gtfOpt, typeMap, gtfDef, i+1); err != nil {
       return err
     } else {
       gtfOpt = tmp
@@ -196,7 +212,7 @@ func (granges *GRanges) ReadGTF(r io.Reader, optNames, optTypes []string) error 
   return nil
 }
 
-func (granges *GRanges) ImportGTF(filename string, optNames, optTypes []string) error {
+func (granges *GRanges) ImportGTF(filename string, optNames, optTypes []string, optDef []interface{}) error {
   var r io.Reader
   // open file
   f, err := os.Open(filename)
@@ -215,7 +231,7 @@ func (granges *GRanges) ImportGTF(filename string, optNames, optTypes []string) 
   } else {
     r = f
   }
-  return granges.ReadGTF(r, optNames, optTypes)
+  return granges.ReadGTF(r, optNames, optTypes, optDef)
 }
 
 /* -------------------------------------------------------------------------- */

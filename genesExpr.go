@@ -36,7 +36,7 @@ import "strings"
 //  genes: List of query genes
 func (genes *Genes) ReadGTFExpr(r io.Reader, geneIdName, exprIdName string) error {
   granges := GRanges{}
-  granges.ReadGTF(r, []string{geneIdName, exprIdName}, []string{"[]string", "[]float64"})
+  granges.ReadGTF(r, []string{geneIdName, exprIdName}, []string{"[]string", "[]float64"}, nil)
 
   // slice containing expression values
   expr := make([]float64, genes.Length())

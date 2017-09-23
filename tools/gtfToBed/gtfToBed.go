@@ -37,17 +37,13 @@ func printMsg(verbose bool, format string, args... interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
-type gtfEntry struct {
-  seqname string
+type gtfRecord struct {
   from    int
   to      int
   strand  byte
 }
 
-func (obj *gtfEntry) merge(r gtfEntry) error {
-  if obj.seqname != r.seqname {
-    return fmt.Errorf("cannot merge entries on different sequences")
-  }
+func (obj *gtfRecord) merge(r gtfRecord) {
   if r.from < obj.from {
     obj.from = r.from
   }
@@ -58,7 +54,16 @@ func (obj *gtfEntry) merge(r gtfEntry) error {
   if r.strand != obj.strand {
     obj.strand = '*'
   }
-  return nil
+}
+
+type gtfEntry map[string]gtfRecord
+
+func (obj *gtfEntry) merge(seqname string, r gtfRecord) {
+  if t, ok := (*obj)[seqname]; ok {
+    t.merge(r)
+  } else {
+    (*obj)[seqname] = r
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -73,22 +78,21 @@ func mergeRows(g GRanges, mergeBy string) GRanges {
 
   for i := 0; i < g.Length(); i++ {
     // skip rows with no attribute
-    if a[i] == ""{
+    if a[i] == "" {
       continue
     }
-    r := gtfEntry{
-      seqname: g.Seqnames[i],
+    r := gtfRecord{
       from   : g.Ranges[i].From,
       to     : g.Ranges[i].To,
       strand : g.Strand[i] }
     if entry, ok := m[a[i]]; ok {
       // attribute already present, merge both
-      if err := entry.merge(r); err != nil {
-        log.Fatal(err)
-      }
+      entry.merge(g.Seqnames[i], r)
     } else {
       // add new attribute
-      m[a[i]] = r
+      entry = make(gtfEntry)
+      entry.merge(g.Seqnames[i], r)
+      m[a[i]] = entry
     }
   }
   // convert map to new granges object
@@ -98,11 +102,13 @@ func mergeRows(g GRanges, mergeBy string) GRanges {
   strand   := []byte{}
   names    := []string{}
   for name, entry := range m {
-    names    = append(names,    name)
-    seqnames = append(seqnames, entry.seqname)
-    from     = append(from,     entry.from)
-    to       = append(to,       entry.to)
-    strand   = append(strand,   entry.strand)
+    for seqname, record := range entry {
+      names    = append(names,    name)
+      seqnames = append(seqnames, seqname)
+      from     = append(from,     record.from)
+      to       = append(to,       record.to)
+      strand   = append(strand,   record.strand)
+    }
   }
   r := NewGRanges(seqnames, from, to, strand)
   r.AddMeta("name", names)

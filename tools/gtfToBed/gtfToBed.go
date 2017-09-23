@@ -83,7 +83,9 @@ func mergeRows(g GRanges, mergeBy string) GRanges {
       strand : g.Strand[i] }
     if entry, ok := m[a[i]]; ok {
       // attribute already present, merge both
-      entry.merge(r)
+      if err := entry.merge(r); err != nil {
+        log.Fatal(err)
+      }
     } else {
       // add new attribute
       m[a[i]] = r

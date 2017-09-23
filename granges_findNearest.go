@@ -145,7 +145,7 @@ func FindNearest(query, subject GRanges, k int) ([]int, []int, []int) {
           // are there two elements to compare?
           if i1 >= 0 && i2 < n {
             d1, s1 := r.distance(&entry[i1])
-            d2, s1 := r.distance(&entry[i2])
+            d2, s2 := r.distance(&entry[i2])
             if d1 <= d2 {
               dr = d1*s1; ir = i1; i1--
             } else {

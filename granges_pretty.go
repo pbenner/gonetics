@@ -18,19 +18,15 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "bufio"
-import "bytes"
 import "fmt"
+import "bufio"
 import "io"
 import "io/ioutil"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (granges GRanges) PrettyPrint(n int) string {
-  var buffer bytes.Buffer
-  writer := bufio.NewWriter(&buffer)
-
+func (granges GRanges) WritePretty(writer io.Writer, n int) error {
   // pretty print meta data and create a scanner reading
   // the resulting string
   metaStr     := granges.Meta.PrettyPrint(n)
@@ -38,59 +34,99 @@ func (granges GRanges) PrettyPrint(n int) string {
   metaScanner := bufio.NewScanner(metaReader)
 
   // compute the width of a single cell
-  updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) {
-    width, _ := fmt.Fprintf(ioutil.Discard, format, args...)
+  updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) error {
+    width, err := fmt.Fprintf(ioutil.Discard, format, args...)
+    if err != nil {
+      return err
+    }
     if width > widths[j] {
       widths[j] = width
     }
+    return nil
   }
   // compute widths of all cells in row i
-  updateMaxWidths := func(i int, widths []int) {
-    updateMaxWidth("%d", widths, 0, i+1)
-    updateMaxWidth("%s", widths, 1, granges.Seqnames[i])
-    updateMaxWidth("%d", widths, 2, granges.Ranges[i].From)
-    updateMaxWidth("%d", widths, 3, granges.Ranges[i].To)
-    updateMaxWidth("%c", widths, 4, granges.Strand[i])
-  }
-  printMetaRow := func(writer io.Writer) {
-    if granges.MetaLength() != 0 {
-      fmt.Fprintf(writer, " | ")
-      metaScanner.Scan()
-      fmt.Fprintf(writer, "%s", metaScanner.Text())
+  updateMaxWidths := func(i int, widths []int) error {
+    if err := updateMaxWidth("%d", widths, 0, i+1); err != nil {
+      return err
     }
+    if err := updateMaxWidth("%s", widths, 1, granges.Seqnames[i]); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 2, granges.Ranges[i].From); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 3, granges.Ranges[i].To); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%c", widths, 4, granges.Strand[i]); err != nil {
+      return err
+    }
+    return nil
   }
-  printHeader := func(writer io.Writer, format string) {
-    fmt.Fprintf(writer, format,
-      "", "seqnames", "ranges", "strand")
-    printMetaRow(writer)
+  printMetaRow := func(writer io.Writer) error {
+    if granges.MetaLength() != 0 {
+      if _, err := fmt.Fprintf(writer, " | "); err != nil {
+        return err
+      }
+      metaScanner.Scan()
+      if _, err := fmt.Fprintf(writer, "%s", metaScanner.Text()); err != nil {
+        return err
+      }
+    }
+    return nil
   }
-  printRow := func(writer io.Writer, format string, i int) {
-    fmt.Fprintf(writer, "\n")
-    fmt.Fprintf(writer, format,
+  printHeader := func(writer io.Writer, format string) error {
+    if _, err := fmt.Fprintf(writer, format, "", "seqnames", "ranges", "strand"); err != nil {
+      return err
+    }
+    return printMetaRow(writer)
+  }
+  printRow := func(writer io.Writer, format string, i int) error {
+    if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(writer, format,
       i+1,
       granges.Seqnames[i],
       granges.Ranges[i].From,
       granges.Ranges[i].To,
-      granges.Strand[i])
-    printMetaRow(writer)
+      granges.Strand[i]); err != nil {
+      return err
+    }
+    return printMetaRow(writer)
   }
-  applyRows := func(f1 func(i int), f2 func()) {
+  applyRows := func(f1 func(i int) error, f2 func() error) error {
     if granges.Length() <= n+1 {
       // apply to all entries
-      for i := 0; i < granges.Length(); i++ { f1(i) }
+      for i := 0; i < granges.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     } else {
       // apply to first n/2 rows
-      for i := 0; i < n/2; i++ { f1(i) }
+      for i := 0; i < n/2; i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
       // between first and last n/2 rows
       f2()
       // apply to last n/2 rows
-      for i := granges.Length() - n/2; i < granges.Length(); i++ { f1(i) }
+      for i := granges.Length() - n/2; i < granges.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     }
+    return nil
   }
   // maximum column widths
   widths := []int{1, 8, 1, 1, 6}
   // determine column widths
-  applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
+  if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }, func() error { return nil }); err != nil {
+    return err
+  }
   // generate format strings
   formatRow    := fmt.Sprintf("%%%dd %%%ds [%%%dd, %%%dd) %%%dc",
     widths[0], widths[1], widths[2], widths[3], widths[4])
@@ -99,16 +135,20 @@ func (granges GRanges) PrettyPrint(n int) string {
   // pring header
   printHeader(writer, formatHeader)
   // print rows
-  applyRows(
-    func(i int) {
-      printRow(writer, formatRow, i)
+  if err := applyRows(
+    func(i int) error {
+      return printRow(writer, formatRow, i)
     },
-    func() {
-      fmt.Fprintf(writer, "\n")
-      fmt.Fprintf(writer, formatHeader, "", "...", "...", "")
-      printMetaRow(writer)
-    })
-  writer.Flush()
-
-  return buffer.String()
+    func() error {
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
+      if _, err := fmt.Fprintf(writer, formatHeader, "", "...", "...", ""); err != nil {
+        return err
+      }
+      return printMetaRow(writer)
+    }); err != nil {
+    return err
+  }
+  return nil
 }

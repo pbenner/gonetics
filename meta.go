@@ -19,6 +19,8 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "bytes"
+import "bufio"
 import "errors"
 import "sort"
 
@@ -532,5 +534,13 @@ func (meta *Meta) Sort(name string, reverse bool) (Meta, error) {
 /* -------------------------------------------------------------------------- */
 
 func (meta *Meta) String() string {
-  return meta.PrettyPrint(10)
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := meta.WritePretty(writer, 10); err != nil {
+    return ""
+  }
+  writer.Flush()
+
+  return buffer.String()
 }

@@ -29,7 +29,7 @@ import "strings"
 func (granges GRanges) WritePretty(writer io.Writer, n int) error {
   // pretty print meta data and create a scanner reading
   // the resulting string
-  metaStr     := granges.Meta.PrettyPrint(n)
+  metaStr     := granges.Meta.PrintPretty(n)
   metaReader  := strings.NewReader(metaStr)
   metaScanner := bufio.NewScanner(metaReader)
 

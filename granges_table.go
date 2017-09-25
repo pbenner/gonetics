@@ -23,6 +23,7 @@ import "bytes"
 import "fmt"
 import "compress/gzip"
 import "io"
+import "io/ioutil"
 import "os"
 import "strconv"
 import "strings"
@@ -31,52 +32,146 @@ import "strings"
 
 // Export GRanges as a table. The first line contains the header
 // of the table.
-func (granges GRanges) WriteTable(w io.Writer, header, strand bool, args ...interface{}) error {
-  // print header
-  if header {
+func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ...interface{}) error {
+  // pretty print meta data and create a scanner reading
+  // the resulting string
+  metaStr     := granges.Meta.PrintTable(header, args...)
+  metaReader  := strings.NewReader(metaStr)
+  metaScanner := bufio.NewScanner(metaReader)
+
+  // compute the width of a single cell
+  updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) error {
+    width, err := fmt.Fprintf(ioutil.Discard, format, args...)
+    if err != nil {
+      return err
+    }
+    if width > widths[j] {
+      widths[j] = width
+    }
+    return nil
+  }
+  // compute widths of all cells in row i
+  updateMaxWidths := func(i int, widths []int) error {
+    if err := updateMaxWidth("%s", widths, 0, granges.Seqnames[i]); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 1, granges.Ranges[i].From); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 2, granges.Ranges[i].To); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%c", widths, 3, granges.Strand[i]); err != nil {
+      return err
+    }
+    return nil
+  }
+  printMetaRow := func(writer io.Writer) error {
+    if granges.MetaLength() != 0 {
+      if _, err := fmt.Fprintf(writer, " "); err != nil {
+        return err
+      }
+      metaScanner.Scan()
+      if _, err := fmt.Fprintf(writer, "%s", metaScanner.Text()); err != nil {
+        return err
+      }
+    }
+    return nil
+  }
+  printHeader := func(writer io.Writer, format string) error {
     if strand {
-      if _, err := fmt.Fprintf(w, "%14s %10s %10s %6s", "seqnames", "from", "to", "strand"); err != nil {
+      if _, err := fmt.Fprintf(writer, format, "seqnames", "from", "to", "strand"); err != nil {
         return err
       }
     } else {
-      if _, err := fmt.Fprintf(w, "%14s %10s %10s", "seqnames", "from", "to"); err != nil {
+      if _, err := fmt.Fprintf(writer, format, "seqnames", "from", "to"); err != nil {
         return err
       }
     }
-    granges.Meta.WriteTableRow(w, -1)
-    if _, err := fmt.Fprintf(w, "\n"); err != nil {
+    return printMetaRow(writer)
+  }
+  printRow := func(writer io.Writer, format string, i int) error {
+    if i != 0 {
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
+    }
+    if strand {
+      if _, err := fmt.Fprintf(writer, format,
+        granges.Seqnames[i],
+        granges.Ranges[i].From,
+        granges.Ranges[i].To,
+        granges.Strand[i]); err != nil {
+        return err
+        }
+    } else {
+      if _, err := fmt.Fprintf(writer, format,
+        granges.Seqnames[i],
+        granges.Ranges[i].From,
+        granges.Ranges[i].To); err != nil {
+        return err
+      }
+    }
+    return printMetaRow(writer)
+  }
+  applyRows := func(f1 func(i int) error) error {
+    // apply to all entries
+    for i := 0; i < granges.Length(); i++ {
+      if err := f1(i); err != nil {
+        return err
+      }
+    }
+    return nil
+  }
+  // maximum column widths
+  widths := []int{8, 1, 1, 6}
+  // determine column widths
+  if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }); err != nil {
+    return err
+  }
+  // generate format strings
+  var formatRow, formatHeader string
+  if strand {
+    formatRow    = fmt.Sprintf("%%%ds %%%dd %%%dd %%%dc", widths[0], widths[1], widths[2], widths[3])
+    formatHeader = fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds", widths[0], widths[1], widths[2], widths[3])
+  } else {
+    formatRow    = fmt.Sprintf("%%%ds %%%dd %%%dd", widths[0], widths[1], widths[2])
+    formatHeader = fmt.Sprintf("%%%ds %%%ds %%%ds", widths[0], widths[1], widths[2])
+  }
+  // pring header
+  if header {
+    if err := printHeader(writer, formatHeader); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(writer, "\n"); err != nil {
       return err
     }
   }
-  // print data
-  for i := 0; i < granges.Length(); i++ {
-    if _, err := fmt.Fprintf(w,  "%14s", granges.Seqnames[i]); err != nil {
-      return err
-    }
-    if _, err := fmt.Fprintf(w, " %10d", granges.Ranges[i].From); err != nil {
-      return err
-    }
-    if _, err := fmt.Fprintf(w, " %10d", granges.Ranges[i].To); err != nil {
-      return err
-    }
-    if strand {
-      if len(granges.Strand) > 0 {
-        if _, err := fmt.Fprintf(w, " %6c", granges.Strand[i]); err != nil {
-          return err
-        }
-      } else {
-        if _, err := fmt.Fprintf(w, " %6c", '*'); err != nil {
-          return err
-        }
-      }
-    }
-    granges.Meta.WriteTableRow(w, i, args...)
-    if _, err := fmt.Fprintf(w, "\n"); err != nil {
-      return err
-    }
+  // print rows
+  if err := applyRows(
+    func(i int) error {
+      return printRow(writer, formatRow, i)
+    }); err != nil {
+    return err
   }
   return nil
 }
+
+/* -------------------------------------------------------------------------- */
+
+func (granges GRanges) PrintTable(header, strand bool, args ...interface{}) string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := granges.WriteTable(writer, header, strand, args...); err != nil {
+    return ""
+  }
+  writer.Flush()
+
+  return buffer.String()
+}
+
+/* -------------------------------------------------------------------------- */
 
 func (granges GRanges) ExportTable(filename string, header, strand, compress bool, args ...interface{}) error {
   var buffer bytes.Buffer
@@ -89,6 +184,8 @@ func (granges GRanges) ExportTable(filename string, header, strand, compress boo
 
   return writeFile(filename, &buffer, compress)
 }
+
+/* -------------------------------------------------------------------------- */
 
 func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error {
   var r io.Reader

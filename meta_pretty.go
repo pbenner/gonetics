@@ -26,25 +26,28 @@ import "io/ioutil"
 
 /* -------------------------------------------------------------------------- */
 
-func (meta Meta) PrettyPrint(n int) string {
-  var buffer bytes.Buffer
-  writer := bufio.NewWriter(&buffer)
-
-  printCellSlice := func(writer io.Writer, widths []int, i, j int, data interface{}) int {
+func (meta Meta) WritePretty(writer io.Writer, n int) error {
+  printCellSlice := func(writer io.Writer, widths []int, i, j int, data interface{}) (int, error) {
     var tmpBuffer bytes.Buffer
     tmpWriter := bufio.NewWriter(&tmpBuffer)
     switch v := data.(type) {
     case [][]string:
       for k := 0; k < len(v[i]); k++ {
-        fmt.Fprintf(tmpWriter, " %s", v[i][k])
+        if _, err := fmt.Fprintf(tmpWriter, " %s", v[i][k]); err != nil {
+          return 0, err
+        }
       }
     case [][]float64:
       for k := 0; k < len(v[i]); k++ {
-        fmt.Fprintf(tmpWriter, " %f", v[i][k])
+        if _, err := fmt.Fprintf(tmpWriter, " %f", v[i][k]); err != nil {
+          return 0, err
+        }
       }
     case [][]int:
       for k := 0; k < len(v[i]); k++ {
-        fmt.Fprintf(tmpWriter, " %d", v[i][k])
+        if _, err := fmt.Fprintf(tmpWriter, " %d", v[i][k]); err != nil {
+          return 0, err
+        }
       }
     default:
       panic("invalid meta data")
@@ -52,84 +55,136 @@ func (meta Meta) PrettyPrint(n int) string {
     tmpWriter.Flush()
     format := fmt.Sprintf(" %%%ds", widths[j]-1)
     l, _ := fmt.Fprintf(writer, format, tmpBuffer.String())
-    return l
+    return l, nil
   }
-  printCell := func(writer io.Writer, widths []int, i, j int) int {
-    length := 0
+  printCell := func(writer io.Writer, widths []int, i, j int) (int, error) {
     switch v := meta.MetaData[j].(type) {
     case []string:
       format := fmt.Sprintf(" %%%ds", widths[j]-1)
-      length, _ = fmt.Fprintf(writer, format, v[i])
+      return fmt.Fprintf(writer, format, v[i])
     case []float64:
       format := fmt.Sprintf(" %%%df", widths[j]-1)
-      length, _ = fmt.Fprintf(writer, format, v[i])
+      return fmt.Fprintf(writer, format, v[i])
     case []int:
       format := fmt.Sprintf(" %%%dd", widths[j]-1)
-      length, _ = fmt.Fprintf(writer, format, v[i])
+      return fmt.Fprintf(writer, format, v[i])
     case []Range:
       format := fmt.Sprintf(" [ %%d, %%d ]")
-      length, _ = fmt.Fprintf(writer, format, v[i].From, v[i].To)
+      return fmt.Fprintf(writer, format, v[i].From, v[i].To)
     default:
-      length += printCellSlice(writer, widths, i, j, v)
+      return printCellSlice(writer, widths, i, j, v)
     }
-    return length
   }
-  printRow := func(writer io.Writer, widths []int, i int) {
+  printRow := func(writer io.Writer, widths []int, i int) error {
     if i != 0 {
-      fmt.Fprintf(writer, "\n")
-    }
-    for j := 0; j < meta.MetaLength(); j++ {
-      printCell(writer, widths, i, j)
-    }
-  }
-  // compute widths of all cells in row i
-  updateMaxWidths := func(i int, widths []int) {
-    for j := 0; j < meta.MetaLength(); j++ {
-      width := printCell(ioutil.Discard, widths, i, j)
-      if width > widths[j] {
-        widths[j] = width
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
       }
     }
+    for j := 0; j < meta.MetaLength(); j++ {
+      if _, err := printCell(writer, widths, i, j); err != nil {
+        return err
+      }
+    }
+    return nil
   }
-  printHeader := func(writer io.Writer, widths []int) {
+  // compute widths of all cells in row i
+  updateMaxWidths := func(i int, widths []int) error {
+    for j := 0; j < meta.MetaLength(); j++ {
+      if width, err := printCell(ioutil.Discard, widths, i, j); err != nil {
+        return err
+      } else {
+        if width > widths[j] {
+          widths[j] = width
+        }
+      }
+    }
+    return nil
+  }
+  printHeader := func(writer io.Writer, widths []int) error {
     for j := 0; j < meta.MetaLength(); j++ {
       format := fmt.Sprintf(" %%%ds", widths[j]-1)
-      fmt.Fprintf(writer, format, meta.MetaName[j])
+      if _, err := fmt.Fprintf(writer, format, meta.MetaName[j]); err != nil {
+        return err
+      }
     }
-    fmt.Fprintf(writer, "\n")
+    if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+      return err
+    }
+    return nil
   }
-  applyRows := func(f1 func(i int), f2 func()) {
+  applyRows := func(f1 func(i int) error, f2 func() error) error {
     if meta.Length() <= n+1 {
       // apply to all entries
-      for i := 0; i < meta.Length(); i++ { f1(i) }
+      for i := 0; i < meta.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     } else {
       // apply to first n/2 rows
-      for i := 0; i < n/2; i++ { f1(i) }
+      for i := 0; i < n/2; i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
       // between first and last n/2 rows
-      f2()
+      if err := f2(); err != nil {
+        return err
+      }
       // apply to last n/2 rows
-      for i := meta.Length() - n/2; i < meta.Length(); i++ { f1(i) }
+      for i := meta.Length() - n/2; i < meta.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     }
+    return nil
   }
   // maximum column widths
   widths := make([]int, meta.MetaLength())
   for j := 0; j < meta.MetaLength(); j++ {
-    widths[j], _ = fmt.Fprintf(ioutil.Discard, " %s", meta.MetaName[j])
+    if width, err := fmt.Fprintf(ioutil.Discard, " %s", meta.MetaName[j]); err != nil {
+      return err
+    } else {
+      widths[j] = width
+    }
   }
   // determine column widths
-  applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
+  if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }, func() error { return nil}); err != nil {
+    return err
+  }
   // pring header
-  printHeader(writer, widths)
+  if err := printHeader(writer, widths); err != nil {
+    return err
+  }
   // print rows
-  applyRows(
-    func(i int) { printRow(writer, widths, i) },
-    func() {
-      fmt.Fprintf(writer, "\n")
-        for j := 0; j < meta.MetaLength(); j++ {
-          format := fmt.Sprintf(" %%%ds", widths[j]-1)
-          fmt.Fprintf(writer, format, "...")
+  if err := applyRows(
+    func(i int) error { return printRow(writer, widths, i) },
+    func() error {
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
+      for j := 0; j < meta.MetaLength(); j++ {
+        format := fmt.Sprintf(" %%%ds", widths[j]-1)
+        if _, err := fmt.Fprintf(writer, format, "..."); err != nil {
+          return err
         }
-    })
+      }
+      return nil
+    }); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (meta *Meta) PrintPretty(n int) string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := meta.WritePretty(writer, n); err != nil {
+    return ""
+  }
   writer.Flush()
 
   return buffer.String()

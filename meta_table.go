@@ -19,8 +19,10 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "bytes"
 import "bufio"
 import "io"
+import "io/ioutil"
 import "strconv"
 import "strings"
 
@@ -28,6 +30,169 @@ import "strings"
 
 type OptionGRangesScientific struct {
   Value bool
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) error {
+  useScientific := false
+  for _, arg := range args {
+    switch a := arg.(type) {
+    case OptionGRangesScientific:
+      useScientific = a.Value
+    default:
+    }
+  }
+  printCellSlice := func(writer io.Writer, widths []int, i, j int, data interface{}) (int, error) {
+    var tmpBuffer bytes.Buffer
+    tmpWriter := bufio.NewWriter(&tmpBuffer)
+    switch v := data.(type) {
+    case [][]string:
+      for k := 0; k < len(v[i]); k++ {
+        if k != 0 {
+          fmt.Fprintf(tmpWriter, ",")
+        }
+        if _, err := fmt.Fprintf(tmpWriter, "%s", v[i][k]); err != nil {
+          return 0, err
+        }
+      }
+    case [][]float64:
+      for k := 0; k < len(v[i]); k++ {
+        if k != 0 {
+          fmt.Fprintf(tmpWriter, ",")
+        }
+        if useScientific {
+          if _, err := fmt.Fprintf(tmpWriter, "%e", v[i][k]); err != nil {
+            return 0, err
+          }
+        } else {
+          if _, err := fmt.Fprintf(tmpWriter, "%f", v[i][k]); err != nil {
+            return 0, err
+          }
+        }
+      }
+    case [][]int:
+      for k := 0; k < len(v[i]); k++ {
+        if k != 0 {
+          fmt.Fprintf(tmpWriter, ",")
+        }
+        if _, err := fmt.Fprintf(tmpWriter, "%d", v[i][k]); err != nil {
+          return 0, err
+        }
+      }
+    default:
+      panic("invalid meta data")
+    }
+    tmpWriter.Flush()
+    format := fmt.Sprintf(" %%%ds", widths[j]-1)
+    l, _ := fmt.Fprintf(writer, format, tmpBuffer.String())
+    return l, nil
+  }
+  printCell := func(writer io.Writer, widths []int, i, j int) (int, error) {
+    switch v := meta.MetaData[j].(type) {
+    case []string:
+      format := fmt.Sprintf(" %%%ds", widths[j]-1)
+      return fmt.Fprintf(writer, format, v[i])
+    case []float64:
+      if useScientific {
+        format := fmt.Sprintf(" %%%de", widths[j]-1)
+        return fmt.Fprintf(writer, format, v[i])
+      } else {
+        format := fmt.Sprintf(" %%%df", widths[j]-1)
+        return fmt.Fprintf(writer, format, v[i])
+      }
+    case []int:
+      format := fmt.Sprintf(" %%%dd", widths[j]-1)
+      return fmt.Fprintf(writer, format, v[i])
+    default:
+      return printCellSlice(writer, widths, i, j, v)
+    }
+  }
+  printRow := func(writer io.Writer, widths []int, i int) error {
+    if i != 0 {
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
+    }
+    for j := 0; j < meta.MetaLength(); j++ {
+      if _, err := printCell(writer, widths, i, j); err != nil {
+        return err
+      }
+    }
+    return nil
+  }
+  // compute widths of all cells in row i
+  updateMaxWidths := func(i int, widths []int) error {
+    for j := 0; j < meta.MetaLength(); j++ {
+      if width, err := printCell(ioutil.Discard, widths, i, j); err != nil {
+        return err
+      } else {
+        if width > widths[j] {
+          widths[j] = width
+        }
+      }
+    }
+    return nil
+  }
+  printHeader := func(writer io.Writer, widths []int) error {
+    for j := 0; j < meta.MetaLength(); j++ {
+      format := fmt.Sprintf(" %%%ds", widths[j]-1)
+      if _, err := fmt.Fprintf(writer, format, meta.MetaName[j]); err != nil {
+        return err
+      }
+    }
+    if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+      return err
+    }
+    return nil
+  }
+  applyRows := func(f1 func(i int) error) error {
+    for i := 0; i < meta.Length(); i++ {
+      if err := f1(i); err != nil {
+        return err
+      }
+    }
+    return nil
+  }
+  // maximum column widths
+  widths := make([]int, meta.MetaLength())
+  for j := 0; j < meta.MetaLength(); j++ {
+    if width, err := fmt.Fprintf(ioutil.Discard, " %s", meta.MetaName[j]); err != nil {
+      return err
+    } else {
+      widths[j] = width
+    }
+  }
+  // determine column widths
+  if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }); err != nil {
+    return err
+  }
+  // pring header
+  if header {
+    if err := printHeader(writer, widths); err != nil {
+      return err
+    }
+  }
+  // print rows
+  if err := applyRows(
+    func(i int) error { return printRow(writer, widths, i) }); err != nil {
+    return err
+  }
+  return nil
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (meta *Meta) PrintTable(header bool, args ...interface{}) string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := meta.WriteTable(writer, header, args...); err != nil {
+    return ""
+  }
+  writer.Flush()
+
+  return buffer.String()
 }
 
 /* -------------------------------------------------------------------------- */

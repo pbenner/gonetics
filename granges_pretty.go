@@ -111,7 +111,9 @@ func (granges GRanges) WritePretty(writer io.Writer, n int) error {
         }
       }
       // between first and last n/2 rows
-      f2()
+      if err := f2(); err != nil {
+        return err
+      }
       // apply to last n/2 rows
       for i := granges.Length() - n/2; i < granges.Length(); i++ {
         if err := f1(i); err != nil {
@@ -133,7 +135,9 @@ func (granges GRanges) WritePretty(writer io.Writer, n int) error {
   formatHeader := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds",
     widths[0], widths[1], widths[2]+widths[3]+4, widths[4])
   // pring header
-  printHeader(writer, formatHeader)
+  if err := printHeader(writer, formatHeader); err != nil {
+    return err
+  }
   // print rows
   if err := applyRows(
     func(i int) error {

@@ -48,6 +48,11 @@ func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) 
     tmpWriter := bufio.NewWriter(&tmpBuffer)
     switch v := data.(type) {
     case [][]string:
+      if len(v[i]) == 0 {
+        if _, err := fmt.Fprintf(tmpWriter, "nil"); err != nil {
+          return 0, err
+        }
+      }
       for k := 0; k < len(v[i]); k++ {
         if k != 0 {
           fmt.Fprintf(tmpWriter, ",")
@@ -57,9 +62,16 @@ func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) 
         }
       }
     case [][]float64:
+      if len(v[i]) == 0 {
+        if _, err := fmt.Fprintf(tmpWriter, "nil"); err != nil {
+          return 0, err
+        }
+      }
       for k := 0; k < len(v[i]); k++ {
         if k != 0 {
-          fmt.Fprintf(tmpWriter, ",")
+          if _, err := fmt.Fprintf(tmpWriter, ","); err != nil {
+            return 0, err
+          }
         }
         if useScientific {
           if _, err := fmt.Fprintf(tmpWriter, "%e", v[i][k]); err != nil {
@@ -72,6 +84,11 @@ func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) 
         }
       }
     case [][]int:
+      if len(v[i]) == 0 {
+        if _, err := fmt.Fprintf(tmpWriter, "nil"); err != nil {
+          return 0, err
+        }
+      }
       for k := 0; k < len(v[i]); k++ {
         if k != 0 {
           fmt.Fprintf(tmpWriter, ",")

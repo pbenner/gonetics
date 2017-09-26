@@ -73,6 +73,21 @@ func (g *Genes) Clone() Genes {
 
 /* -------------------------------------------------------------------------- */
 
+func (obj Genes) Remove(indices []int) Genes {
+  r := obj.GRanges.Remove(indices)
+  return newGenes(r)
+}
+
+func (obj Genes) RemoveOverlapsWith(subject Genes) Genes {
+  r := obj.GRanges.RemoveOverlapsWith(subject.GRanges)
+  return newGenes(r)
+}
+
+func (obj Genes) KeepOverlapsWith(subject Genes) Genes {
+  r := obj.GRanges.KeepOverlapsWith(subject.GRanges)
+  return newGenes(r)
+}
+
 func (obj Genes) Subset(indices []int) Genes {
   r := obj.GRanges.Subset(indices)
   return newGenes(r)
@@ -80,6 +95,24 @@ func (obj Genes) Subset(indices []int) Genes {
 
 func (obj Genes) Slice(ifrom, ito int) Genes {
   r := obj.GRanges.Slice(ifrom, ito)
+  return newGenes(r)
+}
+
+func (obj Genes) Intersection(subject Genes) Genes {
+  r := obj.GRanges.Intersection(subject.GRanges)
+  return newGenes(r)
+}
+
+func (obj Genes) Sort(name string, reverse bool) (Genes, error) {
+  if r, err := obj.GRanges.Sort(name, reverse); err != nil {
+    return Genes{}, err
+  } else {
+    return newGenes(r), nil
+  }
+}
+
+func (obj Genes) FilterGenome(genome Genome) Genes {
+  r := obj.GRanges.FilterGenome(genome)
   return newGenes(r)
 }
 

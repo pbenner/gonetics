@@ -27,10 +27,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (genes Genes) PrettyPrint(n int) string {
-  var buffer bytes.Buffer
-  writer := bufio.NewWriter(&buffer)
-
+func (genes Genes) WritePretty(writer io.Writer, n int) error {
   // pretty print meta data and create a scanner reading
   // the resulting string
   meta        := genes.Meta.Clone()
@@ -41,41 +38,76 @@ func (genes Genes) PrettyPrint(n int) string {
   metaScanner := bufio.NewScanner(metaReader)
 
   // compute the width of a single cell
-  updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) {
-    width, _ := fmt.Fprintf(ioutil.Discard, format, args...)
-    if width > widths[j] {
-      widths[j] = width
+  updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) error {
+    if width, err := fmt.Fprintf(ioutil.Discard, format, args...); err != nil {
+      return err
+    } else {
+      if width > widths[j] {
+        widths[j] = width
+      }
     }
+    return nil
   }
   // compute widths of all cells in row i
-  updateMaxWidths := func(i int, widths []int) {
-    updateMaxWidth("%d", widths, 0, i+1)
-    updateMaxWidth("%s", widths, 1, genes.Names[i])
-    updateMaxWidth("%s", widths, 2, genes.Seqnames[i])
-    updateMaxWidth("%d", widths, 3, genes.Ranges[i].From)
-    updateMaxWidth("%d", widths, 4, genes.Ranges[i].To)
-    updateMaxWidth("%d", widths, 5, genes.Cds[i].From)
-    updateMaxWidth("%d", widths, 6, genes.Cds[i].To)
-    updateMaxWidth("%c", widths, 7, genes.Strand[i])
+  updateMaxWidths := func(i int, widths []int) error {
+    if err := updateMaxWidth("%d", widths, 0, i+1); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%s", widths, 1, genes.Names[i]); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%s", widths, 2, genes.Seqnames[i]); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 3, genes.Ranges[i].From); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 4, genes.Ranges[i].To); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 5, genes.Cds[i].From); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%d", widths, 6, genes.Cds[i].To); err != nil {
+      return err
+    }
+    if err := updateMaxWidth("%c", widths, 7, genes.Strand[i]); err != nil {
+      return err
+    }
+    return nil
   }
-  printMetaRow := func(writer io.Writer) {
+  printMetaRow := func(writer io.Writer) error {
     if genes.MetaLength() != 0 {
-      fmt.Fprintf(writer, " | ")
+      if _, err := fmt.Fprintf(writer, " | "); err != nil {
+        return err
+      }
       metaScanner.Scan()
-      fmt.Fprintf(writer, "%s", metaScanner.Text())
+      if _, err := fmt.Fprintf(writer, "%s", metaScanner.Text()); err != nil {
+        return err
+      }
     }
+    return nil
   }
-  printHeader := func(writer io.Writer, format string) {
-    fmt.Fprintf(writer, format,
-      "", "names", "seqnames", "transcripts", "cds", "strand")
-    printMetaRow(writer)
-    fmt.Fprintf(writer, "\n")
+  printHeader := func(writer io.Writer, format string) error {
+    if _, err := fmt.Fprintf(writer, format,
+      "", "names", "seqnames", "transcripts", "cds", "strand"); err != nil {
+      return err
+    }
+    if err := printMetaRow(writer); err != nil {
+      return err
+    }
+    if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+      return err
+    }
+    return nil
   }
-  printRow := func(writer io.Writer, format string, i int) {
+  printRow := func(writer io.Writer, format string, i int) error {
     if i != 0 {
-      fmt.Fprintf(writer, "\n")
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
     }
-    fmt.Fprintf(writer, format,
+    if _, err := fmt.Fprintf(writer, format,
       i+1,
       genes.Names[i],
       genes.Seqnames[i],
@@ -83,43 +115,89 @@ func (genes Genes) PrettyPrint(n int) string {
       genes.Ranges[i].To,
       genes.Cds[i].From,
       genes.Cds[i].To,
-      genes.Strand[i])
-    printMetaRow(writer)
+      genes.Strand[i]); err != nil {
+      return err
+    }
+    if err := printMetaRow(writer); err != nil {
+      return err
+    }
+    return nil
   }
-  applyRows := func(f1 func(i int), f2 func()) {
+  applyRows := func(f1 func(i int) error, f2 func() error) error {
     if genes.Length() <= n+1 {
       // apply to all entries
-      for i := 0; i < genes.Length(); i++ { f1(i) }
+      for i := 0; i < genes.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     } else {
       // apply to first n/2 rows
-      for i := 0; i < n/2; i++ { f1(i) }
+      for i := 0; i < n/2; i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
       // between first and last n/2 rows
-      f2()
+      if err := f2(); err != nil {
+        return err
+      }
       // apply to last n/2 rows
-      for i := genes.Length() - n/2; i < genes.Length(); i++ { f1(i) }
+      for i := genes.Length() - n/2; i < genes.Length(); i++ {
+        if err := f1(i); err != nil {
+          return err
+        }
+      }
     }
+    return nil
   }
   // maximum column widths
   widths := []int{1, 5, 8, 1, 1, 1, 1, 6}
   // determine column widths
-  applyRows(func(i int) { updateMaxWidths(i, widths) }, func() {})
+  if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }, func() error { return nil }); err != nil {
+    return err
+  }
   // generate format strings
   formatRow    := fmt.Sprintf("%%%dd %%%ds %%%ds [%%%dd, %%%dd) [%%%dd, %%%dd) %%%dc",
     widths[0], widths[1], widths[2], widths[3], widths[4], widths[5], widths[6], widths[7])
   formatHeader := fmt.Sprintf("%%%ds %%%ds %%%ds %%%ds %%%ds %%%ds",
     widths[0], widths[1], widths[2], widths[3]+widths[4]+4, widths[5]+widths[6]+4, widths[7])
   // pring header
-  printHeader(writer, formatHeader)
+  if err := printHeader(writer, formatHeader); err != nil {
+    return err
+  }
   // print rows
-  applyRows(
-    func(i int) {
-      printRow(writer, formatRow, i)
+  if err := applyRows(
+    func(i int) error {
+      if err := printRow(writer, formatRow, i); err != nil {
+        return err
+      }
+      return nil
     },
-    func() {
-      fmt.Fprintf(writer, "\n")
-      fmt.Fprintf(writer, formatHeader, "", "...", "...", "...", "...", "")
-      printMetaRow(writer)
-    })
+    func() error {
+      if _, err := fmt.Fprintf(writer, "\n"); err != nil {
+        return err
+      }
+      if _, err := fmt.Fprintf(writer, formatHeader, "", "...", "...", "...", "...", ""); err != nil {
+        return err
+      }
+      if err := printMetaRow(writer); err != nil {
+        return err
+      }
+      return nil
+    }); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (genes Genes) PrintPretty(n int) string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := genes.WritePretty(writer, n); err != nil {
+    return ""
+  }
   writer.Flush()
 
   return buffer.String()

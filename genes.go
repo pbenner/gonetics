@@ -73,6 +73,18 @@ func (g *Genes) Clone() Genes {
 
 /* -------------------------------------------------------------------------- */
 
+func (obj Genes) Subset(indices []int) Genes {
+  r := obj.GRanges.Subset(indices)
+  return newGenes(r)
+}
+
+func (obj Genes) Slice(ifrom, ito int) Genes {
+  r := obj.GRanges.Slice(ifrom, ito)
+  return newGenes(r)
+}
+
+/* -------------------------------------------------------------------------- */
+
 // Returns the index of a gene.
 func (g Genes) FindGene(name string) (int, bool) {
   i, ok := g.index[name]
@@ -83,5 +95,5 @@ func (g Genes) FindGene(name string) (int, bool) {
  * -------------------------------------------------------------------------- */
 
 func (genes Genes) String() string {
-  return genes.PrettyPrint(10)
+  return genes.PrintPretty(10)
 }

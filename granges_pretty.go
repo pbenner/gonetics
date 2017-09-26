@@ -20,6 +20,7 @@ package gonetics
 
 import "fmt"
 import "bufio"
+import "bytes"
 import "io"
 import "io/ioutil"
 import "strings"
@@ -155,4 +156,16 @@ func (granges GRanges) WritePretty(writer io.Writer, n int) error {
     return err
   }
   return nil
+}
+
+func (granges GRanges) PrintPretty(n int) string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  if err := granges.WritePretty(writer, n); err != nil {
+    return ""
+  }
+  writer.Flush()
+
+  return buffer.String()
 }

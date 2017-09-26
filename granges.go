@@ -19,8 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "bufio"
-import "bytes"
 import "sort"
 
 /* -------------------------------------------------------------------------- */
@@ -390,13 +388,5 @@ func (granges GRanges) Genes() Genes {
  * -------------------------------------------------------------------------- */
 
 func (granges GRanges) String() string {
-  var buffer bytes.Buffer
-  writer := bufio.NewWriter(&buffer)
-
-  if err := granges.WritePretty(writer, 10); err != nil {
-    return ""
-  }
-  writer.Flush()
-
-  return buffer.String()
+  return granges.PrintPretty(10)
 }

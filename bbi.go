@@ -879,6 +879,9 @@ type BData struct {
 
   Keys   [][]byte
   Values [][]byte
+
+  PtrKeys   []int64
+  PtrValues []int64
 }
 
 func NewBData() *BData {
@@ -905,7 +908,7 @@ func (data *BData) Add(key, value []byte) error {
   return nil
 }
 
-func (data *BData) readVertexLeaf(file io.Reader, order binary.ByteOrder) error {
+func (data *BData) readVertexLeaf(file io.ReadSeeker, order binary.ByteOrder) error {
   var nVals   uint16
   var key   []byte
   var value []byte
@@ -917,14 +920,18 @@ func (data *BData) readVertexLeaf(file io.Reader, order binary.ByteOrder) error 
   for i := 0; i < int(nVals); i++ {
     key   = make([]byte, data.KeySize)
     value = make([]byte, data.ValueSize)
+    ptrKey, _ := file.Seek(0, 1)
     if err := binary.Read(file, order, &key); err != nil {
       return err
     }
+    ptrValue, _ := file.Seek(0, 1)
     if err := binary.Read(file, order, &value); err != nil {
       return err
     }
-    data.Keys   = append(data.Keys, key)
-    data.Values = append(data.Values, value)
+    data.Keys      = append(data.Keys,      key)
+    data.Values    = append(data.Values,    value)
+    data.PtrKeys   = append(data.PtrKeys,   ptrKey)
+    data.PtrValues = append(data.PtrValues, ptrValue)
   }
   return nil
 }

@@ -192,6 +192,9 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
 
   // check if file is compressed
   if g, err := gzip.NewReader(s); err != nil {
+    if _, err := s.Seek(0, io.SeekStart); err != nil {
+      return err
+    }
     r = s
   } else {
     r = g
@@ -220,9 +223,11 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
         colStrand = i
       }
     }
+  } else {
+    return fmt.Errorf("reading from file failed")
   }
   if colSeqname == -1 {
-    return fmt.Errorf("is missing a seqname column")
+    return fmt.Errorf("is missing a seqnames column")
   }
   if colFrom == -1 {
     return fmt.Errorf("is missing a from column")
@@ -271,6 +276,9 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
   s.Seek(0, io.SeekStart)
   // check if file is compressed
   if g, err := gzip.NewReader(s); err != nil {
+    if _, err := s.Seek(0, io.SeekStart); err != nil {
+      return err
+    }
     r = s
   } else {
     r = g
@@ -286,5 +294,9 @@ func (granges *GRanges) ImportTable(filename string, names, types []string) erro
     return err
   }
   defer f.Close()
-  return granges.ReadTable(f, names, types)
+  if err := granges.ReadTable(f, names, types); err != nil {
+    return fmt.Errorf("`%s' %s", filename, err)
+  } else {
+    return nil
+  }
 }

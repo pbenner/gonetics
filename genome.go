@@ -94,6 +94,24 @@ func (genome Genome) GetIdx(seqname string) (int, error) {
   return -1, fmt.Errorf("sequence `%s' not found in genome", seqname)
 }
 
+/* -------------------------------------------------------------------------- */
+
+func (genome Genome) Equals(g Genome) bool {
+  if genome.Length() != g.Length() {
+    return false
+  }
+  for i, seqname := range genome.Seqnames {
+    l1      := genome.Lengths[i]
+    l2, err := g.SeqLength(seqname); if err != nil {
+      return false
+    }
+    if l1 != l2 {
+      return false
+    }
+  }
+  return true
+}
+
 /* convert to string
  * -------------------------------------------------------------------------- */
 

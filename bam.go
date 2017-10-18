@@ -659,3 +659,20 @@ func (reader *BamReader) readPairedEnd(channel chan *BamReaderType2) {
     }
   }
 }
+
+/* utility
+ * -------------------------------------------------------------------------- */
+
+func BamReadGenome(filename string) (Genome, error) {
+  f, err := os.Open(filename)
+  if err != nil {
+    return Genome{}, err
+  }
+  defer f.Close()
+
+  reader, err := NewBamReader(f, BamReaderOptions{})
+  if err != nil {
+    return Genome{}, err
+  }
+  return reader.Genome, nil
+}

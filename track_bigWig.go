@@ -48,7 +48,7 @@ func (track GenericTrack) writeBigWig_reductionLevels(parameters BigWigParameter
   return n
 }
 
-func (track GenericTrack) WriteBigWig(filename, description string, genome Genome, args... interface{}) error {
+func (track GenericTrack) WriteBigWig(filename string, genome Genome, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
 

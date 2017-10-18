@@ -55,6 +55,6 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
 
 /* -------------------------------------------------------------------------- */
 
-func (track SimpleTrack) WriteBigWig(filename, description string, genome Genome, args... interface{}) error {
-  return GenericTrack{track}.WriteBigWig(filename, description, genome, args...)
+func (track SimpleTrack) WriteBigWig(filename string, genome Genome, args... interface{}) error {
+  return GenericTrack{track}.WriteBigWig(filename, genome, args...)
 }

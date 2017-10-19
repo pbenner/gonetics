@@ -223,10 +223,10 @@ func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binSize int,
     }
   }
   if i_max == -1 {
-    return -1, nil, nil, fmt.Errorf("no crosscorrelation peak found")
+    return -1, x, y, fmt.Errorf("no crosscorrelation peak found")
   }
   if v_max < y[len(y)-1] {
-    return -1, nil, nil, fmt.Errorf("it seems that maxDelay is too small")
+    return -1, x, y, fmt.Errorf("it seems that maxDelay is too small")
   }
   return x[i_max], x, y, nil
 }

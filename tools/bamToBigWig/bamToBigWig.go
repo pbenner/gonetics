@@ -230,7 +230,7 @@ func saveFraglen(config Config, filename string, fraglen int) {
 
   fmt.Fprintf(f, "%d\n", fraglen)
 
-  PrintStderr(config, 1, "Wrote fragment length estimate to `%s'", filename)
+  PrintStderr(config, 1, "Wrote fragment length estimate to `%s'\n", filename)
 }
 
 func saveCrossCorr(config Config, filename string, x []int, y []float64) {
@@ -246,7 +246,7 @@ func saveCrossCorr(config Config, filename string, x []int, y []float64) {
   for i := 0; i < len(x); i++ {
     fmt.Fprintf(f, "%d %f", x[i], y[i])
   }
-  PrintStderr(config, 1, "Wrote crosscorrelation to `%s'", filename)
+  PrintStderr(config, 1, "Wrote crosscorrelation to `%s'\n", filename)
 }
 
 func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y []float64) {
@@ -295,7 +295,7 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
     log.Fatal(err)
   }
-  PrintStderr(config, 1, "Wrote crosscorrelation plot to `%s'", filename)
+  PrintStderr(config, 1, "Wrote crosscorrelation plot to `%s'\n", filename)
 }
 
 func estimateFraglen(config Config, filename string, genome Genome) int {
@@ -316,6 +316,9 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
   PrintStderr(config, 1, "Estimating mean fragment length... ")
   if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
     PrintStderr(config, 1, "failed\n")
+    if config.SaveCrossCorr && x != nil && y != nil {
+      saveCrossCorr(config, filename, x, y)
+    }
     log.Fatalf("estimating read length failed: %v", err)
     return 0
   } else {

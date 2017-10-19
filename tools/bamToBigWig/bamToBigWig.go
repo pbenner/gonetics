@@ -402,7 +402,6 @@ func main() {
   var config Config
 
   options := getopt.New()
-  options.SetProgram(fmt.Sprintf("%s track", os.Args[0]))
 
   // bigWig options
   optBWZoomLevels    := options. StringLong("bigwig-zoom-levels",        0 , "", "comma separated list of BigWig zoom levels")

@@ -52,6 +52,9 @@ type Config struct {
   SmoothenControl        bool
   SmoothenSizes        []int
   SmoothenMin            float64
+  SaveFraglen            bool
+  SaveCrossCorr          bool
+  SaveCrossCorrPlot      bool
 }
 
 /* i/o
@@ -391,31 +394,34 @@ func main() {
   options := getopt.New()
 
   // bigWig options
-  optBWZoomLevels     := options. StringLong("bigwig-zoom-levels",        0 , "", "comma separated list of BigWig zoom levels")
+  optBWZoomLevels      := options. StringLong("bigwig-zoom-levels",         0 , "", "comma separated list of BigWig zoom levels")
   // read options
-  optShiftReads       := options. StringLong("shift-reads",               0 , "", "shift reads on the positive strand by `x' bps and those on the negative strand by `y' bps [format: x,y]")
-  optPairedEnd        := options.   BoolLong("paired-end",                0 ,     "reads are paired-end")
+  optShiftReads        := options. StringLong("shift-reads",                0 , "", "shift reads on the positive strand by `x' bps and those on the negative strand by `y' bps [format: x,y]")
+  optPairedEnd         := options.   BoolLong("paired-end",                 0 ,     "reads are paired-end")
   // options for filterering reads
-  optFilterStrand     := options. StringLong("filter-strand",             0 , "", "use reads on either the forward `+' or reverse `-' strand")
-  optReadLength       := options. StringLong("filter-read-lengths",       0 , "", "feasible range of read-lengths [format: min:max]")
-  optFilterMapQ       := options.    IntLong("filter-mapq",               0 ,  0, "filter reads for minimum mapping quality (default: 0)")
-  optFilterDuplicates := options.   BoolLong("filter-duplicates",         0 ,     "remove reads marked as duplicates")
+  optFilterStrand      := options. StringLong("filter-strand",              0 , "", "use reads on either the forward `+' or reverse `-' strand")
+  optReadLength        := options. StringLong("filter-read-lengths",        0 , "", "feasible range of read-lengths [format: min:max]")
+  optFilterMapQ        := options.    IntLong("filter-mapq",                0 ,  0, "filter reads for minimum mapping quality (default: 0)")
+  optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   // track options
-  optBinningMethod    := options. StringLong("binning-method",            0 , "", "binning method (i.e. simple or overlap [default])")
-  optBinSize          := options.    IntLong("bin-size",                  0 , -1, "track bin size")
-  optNormalizeTrack   := options. StringLong("normalize-track",           0 , "", "normalize track with the specified method (i.e. rpm)")
-  optPseudocounts     := options. StringLong("pseudocounts",              0 , "", "pseudocounts added to treatment and control signal (default: `0,0')")
-  optSmoothenControl  := options.   BoolLong("smoothen-control",          0 ,     "smoothen control with an adaptive window method")
-  optSmoothenSizes    := options. StringLong("smoothen-window-sizes",     0 , "", "feasible window sizes for the smoothening method [format: s1,s2,...]")
-  optSmoothenMin      := options. StringLong("smoothen-min-counts",       0 , "", "minimum number of counts for the smoothening method")
-  optLogScale         := options.   BoolLong("log-scale",                 0 ,     "log-transform data")
+  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple or overlap [default])")
+  optBinSize           := options.    IntLong("bin-size",                   0 , -1, "track bin size")
+  optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method (i.e. rpm)")
+  optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal (default: `0,0')")
+  optSmoothenControl   := options.   BoolLong("smoothen-control",           0 ,     "smoothen control with an adaptive window method")
+  optSmoothenSizes     := options. StringLong("smoothen-window-sizes",      0 , "", "feasible window sizes for the smoothening method [format: s1,s2,...]")
+  optSmoothenMin       := options. StringLong("smoothen-min-counts",        0 , "", "minimum number of counts for the smoothening method")
+  optLogScale          := options.   BoolLong("log-scale",                  0 ,     "log-transform data")
   // options for estimating and setting fragment lengths
-  optFraglen          := options.    IntLong("fragment-length",           0 , -1, "fragment length for all input files (reads are extended to the given length)")
-  optFraglenRange     := options. StringLong("fragment-length-range",     0 , "", "feasible range of fragment lengths (format from:to)")
-  optEstimateFraglen  := options.   BoolLong("estimate-fragment-length",  0 ,     "use crosscorrelation to estimate the fragment length")
+  optFraglen           := options.    IntLong("fragment-length",            0 , -1, "fragment length for all input files (reads are extended to the given length)")
+  optFraglenRange      := options. StringLong("fragment-length-range",      0 , "", "feasible range of fragment lengths (format from:to)")
+  optEstimateFraglen   := options.   BoolLong("estimate-fragment-length",   0 ,     "use crosscorrelation to estimate the fragment length")
+  optSaveFraglen       := options.   BoolLong("save-fraglen",               0 ,     "save estimated fragment length in a file named <BAM_BASENAME>.fraglen.txt")
+  optSaveCrossCorr     := options.   BoolLong("save-crosscorrelation",      0 ,     "save crosscorrelation between forward and reverse strands in a file named <BAM_BASENAME>.fraglen.table")
+  optSaveCrossCorrPlot := options.   BoolLong("save-crosscorrelation-plot", 0 ,     "save crosscorrelation plot in a file names <BAM_BASENAME>.fraglen.pdf")
   // generic options
-  optVerbose          := options.CounterLong("verbose",                  'v',     "verbose level [-v or -vv]")
-  optHelp             := options.   BoolLong("help",                     'h',     "print help")
+  optVerbose           := options.CounterLong("verbose",                   'v',     "verbose level [-v or -vv]")
+  optHelp              := options.   BoolLong("help",                      'h',     "print help")
 
   options.SetParameters("<TREATMENT1.bam[:FRAGLEN],TREATMENT2.bam[:FRAGLEN],...> <CONTROL1.bam[:FRAGLEN],CONTROL2.bam[:FRAGLEN],...> <RESULT.bw>")
   options.Parse(os.Args)
@@ -583,8 +589,11 @@ func main() {
     config.FraglenRange[0] = int(t1)
     config.FraglenRange[1] = int(t2)
   }
-  config.FilterDuplicates = *optFilterDuplicates
-  config.PairedEnd        = *optPairedEnd
+  config.FilterDuplicates  = *optFilterDuplicates
+  config.PairedEnd         = *optPairedEnd
+  config.SaveFraglen       = *optSaveFraglen
+  config.SaveCrossCorr     = *optSaveCrossCorr
+  config.SaveCrossCorrPlot = *optSaveCrossCorrPlot
 
   // parse arguments
   //////////////////////////////////////////////////////////////////////////////

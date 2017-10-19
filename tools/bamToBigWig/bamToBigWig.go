@@ -281,9 +281,9 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   m_index := 0
   m_value := 0.0
   for i := 0; i < len(x); i++ {
-    if y[k] > m_value {
+    if y[i] > m_value {
       m_index = i
-      m_value = y[k]
+      m_value = y[i]
     }
   }
 

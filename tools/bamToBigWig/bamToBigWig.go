@@ -40,7 +40,6 @@ type Config struct {
   TrackInit              float64 `json:"Track Initial Value"`
   Fraglen                int     `json:"Fragment Length"`
   FraglenRange        [2]int     `json:"Fragment Length Range"`
-  EstimateFraglen        bool    `json:"Estimate Read Extension"`
   PairedEnd              bool    `json:"Paired-End Reads"`
   FeasibleReadLengths [2]int     `json:"Feasible Read Lengths"`
   MinMapQ                int     `json:"Minimum Mapping Quality"`
@@ -212,25 +211,40 @@ func shiftReads(config Config, reads GRanges) GRanges {
 /* fragment length estimation
  * -------------------------------------------------------------------------- */
 
+func estimateFraglen(config Config, filename string, genome Genome) int {
+  fraglen := 0
+
+  PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
+  reads := GRanges{}
+  if err := reads.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
+    PrintStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  }
+  PrintStderr(config, 1, "done\n")
+
+  // first round of filtering
+  reads = filterReadLength(config, reads)
+  reads = filterDuplicates(config, reads)
+  reads = filterMapQ(config, reads)
+
+  // estimate fragment length
+  PrintStderr(config, 1, "Estimating mean fragment length... ")
+  if estimate, _, _, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
+    PrintStderr(config, 1, "failed\n")
+    log.Fatalf("estimating read length failed: %v", err)
+  } else {
+    fraglen = estimate
+  }
+  PrintStderr(config, 1, "done\n")
+  PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
+
+  return fraglen
+}
+
 /* -------------------------------------------------------------------------- */
 
-func track(config Config, filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int) {
+func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, genome Genome) {
 
-  var genome Genome
-
-  // read genome
-  for _, filename := range append(filenamesTreatment, filenamesControl...) {
-    g, err := BamImportGenome(filename); if err != nil {
-      log.Fatal(err)
-    }
-    if genome.Length() == 0 {
-      genome = g
-    } else {
-      if !genome.Equals(g) {
-        log.Fatal("bam genomes are not equal")
-      }
-    }
-  }
   // treatment data
   track1 := AllocSimpleTrack("treatment", genome, config.BinSize)
 
@@ -260,19 +274,6 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
     treatment = filterReadLength(config, treatment)
     treatment = filterDuplicates(config, treatment)
     treatment = filterMapQ(config, treatment)
-
-    // if requested, estimate fragment length
-    if !config.PairedEnd && config.EstimateFraglen {
-      PrintStderr(config, 1, "Estimating mean fragment length... ")
-      if estimate, _, _, err := EstimateFragmentLength(treatment, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
-        PrintStderr(config, 1, "failed\n")
-        log.Fatalf("estimating read length failed: %v", err)
-      } else {
-        fraglen = estimate
-      }
-      PrintStderr(config, 1, "done\n")
-      PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
-    }
     // second round of filtering
     treatment = filterStrand(config, treatment)
     treatment = shiftReads(config, treatment)
@@ -325,19 +326,6 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
       control = filterReadLength(config, control)
       control = filterDuplicates(config, control)
       control = filterMapQ(config, control)
-
-      // if requested, estimate fragment length
-      if !config.PairedEnd && config.EstimateFraglen {
-        PrintStderr(config, 1, "Estimating mean fragment length... ")
-        if estimate, _, _, err := EstimateFragmentLength(control, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
-          PrintStderr(config, 1, "failed\n")
-          log.Fatalf("estimating read length failed: %v", err)
-        } else {
-          fraglen = estimate
-        }
-        PrintStderr(config, 1, "done\n")
-        PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
-      }
       // second round of filtering
       control = filterStrand(config, control)
       control = shiftReads(config, control)
@@ -433,6 +421,8 @@ func main() {
   options.SetParameters("<TREATMENT1.bam[:FRAGLEN],TREATMENT2.bam[:FRAGLEN],...> <CONTROL1.bam[:FRAGLEN],CONTROL2.bam[:FRAGLEN],...> <RESULT.bw>")
   options.Parse(os.Args)
 
+  // parse options
+  //////////////////////////////////////////////////////////////////////////////
   if *optHelp {
     options.PrintUsage(os.Stdout)
     os.Exit(0)
@@ -480,6 +470,9 @@ func main() {
       os.Exit(1)
     }
     config.Fraglen = *optFraglen
+  }
+  if *optPairedEnd && *optEstimateFraglen {
+    log.Fatal("cannot estimate fragment length for paired-end reads")
   }
   if *optReadLength != "" {
     tmp := strings.Split(*optReadLength, ":")
@@ -593,8 +586,9 @@ func main() {
   }
   config.RmDup     = *optRmDup
   config.PairedEnd = *optPairedEnd
-  config.EstimateFraglen = *optEstimateFraglen
 
+  // parse arguments
+  //////////////////////////////////////////////////////////////////////////////
   filenamesTreatment := strings.Split(options.Args()[0], ",")
   filenamesControl   := []string{}
   filenameTrack      := ""
@@ -615,5 +609,41 @@ func main() {
     filenamesControl[i], fraglenControl[i] = parseFilename(filename)
   }
 
-  track(config, filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl)
+  // read genome
+  //////////////////////////////////////////////////////////////////////////////
+  var genome Genome
+
+  for _, filename := range append(filenamesTreatment, filenamesControl...) {
+    g, err := BamImportGenome(filename); if err != nil {
+      log.Fatal(err)
+    }
+    if genome.Length() == 0 {
+      genome = g
+    } else {
+      if !genome.Equals(g) {
+        log.Fatal("bam genomes are not equal")
+      }
+    }
+  }
+
+  // fragment length estimation
+  //////////////////////////////////////////////////////////////////////////////
+  if *optEstimateFraglen {
+    for i, filename := range filenamesTreatment {
+      if fraglenTreatment[i] != 0 {
+        continue
+      }
+      fraglenTreatment[i] = estimateFraglen(config, filename, genome)
+    }
+    for i, filename := range filenamesControl {
+      if fraglenControl[i] != 0 {
+        continue
+      }
+      fraglenControl[i] = estimateFraglen(config, filename, genome)
+    }
+  }
+
+  // bam -> bigWig
+  //////////////////////////////////////////////////////////////////////////////
+  bamToBigWig(config, filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, genome)
 }

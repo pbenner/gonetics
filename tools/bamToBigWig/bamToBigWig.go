@@ -250,18 +250,32 @@ func saveCrossCorr(config Config, filename string, x []int, y []float64) {
   PrintStderr(config, 1, "Wrote crosscorrelation to `%s'", filename)
 }
 
-func saveCrossCorrPlot(config Config, filename string, x []int, y []float64) {
+func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y []float64) {
   basename := strings.TrimRight(filename, filepath.Ext(filename))
   filename  = fmt.Sprintf("%s.fraglen.pdf", basename)
+
+  // determine position of the estimated fragment length
+  k := 0
+  for i := 0; i < len(x); i++ {
+    if x[k] == fraglen {
+      k = i; break
+    }
+  }
 
   xy := make(plotter.XYs, len(x))
   for i := 0; i < len(x); i++ {
     xy[i].X = float64(x[i])+1
     xy[i].Y = y[i]
   }
+  fr := make(plotter.XYs, 2)
+  fr[0].X = float64(fraglen)
+  fr[0].Y = 0.0
+  fr[1].X = float64(fraglen)
+  fr[1].Y = y[k]
+
   p, err := plot.New()
   if err != nil {
-    panic(err)
+    log.Fatal(err)
   }
   p.Title.Text = ""
   p.X.Label.Text = "shift"
@@ -273,10 +287,14 @@ func saveCrossCorrPlot(config Config, filename string, x []int, y []float64) {
 
   err = plotutil.AddLines(p, xy)
   if err != nil {
-    panic(err)
+    log.Fatal(err)
+  }
+  err = plotutil.AddLines(p, fr)
+  if err != nil {
+    log.Fatal(err)
   }
   if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
-    panic(err)
+    log.Fatal(err)
   }
   PrintStderr(config, 1, "Wrote crosscorrelation plot to `%s'", filename)
 }
@@ -312,7 +330,7 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
       saveCrossCorr(config, filename, x, y)
     }
     if config.SaveCrossCorrPlot {
-      saveCrossCorrPlot(config, filename, x, y)
+      saveCrossCorrPlot(config, filename, fraglen, x, y)
     }
     return fraglen
   }

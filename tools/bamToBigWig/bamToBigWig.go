@@ -277,24 +277,28 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   basename := strings.TrimRight(filename, filepath.Ext(filename))
   filename  = fmt.Sprintf("%s.fraglen.pdf", basename)
 
-  // determine position of the estimated fragment length
-  k := 0
+  // determine cross-correlation maximum
+  m_index := 0
+  m_value := 0.0
   for i := 0; i < len(x); i++ {
-    if x[k] == fraglen {
-      k = i; break
+    if y[k] > m_value {
+      m_index = i
+      m_value = y[k]
     }
   }
 
+  // draw cross-correlation
   xy := make(plotter.XYs, len(x))
   for i := 0; i < len(x); i++ {
     xy[i].X = float64(x[i])+1
     xy[i].Y = y[i]
   }
+  // draw vertical line at fraglen estimate
   fr := make(plotter.XYs, 2)
-  fr[0].X = float64(fraglen)
+  fr[0].X = float64(x[m_index])
   fr[0].Y = 0.0
-  fr[1].X = float64(fraglen)
-  fr[1].Y = y[k]
+  fr[1].X = float64(x[m_index])
+  fr[1].Y = m_value
 
   p, err := plot.New()
   if err != nil {
@@ -303,10 +307,6 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   p.Title.Text = ""
   p.X.Label.Text = "shift"
   p.Y.Label.Text = "cross-correlation"
-  p.X.Scale = plot.LogScale{}
-  p.Y.Scale = plot.LogScale{}
-  p.X.Tick.Marker = plot.LogTicks{}
-  p.Y.Tick.Marker = plot.LogTicks{}
 
   err = plotutil.AddLines(p, xy)
   if err != nil {
@@ -319,7 +319,7 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
     log.Fatal(err)
   }
-  PrintStderr(config, 1, "Wrote crosscorrelation plot to `%s'\n", filename)
+  PrintStderr(config, 1, "Wrote cross-correlation plot to `%s'\n", filename)
 }
 
 func estimateFraglen(config Config, filename string, genome Genome) int {

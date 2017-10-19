@@ -531,11 +531,10 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  if *optBinSize != -1 {
-    if *optBinSize < 1 {
-      options.PrintUsage(os.Stderr)
-      os.Exit(1)
-    }
+  if *optBinSize < 1 {
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  } else {
     config.BinSize = *optBinSize
   }
   if *optBinningMethod != "" {

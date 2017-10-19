@@ -244,7 +244,7 @@ func saveCrossCorr(config Config, filename string, x []int, y []float64) {
   defer f.Close()
 
   for i := 0; i < len(x); i++ {
-    fmt.Fprintf(f, "%d %f", x[i], y[i])
+    fmt.Fprintf(f, "%d %f\n", x[i], y[i])
   }
   PrintStderr(config, 1, "Wrote crosscorrelation to `%s'\n", filename)
 }

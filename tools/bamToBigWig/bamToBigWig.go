@@ -21,6 +21,7 @@ package main
 import   "fmt"
 import   "log"
 import   "math"
+import   "path/filepath"
 import   "strconv"
 import   "strings"
 import   "os"
@@ -213,9 +214,38 @@ func shiftReads(config Config, reads GRanges) GRanges {
 /* fragment length estimation
  * -------------------------------------------------------------------------- */
 
-func estimateFraglen(config Config, filename string, genome Genome) int {
-  fraglen := 0
+func saveFraglen(config Config, filename string, fraglen int) {
+  basename := strings.TrimRight(filename, filepath.Ext(filename))
+  filename  = fmt.Sprintf("%s.fraglen.txt", basename)
 
+  f, err := os.Create(filename)
+  if err != nil {
+    log.Fatalf("opening `%s' failed: %v", filename, err)
+  }
+  defer f.Close()
+
+  fmt.Fprintf(f, "%d\n", fraglen)
+
+  PrintStderr(config, 1, "Wrote fragment length estimate to `%s'", filename)
+}
+
+func saveCrossCorr(config Config, filename string, x []int, y []float64) {
+  basename := strings.TrimRight(filename, filepath.Ext(filename))
+  filename  = fmt.Sprintf("%s.fraglen.table", basename)
+
+  f, err := os.Create(filename)
+  if err != nil {
+    log.Fatalf("opening `%s' failed: %v", filename, err)
+  }
+  defer f.Close()
+
+  for i := 0; i < len(x); i++ {
+    fmt.Fprintf(f, "%d %f", x[i], y[i])
+  }
+  PrintStderr(config, 1, "Wrote crosscorrelation to `%s'", filename)
+}
+
+func estimateFraglen(config Config, filename string, genome Genome) int {
   PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
   reads := GRanges{}
   if err := reads.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
@@ -231,16 +261,22 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
 
   // estimate fragment length
   PrintStderr(config, 1, "Estimating mean fragment length... ")
-  if estimate, _, _, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
+  if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatalf("estimating read length failed: %v", err)
+    return 0
   } else {
-    fraglen = estimate
-  }
-  PrintStderr(config, 1, "done\n")
-  PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
+    PrintStderr(config, 1, "done\n")
+    PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
 
-  return fraglen
+    if config.SaveFraglen {
+      saveFraglen(config, filename, fraglen)
+    }
+    if config.SaveCrossCorr {
+      saveCrossCorr(config, filename, x, y)
+    }
+    return fraglen
+  }
 }
 
 /* -------------------------------------------------------------------------- */

@@ -62,6 +62,30 @@ type Config struct {
   SaveCrossCorrPlot      bool
 }
 
+func DefaultConfig() Config {
+  config := Config{}
+  // set default values
+  config.BinSummaryStatistics = "mean"
+  config.BWZoomLevels         = nil   // zoom levels are determined automatically
+  config.BinningMethod        = "simple"
+  config.BinSize              = 10
+  config.BinOverlap           = 0
+  config.FraglenRange         = [2]int{-1, -1}
+  config.FilterReadLengths    = [2]int{0,0}
+  config.FilterMapQ           = 0
+  config.FilterDuplicates     = false
+  config.FilterStrand         = '*'
+  config.LogScale             = false
+  config.Pseudocounts         = [2]float64{0.0, 0.0}
+  config.SmoothenControl      = false
+  config.SmoothenSizes        = []int{}
+  config.SmoothenMin          = 20.0
+  config.SaveFraglen          = false
+  config.SaveCrossCorr        = false
+  config.SaveCrossCorrPlot    = false
+  return config
+}
+
 /* i/o
  * -------------------------------------------------------------------------- */
 
@@ -484,7 +508,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
 
 func main() {
 
-  var config Config
+  config := DefaultConfig()
 
   options := getopt.New()
 

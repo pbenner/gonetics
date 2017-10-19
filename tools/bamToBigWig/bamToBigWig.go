@@ -56,7 +56,8 @@ type Config struct {
   SmoothenMin            float64 `json:"Smoothen Minimum Counts"`
 }
 
-/* -------------------------------------------------------------------------- */
+/* i/o
+ * -------------------------------------------------------------------------- */
 
 func PrintStderr(config Config, level int, format string, args ...interface{}) {
   if config.Verbose >= level {
@@ -64,7 +65,25 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
   }
 }
 
-/* -------------------------------------------------------------------------- */
+/* utility
+ * -------------------------------------------------------------------------- */
+
+func parseFilename(filename string) (string, int) {
+  if tmp := strings.Split(filename, ":"); len(tmp) == 2 {
+    t, err := strconv.ParseInt(tmp[1], 10, 64)
+    if err != nil {
+      log.Fatal(err)
+    }
+    return tmp[0], int(t)
+  } else
+  if len(tmp) >= 2 {
+    log.Fatal("invalid input file description `%s'", filename)
+  }
+  return filename, 0
+}
+
+/* read filters
+ * -------------------------------------------------------------------------- */
 
 func filterDuplicates(config Config, reads GRanges) GRanges {
   if config.RmDup == false {
@@ -190,9 +209,12 @@ func shiftReads(config Config, reads GRanges) GRanges {
   return reads
 }
 
+/* fragment length estimation
+ * -------------------------------------------------------------------------- */
+
 /* -------------------------------------------------------------------------- */
 
-func track(config Config, filenameTrack string, filenamesTreatment, filenamesControl []string) {
+func track(config Config, filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int) {
 
   var genome Genome
 
@@ -216,21 +238,8 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
   n_treatment := 0
   n_control   := 0
 
-  for _, filenameTmp := range filenamesTreatment {
-    filename := filenameTmp
-    fraglen  := config.Fraglen
-
-    if tmp := strings.Split(filenameTmp, ":"); len(tmp) == 2 {
-      t, err := strconv.ParseInt(tmp[1], 10, 64)
-      if err != nil {
-        log.Fatal(err)
-      }
-      filename = tmp[0]
-      fraglen  = int(t)
-    } else
-    if len(tmp) >= 2 {
-      log.Fatal("invalid input file description `%s'", filenameTmp)
-    }
+  for i, filename := range filenamesTreatment {
+    fraglen := fraglenTreatment[i]
 
     PrintStderr(config, 1, "Reading treatment tags from `%s'... ", filename)
     treatment := GRanges{}
@@ -294,21 +303,8 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
     // control data
     track2 := AllocSimpleTrack("control", genome, config.BinSize)
 
-    for _, filenameTmp := range filenamesControl {
-      filename := filenameTmp
-      fraglen  := config.Fraglen
-
-      if tmp := strings.Split(filenameTmp, ":"); len(tmp) == 2 {
-        t, err := strconv.ParseInt(tmp[1], 10, 64)
-        if err != nil {
-          log.Fatal(err)
-        }
-        filename = tmp[0]
-        fraglen  = int(t)
-      } else
-      if len(tmp) >= 2 {
-        log.Fatal("invalid input file description `%s'", filenameTmp)
-      }
+    for i, filename := range filenamesControl {
+      fraglen  := fraglenControl[i]
 
       PrintStderr(config, 1, "Reading control tags from `%s'... ", filename)
       control := GRanges{}
@@ -430,7 +426,7 @@ func main() {
   // options for estimating and setting fragment lengths
   optFraglen         := options.    IntLong("fragment-length",          'e', -1, "fragment length for all input files (reads are extended to the given length)")
   optFraglenRange    := options. StringLong("fragment-length-range",    'R', "", "feasible range of fragment lengths (format from:to)")
-  optEstimateFraglen := options.   BoolLong("estimate-fragment-length", 'E',     "use crosscorrelation to estimate how much reads need to be extended")
+  optEstimateFraglen := options.   BoolLong("estimate-fragment-length", 'E',     "use crosscorrelation to estimate the fragment length")
   // generic options
   optVerbose         := options.CounterLong("verbose",                  'v',     "verbose level [-v or -vv]")
   optHelp            := options.   BoolLong("help",                     'h',     "print help")
@@ -610,5 +606,15 @@ func main() {
     filenameTrack = options.Args()[1]
   }
 
-  track(config, filenameTrack, filenamesTreatment, filenamesControl)
+  fraglenTreatment := make([]int, len(filenamesTreatment))
+  fraglenControl   := make([]int, len(filenamesControl))
+  // split filename:fraglen
+  for i, filename := range filenamesTreatment {
+    filenamesTreatment[i], fraglenTreatment[i] = parseFilename(filename)
+  }
+  for i, filename := range filenamesControl {
+    filenamesControl[i], fraglenControl[i] = parseFilename(filename)
+  }
+
+  track(config, filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl)
 }

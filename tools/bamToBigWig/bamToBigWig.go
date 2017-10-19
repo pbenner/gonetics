@@ -32,26 +32,26 @@ import . "github.com/pbenner/gonetics"
 
 type Config struct {
   Verbose                int
-  BinSummaryStatistics   string  `json:"Bin Summary Statistics"`
-  BWZoomLevels         []int     `json:"BigWig Zoom Levels"`
-  BinSize                int     `json:"Bin Size"`
-  BinOverlap             int     `json:"Bin Overlap"`
-  TrackInit              float64 `json:"Track Initial Value"`
-  Fraglen                int     `json:"Fragment Length"`
-  FraglenRange        [2]int     `json:"Fragment Length Range"`
-  PairedEnd              bool    `json:"Paired-End Reads"`
-  FilterReadLengths   [2]int     `json:"Feasible Read Lengths"`
-  MinMapQ                int     `json:"Minimum Mapping Quality"`
-  FilterDuplicates       bool    `json:"Remove Duplicates"`
-  BinningMethod          string  `json:"Binning Method"`
-  NormalizeTrack         string  `json:"Normalize Track"`
-  FilterStrand           byte    `json:"Filter Strand"`
-  ShiftReads          [2]int     `json:"Shift Reads"`
-  LogScale               bool    `json:"Log Scale"`
-  Pseudocounts        [2]float64 `json:"Pseudocounts"`
-  SmoothenControl        bool    `json:"Smoothen Control"`
-  SmoothenSizes        []int     `json:"Smoothen Window Sizes"`
-  SmoothenMin            float64 `json:"Smoothen Minimum Counts"`
+  BinSummaryStatistics   string
+  BWZoomLevels         []int
+  BinningMethod          string
+  BinSize                int
+  BinOverlap             int
+  TrackInit              float64
+  PairedEnd              bool
+  NormalizeTrack         string
+  ShiftReads          [2]int
+  LogScale               bool
+  Pseudocounts        [2]float64
+  Fraglen                int
+  FraglenRange        [2]int
+  FilterMapQ             int
+  FilterReadLengths   [2]int
+  FilterDuplicates       bool
+  FilterStrand           byte
+  SmoothenControl        bool
+  SmoothenSizes        []int
+  SmoothenMin            float64
 }
 
 /* i/o
@@ -127,10 +127,10 @@ func filterStrand(config Config, reads GRanges) GRanges {
 }
 
 func filterMapQ(config Config, reads GRanges) GRanges {
-  if config.MinMapQ <= 0 {
+  if config.FilterMapQ <= 0 {
     return reads
   }
-  PrintStderr(config, 1, "Filtering reads (minimum mapping quality: %d)... ", config.MinMapQ)
+  PrintStderr(config, 1, "Filtering reads (minimum mapping quality: %d)... ", config.FilterMapQ)
   idx := []int{}
   if config.PairedEnd {
     mapq1 := reads.GetMetaInt("mapq1")
@@ -140,7 +140,7 @@ func filterMapQ(config Config, reads GRanges) GRanges {
       log.Fatalf("no mapping quality available")
     }
     for i := 0; i < reads.Length(); i++ {
-      if mapq1[i] < config.MinMapQ || mapq2[i] < config.MinMapQ {
+      if mapq1[i] < config.FilterMapQ || mapq2[i] < config.FilterMapQ {
         idx = append(idx, i)
       }
     }
@@ -154,7 +154,7 @@ func filterMapQ(config Config, reads GRanges) GRanges {
       }
     }
     for i := 0; i < reads.Length(); i++ {
-      if mapq[i] < config.MinMapQ {
+      if mapq[i] < config.FilterMapQ {
         idx = append(idx, i)
       }
     }
@@ -398,7 +398,7 @@ func main() {
   // options for filterering reads
   optFilterStrand     := options. StringLong("filter-strand",             0 , "", "use reads on either the forward `+' or reverse `-' strand")
   optReadLength       := options. StringLong("filter-read-lengths",       0 , "", "feasible range of read-lengths [format: min:max]")
-  optMinMapQ          := options.    IntLong("filter-mapq",               0 ,  0, "filter reads for minimum mapping quality (default: 0)")
+  optFilterMapQ       := options.    IntLong("filter-mapq",               0 ,  0, "filter reads for minimum mapping quality (default: 0)")
   optFilterDuplicates := options.   BoolLong("filter-duplicates",         0 ,     "remove reads marked as duplicates")
   // track options
   optBinningMethod    := options. StringLong("binning-method",            0 , "", "binning method (i.e. simple or overlap [default])")
@@ -494,11 +494,11 @@ func main() {
     config.FilterReadLengths[0] = int(t1)
     config.FilterReadLengths[1] = int(t2)
   }
-  if *optMinMapQ < 0 {
+  if *optFilterMapQ < 0 {
       options.PrintUsage(os.Stderr)
       os.Exit(1)
   } else {
-    config.MinMapQ = *optMinMapQ
+    config.FilterMapQ = *optFilterMapQ
   }
   if *optFilterStrand != "" {
     switch *optFilterStrand {

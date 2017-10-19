@@ -19,6 +19,8 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "io"
+import "os"
 
 /* -------------------------------------------------------------------------- */
 
@@ -48,7 +50,7 @@ func (track GenericTrack) writeBigWig_reductionLevels(parameters BigWigParameter
   return n
 }
 
-func (track GenericTrack) WriteBigWig(filename string, genome Genome, args... interface{}) error {
+func (track GenericTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
 
@@ -66,7 +68,7 @@ func (track GenericTrack) WriteBigWig(filename string, genome Genome, args... in
     parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
   }
   // create new bigWig writer
-  writer, err := NewBigWigWriter(filename, genome, parameters)
+  bww, err := NewBigWigWriter(writer, genome, parameters)
   if err != nil {
     return err
   }
@@ -75,34 +77,44 @@ func (track GenericTrack) WriteBigWig(filename string, genome Genome, args... in
     sequence, err := track.GetSequence(name); if err != nil {
       return err
     }
-    if err := writer.Write(name, sequence.sequence, track.GetBinSize()); err != nil {
+    if err := bww.Write(name, sequence.sequence, track.GetBinSize()); err != nil {
       return err
     }
   }
-  if err := writer.WriteIndex(); err != nil {
+  if err := bww.WriteIndex(); err != nil {
     return err
   }
   // write zoomed data
   for i, reductionLevel := range parameters.ReductionLevels {
     // save current offset as the beginning of zoomed data for reduction
     // level i
-    if err := writer.StartZoomData(i); err != nil {
+    if err := bww.StartZoomData(i); err != nil {
       return err
     }
     for _, name := range track.GetSeqNames() {
       sequence, err := track.GetSequence(name); if err != nil {
         return err
       }
-      if err := writer.WriteZoom(name, sequence.sequence, track.GetBinSize(), reductionLevel, i); err != nil {
+      if err := bww.WriteZoom(name, sequence.sequence, track.GetBinSize(), reductionLevel, i); err != nil {
         return err
       }
     }
     // write index for this reduction level
-    if err := writer.WriteIndexZoom(i); err != nil {
+    if err := bww.WriteIndexZoom(i); err != nil {
       return err
     }
   }
-  writer.Close()
+  bww.Close()
 
   return nil
+}
+
+func (track GenericTrack) ExportBigWig(filename string, genome Genome, args... interface{}) error {
+  f, err := os.Create(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  return track.WriteBigWig(f, genome, args...)
 }

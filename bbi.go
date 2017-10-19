@@ -30,7 +30,6 @@ import "math"
 import "encoding/binary"
 import "io"
 import "io/ioutil"
-import "os"
 
 /* -------------------------------------------------------------------------- */
 
@@ -1384,10 +1383,10 @@ type RVertex struct {
   PtrSizes      []int64
 }
 
-func (vertex *RVertex) ReadBlock(bwf *BbiFile, i int) ([]byte, error) {
+func (vertex *RVertex) ReadBlock(reader io.ReadSeeker, bwf *BbiFile, i int) ([]byte, error) {
   var err error
   block := make([]byte, vertex.Sizes[i])
-  if err = fileReadAt(bwf.Fptr, bwf.Order, int64(vertex.DataOffset[i]), &block); err != nil {
+  if err = fileReadAt(reader, bwf.Order, int64(vertex.DataOffset[i]), &block); err != nil {
     return nil, err
   }
   if bwf.Header.UncompressBufSize != 0 {
@@ -1398,14 +1397,14 @@ func (vertex *RVertex) ReadBlock(bwf *BbiFile, i int) ([]byte, error) {
   return block, nil
 }
 
-func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
+func (vertex *RVertex) WriteBlock(writer io.WriteSeeker, bwf *BbiFile, i int, block []byte) error {
   var err error
   if bwf.Header.UncompressBufSize != 0 {
     // update header.UncompressBufSize if block length
     // exceeds size
     if uint32(len(block)) > bwf.Header.UncompressBufSize {
       bwf.Header.UncompressBufSize = uint32(len(block))
-      if err = bwf.Header.WriteUncompressBufSize(bwf.Fptr, bwf.Order); err != nil {
+      if err = bwf.Header.WriteUncompressBufSize(writer, bwf.Order); err != nil {
         return err
       }
     }
@@ -1414,26 +1413,26 @@ func (vertex *RVertex) WriteBlock(bwf *BbiFile, i int, block []byte) error {
     }
   }
   // get current offset and update DataOffset[i]
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := writer.Seek(0, 1); err != nil {
     return err
   } else {
     vertex.DataOffset[i] = uint64(offset)
     // write updated value to the required position in the file
     if vertex.PtrDataOffset[i] != 0 {
-      if err = fileWriteAt(bwf.Fptr, bwf.Order, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
+      if err = fileWriteAt(writer, bwf.Order, int64(vertex.PtrDataOffset[i]), vertex.DataOffset[i]); err != nil {
         return err
       }
     }
   }
   // write data
-  if err = binary.Write(bwf.Fptr, bwf.Order, block); err != nil {
+  if err = binary.Write(writer, bwf.Order, block); err != nil {
     return err
   }
   // update size of the data block
   vertex.Sizes[i] = uint64(len(block))
   // write it to the required position in the file
   if vertex.PtrSizes[i] != 0 {
-    if err = fileWriteAt(bwf.Fptr, bwf.Order, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
+    if err = fileWriteAt(writer, bwf.Order, int64(vertex.PtrSizes[i]), vertex.Sizes[i]); err != nil {
       return err
     }
   }
@@ -2087,7 +2086,6 @@ type BbiFile struct {
   ChromData   BData
   Index       RTree
   IndexZoom []RTree
-  Fptr       *os.File
   Order       binary.ByteOrder
 }
 
@@ -2108,19 +2106,15 @@ func NewBbiFile() *BbiFile {
   return bwf
 }
 
-func (bwf *BbiFile) Close() error {
-  return bwf.Fptr.Close()
-}
-
 /* query interface
  * -------------------------------------------------------------------------- */
 
-func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from, to, binSize int) {
+func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, zoomIdx, chromId, from, to, binSize int) {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType()
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
-    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
+    block, err := r.Vertex.ReadBlock(reader, bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
       return
@@ -2159,13 +2153,13 @@ func (bwf *BbiFile) queryZoom(channel chan BbiQueryType, zoomIdx, chromId, from,
   }
 }
 
-func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binSize int) {
+func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, chromId, from, to, binSize int) {
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType()
 
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
-    block, err := r.Vertex.ReadBlock(bwf, r.Idx)
+    block, err := r.Vertex.ReadBlock(reader, bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
       return
@@ -2207,7 +2201,7 @@ func (bwf *BbiFile) queryRaw(channel chan BbiQueryType, chromId, from, to, binSi
   }
 }
 
-func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binSize int) {
+func (bwf *BbiFile) query(reader io.ReadSeeker, channel chan BbiQueryType, chromId, from, to, binSize int) {
   // a binSize of zero is used to query raw data without
   // any further summary
   if binSize != 0 {
@@ -2223,16 +2217,16 @@ func (bwf *BbiFile) query(channel chan BbiQueryType, chromId, from, to, binSize 
     }
   }
   if zoomIdx != -1 {
-    bwf.queryZoom(channel, zoomIdx, chromId, from, to, binSize)
+    bwf.queryZoom(reader, channel, zoomIdx, chromId, from, to, binSize)
   } else {
-    bwf.queryRaw(channel, chromId, from, to, binSize)
+    bwf.queryRaw(reader, channel, chromId, from, to, binSize)
   }
 }
 
-func (bwf *BbiFile) Query(chromId, from, to, binSize int) <- chan BbiQueryType {
+func (bwf *BbiFile) Query(reader io.ReadSeeker, chromId, from, to, binSize int) <- chan BbiQueryType {
   channel := make(chan BbiQueryType, 100)
   go func() {
-    bwf.query(channel, chromId, from, to, binSize)
+    bwf.query(reader, channel, chromId, from, to, binSize)
     close(channel)
   }()
   return channel

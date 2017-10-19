@@ -663,16 +663,24 @@ func (reader *BamReader) readPairedEnd(channel chan *BamReaderType2) {
 /* utility
  * -------------------------------------------------------------------------- */
 
-func BamReadGenome(filename string) (Genome, error) {
+func BamReadGenome(reader io.Reader) (Genome, error) {
+  r, err := NewBamReader(reader, BamReaderOptions{})
+  if err != nil {
+    return Genome{}, err
+  }
+  return r.Genome, nil
+}
+
+func BamImportGenome(filename string) (Genome, error) {
   f, err := os.Open(filename)
   if err != nil {
     return Genome{}, err
   }
   defer f.Close()
 
-  reader, err := NewBamReader(f, BamReaderOptions{})
-  if err != nil {
-    return Genome{}, err
+  if genome, err := BamReadGenome(f); err != nil {
+    return genome, fmt.Errorf("reading genome from bam file `%s' failed: %v", filename, err)
+  } else {
+    return genome, nil
   }
-  return reader.Genome, nil
 }

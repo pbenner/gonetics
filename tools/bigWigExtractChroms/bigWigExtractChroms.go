@@ -35,7 +35,12 @@ func divIntUp(a, b int) int {
 }
 
 func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) {
-  if reader, err := NewBigWigReader(filenameIn); err != nil {
+  f, err := os.Open(filenameIn); if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  if reader, err := NewBigWigReader(f); err != nil {
     log.Fatal(err)
   } else {
     binSize   := 0
@@ -61,7 +66,7 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
     if verbose {
       log.Printf("writing track `%s'", filenameOut)
     }
-    t.WriteBigWig(filenameOut, "", genome)
+    t.ExportBigWig(filenameOut, genome)
   }
 }
 

@@ -45,7 +45,12 @@ func getBinSummaryStatisticse(str string) (BinSummaryStatistics, error) {
 }
 
 func query(filenameIn, chrom string, from, to, binSize, binOverlap int, summary BinSummaryStatistics, verbose bool) {
-  if reader, err := NewBigWigReader(filenameIn); err != nil {
+  f, err := os.Open(filenameIn); if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  if reader, err := NewBigWigReader(f); err != nil {
     log.Fatal(err)
   } else {
     if r, _, err := reader.QuerySequence(chrom, summary, binSize, binOverlap, math.NaN()); err != nil {

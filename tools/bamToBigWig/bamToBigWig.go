@@ -198,7 +198,7 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
 
   // read genome
   for _, filename := range append(filenamesTreatment, filenamesControl...) {
-    g, err := BamReadGenome(filename); if err != nil {
+    g, err := BamImportGenome(filename); if err != nil {
       log.Fatal(err)
     }
     if genome.Length() == 0 {
@@ -392,7 +392,7 @@ func track(config Config, filenameTrack string, filenamesTreatment, filenamesCon
   PrintStderr(config, 1, "Writing track `%s'... ", filenameTrack)
   parameters := DefaultBigWigParameters()
   parameters.ReductionLevels = config.BWZoomLevels
-  if err := (GenericTrack{track1}).WriteBigWig(filenameTrack, genome, parameters); err != nil {
+  if err := (GenericTrack{track1}).ExportBigWig(filenameTrack, genome, parameters); err != nil {
     PrintStderr(config, 1, "failed\n")
   } else {
     PrintStderr(config, 1, "done\n")

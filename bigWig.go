@@ -21,6 +21,7 @@ package gonetics
 import "fmt"
 import "math"
 import "encoding/binary"
+import "io"
 import "os"
 import "regexp"
 import "sort"
@@ -57,129 +58,113 @@ func NewBigWigFile() *BigWigFile {
   return &BigWigFile{bbiFile}
 }
 
-func (bwf *BigWigFile) Open(filename string) error {
-
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  bwf.Fptr = f
-
+func (bwf *BigWigFile) Open(reader io.ReadSeeker) error {
   // parse header
-  if order, err := bwf.Header.Read(bwf.Fptr, BIGWIG_MAGIC); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  if order, err := bwf.Header.Read(reader, BIGWIG_MAGIC); err != nil {
+    return err
   } else {
     bwf.Order = order
   }
   if bwf.Header.Magic != BIGWIG_MAGIC {
-    return fmt.Errorf("reading `%s' failed: not a BigWig file", filename)
+    return fmt.Errorf("not a BigWig file")
   }
   // parse chromosome list, which is represented as a tree
-  if _, err := bwf.Fptr.Seek(int64(bwf.Header.CtOffset), 0); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  if _, err := reader.Seek(int64(bwf.Header.CtOffset), 0); err != nil {
+    return err
   }
-  if err := bwf.ChromData.Read(bwf.Fptr, bwf.Order); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  if err := bwf.ChromData.Read(reader, bwf.Order); err != nil {
+    return err
   }
   // parse data index
-  if _, err := bwf.Fptr.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  if _, err := reader.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
+    return err
   }
-  if err := bwf.Index.Read(bwf.Fptr, bwf.Order); err != nil {
-    return fmt.Errorf("reading `%s' failed: %v", filename, err)
+  if err := bwf.Index.Read(reader, bwf.Order); err != nil {
+    return err
   }
   // parse zoom level indices
   bwf.IndexZoom = make([]RTree, bwf.Header.ZoomLevels)
   for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
-    if _, err := bwf.Fptr.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
-      return fmt.Errorf("reading `%s' failed: %v", filename, err)
+    if _, err := reader.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
+      return err
     }
-    if err := bwf.IndexZoom[i].Read(bwf.Fptr, bwf.Order); err != nil {
-      return fmt.Errorf("reading `%s' failed: %v", filename, err)
+    if err := bwf.IndexZoom[i].Read(reader, bwf.Order); err != nil {
+      return err
     }
   }
   return nil
 }
 
-func (bwf *BigWigFile) Create(filename string) error {
-
-  // open file
-  f, err := os.Create(filename)
-  if err != nil {
+func (bwf *BigWigFile) Create(writer io.WriteSeeker) error {
+  // write header
+  if err := bwf.Header.Write(writer, bwf.Order); err != nil {
     return err
   }
-  bwf.Fptr  = f
-
-  // write header
-  if err := bwf.Header.Write(bwf.Fptr, bwf.Order); err != nil {
-    return fmt.Errorf("writing `%s' failed: %v", filename, err)
-  }
   // data starts here
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := writer.Seek(0, 1); err != nil {
     return err
   } else {
     bwf.Header.DataOffset = uint64(offset)
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
     return err
   }
   // write number of blocks (zero at the moment)
-  if err := binary.Write(bwf.Fptr, binary.LittleEndian, uint64(0)); err != nil {
+  if err := binary.Write(writer, binary.LittleEndian, uint64(0)); err != nil {
     return err
   }
   return nil
 }
 
-func (bwf *BigWigFile) WriteChromList() error {
+func (bwf *BigWigFile) WriteChromList(writer io.WriteSeeker) error {
   // write chromosome list
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := writer.Seek(0, 1); err != nil {
     return err
   } else {
     bwf.Header.CtOffset = uint64(offset)
   }
-  if err := bwf.ChromData.Write(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.ChromData.Write(writer, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
     return err
   }
   return nil
 }
 
-func (bwf *BigWigFile) WriteIndex() error {
+func (bwf *BigWigFile) WriteIndex(writer io.WriteSeeker) error {
   // write data index offset
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := writer.Seek(0, 1); err != nil {
     return err
   } else {
     bwf.Header.IndexOffset = uint64(offset)
   }
   // write data index
-  if err := bwf.Index.Write(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.Index.Write(writer, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
     return err
   }
   return nil
 }
 
-func (bwf *BigWigFile) WriteIndexZoom(i int) error {
+func (bwf *BigWigFile) WriteIndexZoom(writer io.WriteSeeker, i int) error {
   // write data index offset
-  if offset, err := bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := writer.Seek(0, 1); err != nil {
     return err
   } else {
     bwf.Header.ZoomHeaders[i].IndexOffset = uint64(offset)
   }
   // write data index
-  if err := bwf.IndexZoom[i].Write(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.IndexZoom[i].Write(writer, bwf.Order); err != nil {
     return err
   }
   // update offsets
-  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(bwf.Fptr, bwf.Order); err != nil {
+  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(writer, bwf.Order); err != nil {
     return err
   }
   return nil
@@ -210,6 +195,7 @@ func IsBigWigFile(filename string) (bool, error) {
 /* -------------------------------------------------------------------------- */
 
 type BigWigReader struct {
+  Reader  io.ReadSeeker
   Bwf     BigWigFile
   Genome  Genome
 }
@@ -219,24 +205,25 @@ type BigWigReaderType struct {
   Error error
 }
 
-func NewBigWigReader(filename string) (*BigWigReader, error) {
+func NewBigWigReader(reader io.ReadSeeker) (*BigWigReader, error) {
   bwr := new(BigWigReader)
   bwf := new(BigWigFile)
-  if err := bwf.Open(filename); err != nil {
+  if err := bwf.Open(reader); err != nil {
     return nil, err
   }
-  bwr.Bwf = *bwf
+  bwr.Reader = reader
+  bwr.Bwf    = *bwf
 
   seqnames := make([]string, len(bwf.ChromData.Keys))
   lengths  := make([]int,    len(bwf.ChromData.Keys))
 
   for i := 0; i < len(bwf.ChromData.Keys); i++ {
     if len(bwf.ChromData.Values[i]) != 8 {
-      return nil, fmt.Errorf("reading `%s' failed: invalid chromosome list", filename)
+      return nil, fmt.Errorf("invalid chromosome list")
     }
     idx := int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][0:4]))
     if idx >= len(bwf.ChromData.Keys) {
-      return nil, fmt.Errorf("reading `%s' failed: invalid chromosome index", filename)
+      return nil, fmt.Errorf("invalid chromosome index")
     }
     seqnames[idx] = strings.TrimRight(string(bwf.ChromData.Keys[i]), "\x00")
     lengths [idx] = int(binary.LittleEndian.Uint32(bwf.ChromData.Values[i][4:8]))
@@ -262,7 +249,7 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
 
   if vertex.IsLeaf != 0 {
     for i := 0; i < int(vertex.NChildren); i++ {
-      if block, err := vertex.ReadBlock(&reader.Bwf.BbiFile, i); err != nil {
+      if block, err := vertex.ReadBlock(reader.Reader, &reader.Bwf.BbiFile, i); err != nil {
         channel <- BigWigReaderType{nil, err}
       } else {
         channel <- BigWigReaderType{block, nil}
@@ -291,7 +278,7 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binSize int) <- cha
         if idx, err := reader.Genome.GetIdx(seqname); err != nil {
           return
         } else {
-          reader.Bwf.query(channel, idx, from, to, binSize)
+          reader.Bwf.query(reader.Reader, channel, idx, from, to, binSize)
         }
       }
     }
@@ -371,13 +358,10 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
   }
 }
 
-func (reader *BigWigReader) Close() {
-  reader.Bwf.Close()
-}
-
 /* -------------------------------------------------------------------------- */
 
 type BigWigWriter struct {
+  Writer     io.WriteSeeker
   Bwf        BigWigFile
   Genome     Genome
   Parameters BigWigParameters
@@ -390,7 +374,7 @@ type BigWigWriterType struct {
   Sequence []float64
 }
 
-func NewBigWigWriter(filename string, genome Genome, parameters BigWigParameters) (*BigWigWriter, error) {
+func NewBigWigWriter(writer io.WriteSeeker, genome Genome, parameters BigWigParameters) (*BigWigWriter, error) {
   bww := new(BigWigWriter)
   bwf := NewBigWigFile()
   // create new leaf map
@@ -414,12 +398,13 @@ func NewBigWigWriter(filename string, genome Genome, parameters BigWigParameters
   // size of uint32
   bwf.ChromData.ValueSize = 8
   // open file
-  if err := bwf.Create(filename); err != nil {
+  if err := bwf.Create(writer); err != nil {
     return nil, err
   }
-  bww.Bwf = *bwf
-  bww.Parameters = parameters
+  bww.Writer = writer
+  bww.Bwf    = *bwf
   bww.Genome = genome
+  bww.Parameters = parameters
 
   return bww, nil
 }
@@ -446,7 +431,7 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binSize int) (int, e
   for tmp := range bww.generator.Generate(idx, sequence, binSize, 0, fixedStep) {
     // write data to file
     for i := 0; i < int(tmp.Vertex.NChildren); i++ {
-      if err := tmp.Vertex.WriteBlock(&bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
+      if err := tmp.Vertex.WriteBlock(bww.Writer, &bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
         return n, err
       }
       // increment number of blocks
@@ -478,7 +463,7 @@ func (bww *BigWigWriter) writeZoom(idx int, sequence []float64, binSize, reducti
   for tmp := range bww.generator.Generate(idx, sequence, binSize, reductionLevel, true) {
     // write data to file
     for i := 0; i < int(tmp.Vertex.NChildren); i++ {
-      if err := tmp.Vertex.WriteBlock(&bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
+      if err := tmp.Vertex.WriteBlock(bww.Writer, &bww.Bwf.BbiFile, i, tmp.Blocks[i]); err != nil {
         return n, err
       }
       // increment number of blocks
@@ -535,7 +520,7 @@ func (bww *BigWigWriter) WriteIndex() error {
   bww.resetLeafMap()
   // write index to file
   bww.Bwf.Index = *tree
-  if err := bww.Bwf.WriteIndex(); err != nil {
+  if err := bww.Bwf.WriteIndex(bww.Writer); err != nil {
     return err
   }
   return nil
@@ -555,24 +540,24 @@ func (bww *BigWigWriter) WriteIndexZoom(i int) error {
   bww.resetLeafMap()
   // write index to file
   bww.Bwf.IndexZoom[i] = *tree
-  if err := bww.Bwf.WriteIndexZoom(i); err != nil {
+  if err := bww.Bwf.WriteIndexZoom(bww.Writer, i); err != nil {
     return err
   }
   return nil
 }
 
 func (bww *BigWigWriter) StartZoomData(i int) error {
-  if offset, err := bww.Bwf.Fptr.Seek(0, 1); err != nil {
+  if offset, err := bww.Writer.Seek(0, 1); err != nil {
     return err
   } else {
     bww.Bwf.Header.ZoomHeaders[i].DataOffset = uint64(offset)
   }
   // write NBlocks
-  if err := binary.Write(bww.Bwf.Fptr, binary.LittleEndian, bww.Bwf.Header.ZoomHeaders[i].NBlocks); err != nil {
+  if err := binary.Write(bww.Writer, binary.LittleEndian, bww.Bwf.Header.ZoomHeaders[i].NBlocks); err != nil {
     return err
   }
   // update offsets
-  if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
+  if err := bww.Bwf.Header.ZoomHeaders[i].WriteOffsets(bww.Writer, bww.Bwf.Order); err != nil {
     return err
   }
   return nil
@@ -601,38 +586,50 @@ func (bww *BigWigWriter) Close() error {
     }
   }
   // write chromosome list to file
-  if err := bww.Bwf.WriteChromList(); err != nil {
+  if err := bww.Bwf.WriteChromList(bww.Writer); err != nil {
     return err
   }
   // write nblocks
-  if err := bww.Bwf.Header.WriteNBlocks(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
+  if err := bww.Bwf.Header.WriteNBlocks(bww.Writer, bww.Bwf.Order); err != nil {
     return err
   }
   for i := 0; i < len(bww.Bwf.Header.ZoomHeaders); i++ {
-    if err := bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Bwf.Fptr, bww.Bwf.Order); err != nil {
+    if err := bww.Bwf.Header.ZoomHeaders[i].WriteNBlocks(bww.Writer, bww.Bwf.Order); err != nil {
       return err
     }
   }
   // go to the end of the file
-  if _, err := bww.Bwf.Fptr.Seek(0, 2); err != nil {
+  if _, err := bww.Writer.Seek(0, 2); err != nil {
     return err
   }
   // write magic number
-  if err := binary.Write(bww.Bwf.Fptr, binary.LittleEndian, bww.Bwf.Header.Magic); err != nil {
+  if err := binary.Write(bww.Writer, binary.LittleEndian, bww.Bwf.Header.Magic); err != nil {
     return err
   }
-  bww.Bwf.Close()
-
   return nil
 }
 
 /* utility
  * -------------------------------------------------------------------------- */
 
-func BigWigReadGenome(filename string) (Genome, error) {
-  reader, err := NewBigWigReader(filename)
+func BigWigReadGenome(reader io.ReadSeeker) (Genome, error) {
+  r, err := NewBigWigReader(reader)
   if err != nil {
     return Genome{}, err
   }
-  return reader.Genome, nil
+  return r.Genome, nil
+}
+
+func BigWigImportGenome(filename string) (Genome, error) {
+  f, err := os.Open(filename)
+  if err != nil {
+    return Genome{}, err
+  }
+  defer f.Close()
+
+  if genome, err := BigWigReadGenome(f); err != nil {
+    return genome, fmt.Errorf("importing genome from `%s' failed: %v", filename, err)
+  } else {
+    return genome, nil
+  }
 }

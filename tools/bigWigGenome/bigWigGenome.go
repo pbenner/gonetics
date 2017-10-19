@@ -29,7 +29,7 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 func getGenome(filenameIn string, verbose bool) {
-  if genome, err := BigWigReadGenome(filenameIn); err != nil {
+  if genome, err := BigWigImportGenome(filenameIn); err != nil {
     log.Fatal(err)
   } else {
     fmt.Println(genome)

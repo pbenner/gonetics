@@ -18,13 +18,15 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
+import "io"
+import "os"
 
 /* -------------------------------------------------------------------------- */
 
-func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+func (track *SimpleTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
 
-  bwr, err := NewBigWigReader(filename)
+  bwr, err := NewBigWigReader(reader)
   if err != nil {
     return err
   }
@@ -42,7 +44,6 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
       sequences = append(sequences, s)
     }
   }
-  bwr.Close()
 
   // create new track
   if tmp, err := NewSimpleTrack(name, seqnames, sequences, binSize); err != nil {
@@ -53,8 +54,34 @@ func (track *SimpleTrack) ReadBigWig(filename, name string, f BinSummaryStatisti
   return nil
 }
 
+func (track *SimpleTrack) ImportBigWig(filename string, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  if err := track.ReadBigWig(f, name, s, binSize, binOverlap, init); err != nil {
+    return fmt.Errorf("importing bigWig file from `%s' failed: %v", filename, err)
+  }
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
-func (track SimpleTrack) WriteBigWig(filename string, genome Genome, args... interface{}) error {
-  return GenericTrack{track}.WriteBigWig(filename, genome, args...)
+func (track SimpleTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args... interface{}) error {
+  return GenericTrack{track}.WriteBigWig(writer, genome, args...)
+}
+
+func (track SimpleTrack) ExportBigWig(filename string, genome Genome, args... interface{}) error {
+  f, err := os.Create(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  if err := track.WriteBigWig(f, genome, args...); err != nil {
+    return fmt.Errorf("exporting bigWig file to `%s' failed: %v", filename, err)
+  }
+  return nil
 }

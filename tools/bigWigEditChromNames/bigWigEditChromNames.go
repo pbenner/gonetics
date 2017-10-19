@@ -33,11 +33,16 @@ import . "github.com/pbenner/gonetics"
 
 func editChromNames(filename, regex, repl string, dryRun, verbose bool) {
   bwf := new(BigWigFile)
-  // read chromosome list
-  if err := bwf.Open(filename); err != nil {
-    log.Fatal(err)
+  {
+    f, err := os.Open(filename); if err != nil {
+      log.Fatal(err)
+    }
+    // read chromosome list
+    if err := bwf.Open(f); err != nil {
+      log.Fatal(err)
+    }
+    f.Close()
   }
-  bwf.Close()
 
   // file pointer for writing
   fptr, err := os.OpenFile(filename, os.O_RDWR, 0); if err != nil {

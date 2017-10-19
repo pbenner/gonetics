@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
+import "io"
 
 /* -------------------------------------------------------------------------- */
 
@@ -27,7 +28,6 @@ type LazyTrack struct {
   BinSize    int
   BinOverlap int
   Bwr        BigWigReader
-  Filename   string
   BinSumStat BinSummaryStatistics
   Init       float64
 }
@@ -35,20 +35,18 @@ type LazyTrack struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewLazyTrack(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) (LazyTrack, error) {
-  bwr, err := NewBigWigReader(filename); if err != nil {
+func NewLazyTrack(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) (LazyTrack, error) {
+  bwr, err := NewBigWigReader(reader); if err != nil {
     return LazyTrack{}, err
   }
-  return LazyTrack{name, binSize, binOverlap, *bwr, filename, f, init}, nil
+  return LazyTrack{name, binSize, binOverlap, *bwr, f, init}, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (track LazyTrack) Clone() LazyTrack {
-  track, err := NewLazyTrack(track.Filename, track.Name, track.BinSumStat, track.BinSize, track.BinOverlap, track.Init); if err != nil {
-    panic(err)
-  }
-  return track
+  r := track
+  return r
 }
 
 func (track LazyTrack) CloneTrack() Track {
@@ -99,8 +97,8 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
 
 /* -------------------------------------------------------------------------- */
 
-func (track *LazyTrack) ReadBigWig(filename, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
-  if tmp, err := NewLazyTrack(filename, name, f, binSize, binOverlap, init); err != nil {
+func (track *LazyTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+  if tmp, err := NewLazyTrack(reader, name, f, binSize, binOverlap, init); err != nil {
     return err
   } else {
     *track = tmp

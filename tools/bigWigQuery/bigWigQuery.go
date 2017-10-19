@@ -30,7 +30,12 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 func query(filenameIn, chrom string, from, to, binSize int, verbose bool) {
-  if reader, err := NewBigWigReader(filenameIn); err != nil {
+  f, err := os.Open(filenameIn); if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  if reader, err := NewBigWigReader(f); err != nil {
     log.Fatal(err)
   } else {
     for r := range reader.Query(chrom, from, to, binSize) {

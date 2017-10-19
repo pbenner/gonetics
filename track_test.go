@@ -171,15 +171,15 @@ func TestTrack7(t *testing.T) {
   genome := Genome{}
   genome.Import("track_test.1.genome")
 
-  if err := track.ReadBigWig("track_test.1.bw", "", BinMean, 10, 0, math.NaN()); err != nil {
+  if err := track.ImportBigWig("track_test.1.bw", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
-  if err := track.WriteBigWig("track_test.1.bw.tmp", genome); err != nil {
+  if err := track.ExportBigWig("track_test.1.bw.tmp", genome); err != nil {
     t.Error(err)
   }
   // reset track and read file again
   track = SimpleTrack{}
-  if err := track.ReadBigWig("track_test.1.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
+  if err := track.ImportBigWig("track_test.1.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
 }
@@ -192,13 +192,13 @@ func TestTrack8(t *testing.T) {
   genome := Genome{}
   genome.Import("track_test.3.genome")
 
-  if err := track1.ReadBigWig("track_test.3.bw", "", BinMean, 10, 0, math.NaN()); err != nil {
+  if err := track1.ImportBigWig("track_test.3.bw", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
-  if err := track1.WriteBigWig("track_test.3.bw.tmp", genome); err != nil {
+  if err := track1.ExportBigWig("track_test.3.bw.tmp", genome); err != nil {
     t.Error(err)
   }
-  if err := track2.ReadBigWig("track_test.3.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
+  if err := track2.ImportBigWig("track_test.3.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
 }
@@ -212,11 +212,11 @@ func TestTrack9(t *testing.T) {
   track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
   track1.Data["test2"] = []float64{math.NaN(),1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,math.NaN()}
 
-  track1.WriteBigWig(filename, genome)
+  track1.ExportBigWig(filename, genome)
 
   track2 := AllocSimpleTrack("", genome, 10)
 
-  err1 := track2.ReadBigWig(filename, "", BinMean, 10, 0, math.NaN())
+  err1 := track2.ImportBigWig(filename, "", BinMean, 10, 0, math.NaN())
   if err1 != nil {
     t.Error(err1)
   }
@@ -282,11 +282,11 @@ func TestTrack11(t *testing.T) {
   track1.Data["test1"] = []float64{0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,9.0}
   track1.Data["test2"] = []float64{math.NaN(),1.2,2.3,3.4,4.5,5.6,math.NaN(),math.NaN(),8.9,9.0,0.1,1.2,2.3,3.4,4.5,5.6,6.7,7.8,8.9,math.NaN()}
 
-  track1.WriteBigWig(filename, genome)
+  track1.ExportBigWig(filename, genome)
 
   track2 := AllocSimpleTrack("", genome, binSize)
 
-  err1 := track2.ReadBigWig(filename, "", BinMax, binSize, binOverlap, math.NaN())
+  err1 := track2.ImportBigWig(filename, "", BinMax, binSize, binOverlap, math.NaN())
   if err1 != nil {
     t.Error(err1)
   }

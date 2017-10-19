@@ -29,6 +29,11 @@ import   "os"
 import   "github.com/pborman/getopt"
 import . "github.com/pbenner/gonetics"
 
+import   "gonum.org/v1/plot"
+import   "gonum.org/v1/plot/plotter"
+import   "gonum.org/v1/plot/plotutil"
+import   "gonum.org/v1/plot/vg"
+
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
@@ -245,6 +250,37 @@ func saveCrossCorr(config Config, filename string, x []int, y []float64) {
   PrintStderr(config, 1, "Wrote crosscorrelation to `%s'", filename)
 }
 
+func saveCrossCorrPlot(config Config, filename string, x []int, y []float64) {
+  basename := strings.TrimRight(filename, filepath.Ext(filename))
+  filename  = fmt.Sprintf("%s.fraglen.pdf", basename)
+
+  xy := make(plotter.XYs, len(x))
+  for i := 0; i < len(x); i++ {
+    xy[i].X = float64(x[i])+1
+    xy[i].Y = y[i]
+  }
+  p, err := plot.New()
+  if err != nil {
+    panic(err)
+  }
+  p.Title.Text = ""
+  p.X.Label.Text = "shift"
+  p.Y.Label.Text = "cross-correlation"
+  p.X.Scale = plot.LogScale{}
+  p.Y.Scale = plot.LogScale{}
+  p.X.Tick.Marker = plot.LogTicks{}
+  p.Y.Tick.Marker = plot.LogTicks{}
+
+  err = plotutil.AddLines(p, xy)
+  if err != nil {
+    panic(err)
+  }
+  if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
+    panic(err)
+  }
+  PrintStderr(config, 1, "Wrote crosscorrelation plot to `%s'", filename)
+}
+
 func estimateFraglen(config Config, filename string, genome Genome) int {
   PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
   reads := GRanges{}
@@ -274,6 +310,9 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
     }
     if config.SaveCrossCorr {
       saveCrossCorr(config, filename, x, y)
+    }
+    if config.SaveCrossCorrPlot {
+      saveCrossCorrPlot(config, filename, x, y)
     }
     return fraglen
   }

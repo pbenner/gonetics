@@ -20,6 +20,7 @@ package gonetics
 
 //import "fmt"
 import "io"
+import "os"
 
 /* -------------------------------------------------------------------------- */
 
@@ -99,6 +100,21 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
 
 func (track *LazyTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) error {
   if tmp, err := NewLazyTrack(reader, name, f, binSize, binOverlap, init); err != nil {
+    return err
+  } else {
+    *track = tmp
+  }
+  return nil
+}
+
+func (track *LazyTrack) ImportBigWig(filename, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  if tmp, err := NewLazyTrack(f, name, s, binSize, binOverlap, init); err != nil {
     return err
   } else {
     *track = tmp

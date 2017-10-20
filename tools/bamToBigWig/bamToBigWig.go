@@ -524,7 +524,7 @@ func main() {
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   // track options
   optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple or overlap [default])")
-  optBinSize           := options.    IntLong("bin-size",                   0 , 10, "track bin size [default: 10]")
+  optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
   optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method (i.e. rpm)")
   optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal (default: `0,0')")
   optSmoothenControl   := options.   BoolLong("smoothen-control",           0 ,     "smoothen control with an adaptive window method")
@@ -558,11 +558,13 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  if *optBinSize < 1 {
-    options.PrintUsage(os.Stderr)
-    os.Exit(1)
-  } else {
-    config.BinSize = *optBinSize
+  if *optBinSize != 0 {
+    if *optBinSize < 1 {
+      options.PrintUsage(os.Stderr)
+      os.Exit(1)
+    } else {
+      config.BinSize = *optBinSize
+    }
   }
   if *optBinningMethod != "" {
     config.BinningMethod = *optBinningMethod

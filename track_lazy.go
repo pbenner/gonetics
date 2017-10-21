@@ -107,17 +107,27 @@ func (track *LazyTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSumma
   return nil
 }
 
-func (track *LazyTrack) ImportBigWig(filename, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
+/* -------------------------------------------------------------------------- */
+
+type LazyTrackFile struct {
+  LazyTrack
+  f *os.File
+}
+
+func (obj *LazyTrackFile) ImportBigWig(filename, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
   f, err := os.Open(filename)
   if err != nil {
     return err
   }
-  defer f.Close()
 
   if tmp, err := NewLazyTrack(f, name, s, binSize, binOverlap, init); err != nil {
     return err
   } else {
-    *track = tmp
+    obj.LazyTrack = tmp
   }
   return nil
+}
+
+func (obj *LazyTrackFile) Close() error {
+  return obj.f.Close()
 }

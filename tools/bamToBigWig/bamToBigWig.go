@@ -523,7 +523,7 @@ func main() {
   optFilterMapQ        := options.    IntLong("filter-mapq",                0 ,  0, "filter reads for minimum mapping quality (default: 0)")
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   // track options
-  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple or overlap [default])")
+  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple [default] or overlap)")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
   optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method (i.e. rpm)")
   optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal (default: `0,0')")

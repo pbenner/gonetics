@@ -222,6 +222,16 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
       case "strand":
         colStrand = i
       }
+      case "start":
+        // alternative name for `from' column
+        if colFrom == -1 {
+          colFrom = i
+        }
+      case "end":
+        // alternative name for `to' column
+        if colTo == -1 {
+          colTo = i
+        }
     }
   } else {
     return fmt.Errorf("reading from file failed")

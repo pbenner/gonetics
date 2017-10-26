@@ -342,16 +342,12 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
   PrintStderr(config, 1, "Estimating mean fragment length... ")
   if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
     PrintStderr(config, 1, "failed\n")
-    if config.SaveCrossCorr && x != nil && y != nil {
+    if x != nil && y != nil && config.SaveCrossCorr {
       saveCrossCorr(config, filename, x, y)
     }
-    if config.SaveCrossCorr {
-      saveCrossCorr(config, filename, x, y)
-    }
-    if config.SaveCrossCorrPlot {
+    if x != nil && y != nil && config.SaveCrossCorrPlot {
       saveCrossCorrPlot(config, filename, -1, x, y)
     }
-
     log.Fatalf("estimating read length failed: %v", err)
     return 0
   } else {

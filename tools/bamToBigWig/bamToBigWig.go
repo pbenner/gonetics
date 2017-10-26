@@ -298,20 +298,18 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
 
   if fraglen != -1 {
     // determine cross-correlation maximum
-    m_index := 0
-    m_value := 0.0
+    max_value := 0.0
     for i := 0; i < len(x); i++ {
-      if y[i] > m_value {
-        m_index = i
-        m_value = y[i]
+      if y[i] > max_value {
+        max_value = y[i]
       }
     }
     // draw vertical line at fraglen estimate
     fr := make(plotter.XYs, 2)
-    fr[0].X = float64(x[m_index])
+    fr[0].X = float64(fraglen)
     fr[0].Y = 0.0
-    fr[1].X = float64(x[m_index])
-    fr[1].Y = m_value
+    fr[1].X = float64(fraglen)
+    fr[1].Y = max_value
 
     err = plotutil.AddLines(p, fr)
     if err != nil {

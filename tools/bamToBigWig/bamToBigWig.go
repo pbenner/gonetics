@@ -277,29 +277,12 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   basename := strings.TrimRight(filename, filepath.Ext(filename))
   filename  = fmt.Sprintf("%s.fraglen.pdf", basename)
 
-  // determine cross-correlation maximum
-  m_index := 0
-  m_value := 0.0
-  for i := 0; i < len(x); i++ {
-    if y[i] > m_value {
-      m_index = i
-      m_value = y[i]
-    }
-  }
-
   // draw cross-correlation
   xy := make(plotter.XYs, len(x))
   for i := 0; i < len(x); i++ {
     xy[i].X = float64(x[i])+1
     xy[i].Y = y[i]
   }
-  // draw vertical line at fraglen estimate
-  fr := make(plotter.XYs, 2)
-  fr[0].X = float64(x[m_index])
-  fr[0].Y = 0.0
-  fr[1].X = float64(x[m_index])
-  fr[1].Y = m_value
-
   p, err := plot.New()
   if err != nil {
     log.Fatal(err)
@@ -312,9 +295,28 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   if err != nil {
     log.Fatal(err)
   }
-  err = plotutil.AddLines(p, fr)
-  if err != nil {
-    log.Fatal(err)
+
+  if fraglen != -1 {
+    // determine cross-correlation maximum
+    m_index := 0
+    m_value := 0.0
+    for i := 0; i < len(x); i++ {
+      if y[i] > m_value {
+        m_index = i
+        m_value = y[i]
+      }
+    }
+    // draw vertical line at fraglen estimate
+    fr := make(plotter.XYs, 2)
+    fr[0].X = float64(x[m_index])
+    fr[0].Y = 0.0
+    fr[1].X = float64(x[m_index])
+    fr[1].Y = m_value
+
+    err = plotutil.AddLines(p, fr)
+    if err != nil {
+      log.Fatal(err)
+    }
   }
   if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
     log.Fatal(err)
@@ -343,6 +345,13 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
     if config.SaveCrossCorr && x != nil && y != nil {
       saveCrossCorr(config, filename, x, y)
     }
+    if config.SaveCrossCorr {
+      saveCrossCorr(config, filename, x, y)
+    }
+    if config.SaveCrossCorrPlot {
+      saveCrossCorrPlot(config, filename, -1, x, y)
+    }
+
     log.Fatalf("estimating read length failed: %v", err)
     return 0
   } else {

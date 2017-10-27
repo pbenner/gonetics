@@ -323,25 +323,28 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   PrintStderr(config, 1, "Wrote cross-correlation plot to `%s'\n", filename)
 }
 
-func estimateFraglen(config Config, filename string, genome Genome) int {
-  {
-    // try reading the fragment length from file
-    basename := strings.TrimRight(filename, filepath.Ext(filename))
-    filename := fmt.Sprintf("%s.fraglen.txt", basename)
-    if f, err := os.Open(filename); err == nil {
-      PrintStderr(config, 1, "Reading fragment length from `%s'... ", filename)
-      scanner := bufio.NewScanner(f)
-      if scanner.Scan() {
-        if fraglen, err := strconv.ParseInt(scanner.Text(), 10, 64); err == nil {
-          f.Close()
-          PrintStderr(config, 1, "done\n")
-          return int(fraglen)
-        }
+func importFraglen(config Config, filename string, genome Genome) int {
+  // try reading the fragment length from file
+  basename := strings.TrimRight(filename, filepath.Ext(filename))
+  filename  = fmt.Sprintf("%s.fraglen.txt", basename)
+  if f, err := os.Open(filename); err != nil {
+    return -1
+  } else {
+    defer f.Close()
+    PrintStderr(config, 1, "Reading fragment length from `%s'... ", filename)
+    scanner := bufio.NewScanner(f)
+    if scanner.Scan() {
+      if fraglen, err := strconv.ParseInt(scanner.Text(), 10, 64); err == nil {
+        PrintStderr(config, 1, "done\n")
+        return int(fraglen)
       }
-      f.Close()
-      PrintStderr(config, 1, "failed\n")
     }
+    PrintStderr(config, 1, "failed\n")
+    return -1
   }
+}
+
+func estimateFraglen(config Config, filename string, genome Genome) int {
   PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
   reads := GRanges{}
   if err := reads.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
@@ -784,13 +787,21 @@ func main() {
       if fraglenTreatment[i] != 0 {
         continue
       }
-      fraglenTreatment[i] = estimateFraglen(config, filename, genome)
+      if fraglen := importFraglen(config, filename, genome); fraglen != -1 {
+        fraglenTreatment[i] = fraglen
+      } else {
+        fraglenTreatment[i] = estimateFraglen(config, filename, genome)
+      }
     }
     for i, filename := range filenamesControl {
       if fraglenControl[i] != 0 {
         continue
       }
-      fraglenControl[i] = estimateFraglen(config, filename, genome)
+      if fraglen := importFraglen(config, filename, genome); fraglen != -1 {
+        fraglenControl[i] = fraglen
+      } else {
+        fraglenControl[i] = estimateFraglen(config, filename, genome)
+      }
     }
   }
 

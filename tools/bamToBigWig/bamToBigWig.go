@@ -19,6 +19,7 @@ package main
 /* -------------------------------------------------------------------------- */
 
 import   "fmt"
+import   "bufio"
 import   "log"
 import   "math"
 import   "path/filepath"
@@ -323,6 +324,24 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
 }
 
 func estimateFraglen(config Config, filename string, genome Genome) int {
+  {
+    // try reading the fragment length from file
+    basename := strings.TrimRight(filename, filepath.Ext(filename))
+    filename  = fmt.Sprintf("%s.fraglen.txt", basename)
+    if f, err := os.Open(filename); err == nil {
+      PrintStderr(config, 1, "Reading fragment length from `%s'... ", filename)
+      scanner := bufio.NewScanner(f)
+      if scanner.Scan() {
+        if fraglen, err := strconv.ParseInt(scanner.Text(), 10, 64); err == nil {
+          f.Close()
+          PrintStderr(config, 1, "done\n")
+          return int(fraglen)
+        }
+      }
+      f.Close()
+      PrintStderr(config, 1, "failed\n")
+    }
+  }
   PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
   reads := GRanges{}
   if err := reads.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {

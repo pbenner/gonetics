@@ -327,7 +327,7 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
   {
     // try reading the fragment length from file
     basename := strings.TrimRight(filename, filepath.Ext(filename))
-    filename  = fmt.Sprintf("%s.fraglen.txt", basename)
+    filename := fmt.Sprintf("%s.fraglen.txt", basename)
     if f, err := os.Open(filename); err == nil {
       PrintStderr(config, 1, "Reading fragment length from `%s'... ", filename)
       scanner := bufio.NewScanner(f)

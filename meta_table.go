@@ -21,6 +21,7 @@ package gonetics
 import "fmt"
 import "bytes"
 import "bufio"
+import "math"
 import "io"
 import "io/ioutil"
 import "strconv"
@@ -273,12 +274,17 @@ func (meta *Meta) ReadTable(r io.Reader, names, types []string) error {
         entry = append(entry, int(v))
         metaMap[name] = entry
       case []float64:
-        v, err := strconv.ParseFloat(fields[idx], 64)
-        if err != nil {
-          return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
+        if fields[idx] == "NA" || fields[idx] == "NaN" {
+          entry = append(entry, math.NaN())
+          metaMap[name] = entry
+        } else {
+          v, err := strconv.ParseFloat(fields[idx], 64)
+          if err != nil {
+            return fmt.Errorf("parsing meta information failed at line `%d': %v", i, err)
+          }
+          entry = append(entry, v)
+          metaMap[name] = entry
         }
-        entry = append(entry, v)
-        metaMap[name] = entry
       case [][]int:
         data := strings.FieldsFunc(fields[idx], func(x rune) bool { return x == ',' })
         // parse counts

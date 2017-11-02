@@ -122,14 +122,16 @@ func importTable(r io.Reader, track SimpleTrack, columnName string) error {
 
 /* -------------------------------------------------------------------------- */
 
-func chromHmmTablesToBigWig(filenameGenome string, binSize int, columnName string, filenameOut string, filenames []string, verbose int) {
+func chromHmmTablesToBigWig(filenameGenome string, binSize int, columnName string, trackInit float64, filenameOut string, filenames []string, verbose int) {
 
   track := AllocSimpleTrack("", importGenome(filenameGenome, verbose), binSize)
 
   // initialize track to NaN
-  GenericMutableTrack{track}.Map(track, func(seqname string, pos int, value float64) float64 {
-   return math.NaN()
-  })
+  if trackInit != 0.0 {
+    GenericMutableTrack{track}.Map(track, func(seqname string, pos int, value float64) float64 {
+      return math.NaN()
+    })
+  }
 
   for _, filename := range filenames {
     PrintStderr(verbose, 1, "Reading table `%s'... ", filename)
@@ -192,5 +194,5 @@ func main() {
   if binSize < 1 {
     log.Fatalf("invalid binsize `%d' specified", binSize)
   }
-  chromHmmTablesToBigWig(filenameGenome, binSize, columnName, filenameOut, filenames, verbose)
+  chromHmmTablesToBigWig(filenameGenome, binSize, columnName, 0.0, filenameOut, filenames, verbose)
 }

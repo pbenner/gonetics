@@ -69,8 +69,8 @@ func (track *SimpleTrack) ImportBigWig(filename string, name string, s BinSummar
 
 /* -------------------------------------------------------------------------- */
 
-func (track SimpleTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args... interface{}) error {
-  return GenericTrack{track}.WriteBigWig(writer, genome, args...)
+func (track SimpleTrack) WriteBigWig(writer io.WriteSeeker, args... interface{}) error {
+  return GenericTrack{track}.WriteBigWig(writer, args...)
 }
 
 func (track SimpleTrack) ExportBigWig(filename string, genome Genome, args... interface{}) error {
@@ -80,7 +80,7 @@ func (track SimpleTrack) ExportBigWig(filename string, genome Genome, args... in
   }
   defer f.Close()
 
-  if err := track.WriteBigWig(f, genome, args...); err != nil {
+  if err := track.WriteBigWig(f, args...); err != nil {
     return fmt.Errorf("exporting bigWig file to `%s' failed: %v", filename, err)
   }
   return nil

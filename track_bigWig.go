@@ -50,7 +50,7 @@ func (track GenericTrack) writeBigWig_reductionLevels(parameters BigWigParameter
   return n
 }
 
-func (track GenericTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args... interface{}) error {
+func (track GenericTrack) WriteBigWig(writer io.WriteSeeker, args... interface{}) error {
 
   parameters := DefaultBigWigParameters()
 
@@ -68,7 +68,7 @@ func (track GenericTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args
     parameters.ReductionLevels = track.writeBigWig_reductionLevels(parameters)
   }
   // create new bigWig writer
-  bww, err := NewBigWigWriter(writer, genome, parameters)
+  bww, err := NewBigWigWriter(writer, track.GetGenome(), parameters)
   if err != nil {
     return err
   }
@@ -109,12 +109,12 @@ func (track GenericTrack) WriteBigWig(writer io.WriteSeeker, genome Genome, args
   return nil
 }
 
-func (track GenericTrack) ExportBigWig(filename string, genome Genome, args... interface{}) error {
+func (track GenericTrack) ExportBigWig(filename string, args... interface{}) error {
   f, err := os.Create(filename)
   if err != nil {
     return err
   }
   defer f.Close()
 
-  return track.WriteBigWig(f, genome, args...)
+  return track.WriteBigWig(f, args...)
 }

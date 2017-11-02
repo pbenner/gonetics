@@ -53,14 +53,8 @@ func importGenome(filename string, verbose int) Genome {
 }
 
 func exportTrack(track Track, trackFilename string, verbose int) {
-  f, err := os.Create(trackFilename)
-  if err != nil {
-    log.Fatal(err)
-  }
-  defer f.Close()
-
   PrintStderr(verbose, 1, "Writing track `%s'... ", trackFilename)
-  if err := (GenericTrack{track}).WriteBigWig(f, track.GetGenome()); err != nil {
+  if err := (GenericTrack{track}).ExportBigWig(trackFilename); err != nil {
     PrintStderr(verbose, 1, "failed\n")
     log.Fatal(err)
   } else {

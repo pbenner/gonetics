@@ -522,7 +522,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
   PrintStderr(config, 1, "Writing track `%s'... ", filenameTrack)
   parameters := DefaultBigWigParameters()
   parameters.ReductionLevels = config.BWZoomLevels
-  if err := (GenericTrack{track1}).ExportBigWig(filenameTrack, genome, parameters); err != nil {
+  if err := (GenericTrack{track1}).ExportBigWig(filenameTrack, parameters); err != nil {
     PrintStderr(config, 1, "failed\n")
   } else {
     PrintStderr(config, 1, "done\n")

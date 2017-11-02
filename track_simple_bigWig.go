@@ -73,7 +73,7 @@ func (track SimpleTrack) WriteBigWig(writer io.WriteSeeker, args... interface{})
   return GenericTrack{track}.WriteBigWig(writer, args...)
 }
 
-func (track SimpleTrack) ExportBigWig(filename string, genome Genome, args... interface{}) error {
+func (track SimpleTrack) ExportBigWig(filename string, args... interface{}) error {
   f, err := os.Create(filename)
   if err != nil {
     return err

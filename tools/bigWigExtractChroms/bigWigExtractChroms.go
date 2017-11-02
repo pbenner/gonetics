@@ -66,7 +66,7 @@ func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) 
     if verbose {
       log.Printf("writing track `%s'", filenameOut)
     }
-    t.ExportBigWig(filenameOut, genome)
+    t.ExportBigWig(filenameOut)
   }
 }
 

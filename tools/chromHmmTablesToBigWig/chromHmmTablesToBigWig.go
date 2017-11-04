@@ -150,12 +150,14 @@ func chromHmmTablesToBigWig(filenameGenome string, binSize int, columnName strin
 
 func main() {
 
-  verbose := 0
+  trackInit := 0.0
+  verbose   := 0
 
   options := getopt.New()
 
-  optVerbose           := options.CounterLong("verbose",                   'v',     "verbose level [-v or -vv]")
-  optHelp              := options.   BoolLong("help",                      'h',     "print help")
+  optTrackInit := options. StringLong("initial-value",  0 , "", "track initial value [default: 0]")
+  optVerbose   := options.CounterLong("verbose",       'v',     "verbose level [-v or -vv]")
+  optHelp      := options.   BoolLong("help",          'h',     "print help")
 
   options.SetParameters("<GENOME_FILE> <BINSIZE> <COLUMN_NAME> <RESULT_FILE> <FILES...>")
   options.Parse(os.Args)
@@ -173,6 +175,13 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  if *optTrackInit != "" {
+    v, err := strconv.ParseFloat(*optTrackInit, 64)
+    if err != nil {
+      log.Fatalf("parsing initial value failed: %v", err)
+    }
+    trackInit = v
+  }
 
   filenameGenome := options.Args()[0]
   binSize        := 0
@@ -188,5 +197,5 @@ func main() {
   if binSize < 1 {
     log.Fatalf("invalid binsize `%d' specified", binSize)
   }
-  chromHmmTablesToBigWig(filenameGenome, binSize, columnName, 0.0, filenameOut, filenames, verbose)
+  chromHmmTablesToBigWig(filenameGenome, binSize, columnName, trackInit, filenameOut, filenames, verbose)
 }

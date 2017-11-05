@@ -31,10 +31,8 @@ func (track *SimpleTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSum
     return err
   }
   // extract all sequences
-  seqnames  := bwr.Genome.Seqnames
   sequences := [][]float64{}
-  for i := 0; i < bwr.Genome.Length(); i++ {
-    seqname := bwr.Genome.Seqnames[i]
+  for _, seqname := range bwr.Genome.Seqnames {
     if s, b, err := bwr.QuerySequence(seqname, f, binSize, binOverlap, init); err != nil {
       return err
     } else {
@@ -46,7 +44,7 @@ func (track *SimpleTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSum
   }
 
   // create new track
-  if tmp, err := NewSimpleTrack(name, seqnames, sequences, binSize); err != nil {
+  if tmp, err := NewSimpleTrack(name, sequences, bwr.Genome, binSize); err != nil {
     return err
   } else {
     *track = tmp

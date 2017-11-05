@@ -20,7 +20,6 @@ package gonetics
 
 import "bufio"
 import "bytes"
-import "errors"
 import "fmt"
 import "io"
 import "os"
@@ -72,7 +71,7 @@ func (genome Genome) SeqLength(seqname string) (int, error) {
       return genome.Lengths[i], nil
     }
   }
-  return 0, errors.New("sequence not found")
+  return 0, fmt.Errorf("sequence `%s' not found in genome", seqname)
 }
 
 func (genome *Genome) AddSequence(seqname string, length int) (int, error) {

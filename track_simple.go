@@ -37,18 +37,14 @@ type SimpleTrack struct {
 /* constructor
  * -------------------------------------------------------------------------- */
 
-func NewSimpleTrack(name string, seqnames []string, sequences [][]float64, binSize int) (SimpleTrack, error) {
-  if len(seqnames) != len(sequences) {
+func NewSimpleTrack(name string, sequences [][]float64, genome Genome, binSize int) (SimpleTrack, error) {
+  if len(sequences) != genome.Length() {
     return SimpleTrack{}, fmt.Errorf("invalid arguments")
   }
-  data    := make(TMapType)
-  lengths := make([]int, len(sequences))
+  data := make(TMapType)
   for i, sequence := range sequences {
-    lengths[i] = binSize*len(sequence)
-    data[seqnames[i]] = sequence
+    data[genome.Seqnames[i]] = sequence
   }
-  genome := NewGenome(seqnames, lengths)
-
   return SimpleTrack{name, genome, data, binSize}, nil
 }
 

@@ -2,6 +2,20 @@
 
 Gonetics is a bioinformatics library for the Go programming language (golang). It provides native data structures for handling genetic data and methods for handling common file formats such as BAM, GTF, BED, BigWig, and Wig. The documentation is available [here](https://godoc.org/github.com/pbenner/gonetics).
 
+### Tools
+
+| Tool                   | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| bamToBigWig            | convert bam to bigWig (estimate fragment length if required)             |
+| bigWigEditChromNames   | edit chromosome names of a bigWig file (i.e. replace `chr1' by just `1') |
+| bigWigExtractChroms    | extract a subset of the chromosomes from a bigWig file                   |
+| bigWigGenome           | print the genome (sequence table) of a bigWig file                       |
+| bigWigQuery            | retrieve data from a bigWig file                                         |
+| bigWigQuerySequence    | retrieve sequences from a bigWig file                                    |
+| chromHmmTablesToBigWig | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
+| gtfToBed               | convert GTF files to Bed6 format                                         |
+
+
 ### GRanges
 
 Create a GRanges object with three ranges on the first chromosome:

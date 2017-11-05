@@ -7,7 +7,7 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 | Tool                   | Description                                                              |
 | ---------------------- | ------------------------------------------------------------------------ |
 | bamToBigWig            | convert bam to bigWig (estimate fragment length if required)             |
-| bigWigEditChromNames   | edit chromosome names of a bigWig file (i.e. replace `chr1' by just `1') |
+| bigWigEditChromNames   | edit chromosome names of a bigWig file (i.e. replace `chr1` by just `1`) |
 | bigWigExtractChroms    | extract a subset of the chromosomes from a bigWig file                   |
 | bigWigGenome           | print the genome (sequence table) of a bigWig file                       |
 | bigWigQuery            | retrieve data from a bigWig file                                         |

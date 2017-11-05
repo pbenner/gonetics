@@ -43,6 +43,9 @@ func NewSimpleTrack(name string, sequences [][]float64, genome Genome, binSize i
   }
   data := make(TMapType)
   for i, sequence := range sequences {
+    if len(sequence) != divIntDown(genome.Lengths[i], binSize) {
+      return SimpleTrack{}, fmt.Errorf("genome has invalid length for the given sequence and binsize")
+    }
     data[genome.Seqnames[i]] = sequence
   }
   return SimpleTrack{name, genome, data, binSize}, nil

@@ -27,10 +27,10 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-func (granges GRanges) WritePretty(writer io.Writer, n int) error {
+func (granges GRanges) WritePretty(writer io.Writer, n int, args ...interface{}) error {
   // pretty print meta data and create a scanner reading
   // the resulting string
-  metaStr     := granges.Meta.PrintPretty(n)
+  metaStr     := granges.Meta.PrintPretty(n, args...)
   metaReader  := strings.NewReader(metaStr)
   metaScanner := bufio.NewScanner(metaReader)
 
@@ -158,11 +158,11 @@ func (granges GRanges) WritePretty(writer io.Writer, n int) error {
   return nil
 }
 
-func (granges GRanges) PrintPretty(n int) string {
+func (granges GRanges) PrintPretty(n int, args ...interface{}) string {
   var buffer bytes.Buffer
   writer := bufio.NewWriter(&buffer)
 
-  if err := granges.WritePretty(writer, n); err != nil {
+  if err := granges.WritePretty(writer, n, args...); err != nil {
     return ""
   }
   writer.Flush()

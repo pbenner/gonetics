@@ -29,7 +29,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-type OptionGRangesScientific struct {
+type OptionPrintScientific struct {
   Value bool
 }
 
@@ -39,7 +39,7 @@ func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) 
   useScientific := false
   for _, arg := range args {
     switch a := arg.(type) {
-    case OptionGRangesScientific:
+    case OptionPrintScientific:
       useScientific = a.Value
     default:
     }

@@ -26,7 +26,15 @@ import "io/ioutil"
 
 /* -------------------------------------------------------------------------- */
 
-func (meta Meta) WritePretty(writer io.Writer, n int) error {
+func (meta Meta) WritePretty(writer io.Writer, n int, args ...interface{}) error {
+  useScientific := false
+  for _, arg := range args {
+    switch a := arg.(type) {
+    case OptionPrintScientific:
+      useScientific = a.Value
+    default:
+    }
+  }
   printCellSlice := func(writer io.Writer, widths []int, i, j int, data interface{}) (int, error) {
     var tmpBuffer bytes.Buffer
     tmpWriter := bufio.NewWriter(&tmpBuffer)
@@ -38,9 +46,17 @@ func (meta Meta) WritePretty(writer io.Writer, n int) error {
         }
       }
     case [][]float64:
-      for k := 0; k < len(v[i]); k++ {
-        if _, err := fmt.Fprintf(tmpWriter, " %f", v[i][k]); err != nil {
-          return 0, err
+      if useScientific {
+        for k := 0; k < len(v[i]); k++ {
+          if _, err := fmt.Fprintf(tmpWriter, " %e", v[i][k]); err != nil {
+            return 0, err
+          }
+        }
+      } else {
+        for k := 0; k < len(v[i]); k++ {
+          if _, err := fmt.Fprintf(tmpWriter, " %f", v[i][k]); err != nil {
+            return 0, err
+          }
         }
       }
     case [][]int:
@@ -63,8 +79,13 @@ func (meta Meta) WritePretty(writer io.Writer, n int) error {
       format := fmt.Sprintf(" %%%ds", widths[j]-1)
       return fmt.Fprintf(writer, format, v[i])
     case []float64:
-      format := fmt.Sprintf(" %%%df", widths[j]-1)
-      return fmt.Fprintf(writer, format, v[i])
+      if useScientific {
+        format := fmt.Sprintf(" %%%de", widths[j]-1)
+        return fmt.Fprintf(writer, format, v[i])
+      } else {
+        format := fmt.Sprintf(" %%%df", widths[j]-1)
+        return fmt.Fprintf(writer, format, v[i])
+      }
     case []int:
       format := fmt.Sprintf(" %%%dd", widths[j]-1)
       return fmt.Fprintf(writer, format, v[i])
@@ -178,11 +199,11 @@ func (meta Meta) WritePretty(writer io.Writer, n int) error {
   return nil
 }
 
-func (meta *Meta) PrintPretty(n int) string {
+func (meta *Meta) PrintPretty(n int, args ...interface{}) string {
   var buffer bytes.Buffer
   writer := bufio.NewWriter(&buffer)
 
-  if err := meta.WritePretty(writer, n); err != nil {
+  if err := meta.WritePretty(writer, n, args...); err != nil {
     return ""
   }
   writer.Flush()

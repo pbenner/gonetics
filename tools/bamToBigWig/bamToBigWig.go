@@ -524,6 +524,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
   parameters.ReductionLevels = config.BWZoomLevels
   if err := (GenericTrack{track1}).ExportBigWig(filenameTrack, parameters); err != nil {
     PrintStderr(config, 1, "failed\n")
+    log.Fatal(err)
   } else {
     PrintStderr(config, 1, "done\n")
   }

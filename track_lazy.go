@@ -96,7 +96,7 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
   return seq, nil
 }
 
-func (track LazyTrack) FilterGenome(f func(name string, length int) bool) {
+func (track *LazyTrack) FilterGenome(f func(name string, length int) bool) {
   track.Bwr.Genome = track.Bwr.Genome.Filter(f)
 }
 

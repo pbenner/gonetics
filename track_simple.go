@@ -157,3 +157,13 @@ func (track SimpleTrack) GetSlice(r GRangesRow) ([]float64, error) {
   }
   return seq[from:to], nil
 }
+
+func (track *SimpleTrack) FilterGenome(f func(name string, length int) bool) {
+  for i, seqname := range track.Genome.Seqnames {
+    length := track.Genome.Lengths[i]
+    if !f(seqname, length) {
+      delete(track.Data, seqname)
+    }
+  }
+  track.Genome = track.Genome.Filter(f)
+}

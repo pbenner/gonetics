@@ -93,6 +93,18 @@ func (genome Genome) GetIdx(seqname string) (int, error) {
   return -1, fmt.Errorf("sequence `%s' not found in genome", seqname)
 }
 
+func (genome Genome) Filter(f func(name string, length int) bool) Genome {
+  seqnames := []string{}
+  lengths  := []int   {}
+  for i := 0; i < genome.Length(); i++ {
+    if f(genome.Seqnames[i], genome.Lengths[i]) {
+      seqnames = append(seqnames, genome.Seqnames[i])
+      lengths  = append(lengths,  genome.Lengths [i])
+    }
+  }
+  return NewGenome(seqnames, lengths)
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (genome Genome) Equals(g Genome) bool {

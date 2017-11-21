@@ -250,11 +250,16 @@ type TrackSummaryStatistics struct {
 }
 
 func (statistics TrackSummaryStatistics) String() string {
-  s := "Track `%s' summary statistics\n"
+  var s string
+  if statistics.Name == "" {
+    s = fmt.Sprintf("Track summary statistics\n")
+  } else {
+    s = fmt.Sprintf("Track `%s' summary statistics\n", statistics.Name)
+  }
   s += "- Maximum: %f\n"
   s += "- Minimum: %f\n"
   s += "- Mean   : %f"
-  return fmt.Sprintf(s, statistics.Name, statistics.Max, statistics.Min, statistics.Mean)
+  return fmt.Sprintf(s, statistics.Max, statistics.Min, statistics.Mean)
 }
 
 func (track GenericTrack) SummaryStatistics() TrackSummaryStatistics {

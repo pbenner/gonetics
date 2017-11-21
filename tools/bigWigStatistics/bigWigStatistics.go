@@ -69,7 +69,7 @@ func main() {
     options.PrintUsage(os.Stdout)
     os.Exit(0)
   }
-  if len(options.Args()) != 5 {
+  if len(options.Args()) != 1 {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }

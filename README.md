@@ -12,6 +12,7 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 | bigWigGenome           | print the genome (sequence table) of a bigWig file                       |
 | bigWigQuery            | retrieve data from a bigWig file                                         |
 | bigWigQuerySequence    | retrieve sequences from a bigWig file                                    |
+| bigWigStatistics       | compute summary statistics of a bigWig file                              |
 | chromHmmTablesToBigWig | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
 | gtfToBed               | convert GTF files to Bed6 format                                         |
 

@@ -49,7 +49,7 @@ func bigWigStatistics(filename string, binSize, verbose int) {
   }
   s := GenericTrack{track}.SummaryStatistics()
 
-  fmt.Println("%+v\n", s)
+  fmt.Println(s)
 }
 
 /* -------------------------------------------------------------------------- */

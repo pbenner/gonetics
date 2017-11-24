@@ -13,7 +13,7 @@ import "math"
 func F(seqname string, position int, values ...float64) float64 {
 
   x1 := values[0]
-    x2 := values[1]
+  x2 := values[1]
 
   return math.Abs(x1-x2)*(1.0+x1)/(1.0+x2)
 

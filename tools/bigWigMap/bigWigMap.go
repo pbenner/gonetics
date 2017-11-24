@@ -91,7 +91,7 @@ func bigWigMap(config Config, filenamePlugin, filenameOutput string, filenameInp
     log.Fatalf("opening plugin `%s' failed: %v", filenamePlugin, err)
   }
 
-  g, err := p.Lookup("f")
+  g, err := p.Lookup("F")
   if err != nil {
     log.Fatal(err)
   }

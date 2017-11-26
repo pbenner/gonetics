@@ -44,7 +44,6 @@ type Config struct {
   BinningMethod          string
   BinSize                int
   BinOverlap             int
-  TrackInit              float64
   PairedEnd              bool
   NormalizeTrack         string
   ShiftReads          [2]int

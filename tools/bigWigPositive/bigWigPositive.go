@@ -216,27 +216,21 @@ func getJointPeaks(tracks []Track, thresholds []float64) (GRanges, error) {
   strand   := []byte{}
   test     := [][]float64{}
 
-  binsize := tracks[0].GetBinSize()
-  // assert that all tracks have the same binsize
-  for j := 1; j < len(tracks); j++ {
-    if binsize != tracks[j].GetBinSize() {
-      return GRanges{}, fmt.Errorf("tracks `1' and `%d' have different bin sizes (`%d' and `%d')", j+1, binsize, tracks[j].GetBinSize())
-    }
-  }
   for _, name := range tracks[0].GetSeqNames() {
     s, err := tracks[0].GetSequence(name); if err != nil {
       return GRanges{}, err
     }
     sequences := []TrackSequence{s}
+    binsize   := s.GetBinSize()
     seqlen    := s.NBins()
     // check remaining track for consistency
     for j := 1; j < len(tracks); j++ {
-      if binsize != tracks[j].GetBinSize() {
-        return GRanges{}, fmt.Errorf("tracks `1' and `%d' have different bin sizes (`%d' and `%d')", j+1, binsize, tracks[j].GetBinSize())
-      }
       if sequence, err := tracks[j].GetSequence(name); err != nil {
         return GRanges{}, fmt.Errorf("reading sequence from track `%d' failed: %v", j+1, err)
       } else {
+        if sequence.GetBinSize() != binsize {
+          return GRanges{}, fmt.Errorf("tracks `1' and `%d' have different bin sizes (`%d' and `%d')", j+1, binsize, sequence.GetBinSize())
+        }
         if sequence.NBins() != seqlen {
           return GRanges{}, fmt.Errorf("sequence `%s' on track `1' and `%d' have different lengths (`%d' and `%d')", name, j+1, seqlen, sequence.NBins())
         }

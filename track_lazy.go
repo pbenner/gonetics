@@ -74,10 +74,10 @@ func (track LazyTrack) GetGenome() Genome {
 }
 
 func (track LazyTrack) GetSequence(query string) (TrackSequence, error) {
-  if seq, _, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.BinSize, track.BinOverlap, track.Init); err != nil {
+  if seq, binSize, err := track.Bwr.QuerySequence(query, track.BinSumStat, track.BinSize, track.BinOverlap, track.Init); err != nil {
     return TrackSequence{}, err
   } else {
-    return TrackSequence{seq, track.BinSize}, nil
+    return TrackSequence{seq, binSize}, nil
   }
 }
 

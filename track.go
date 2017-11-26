@@ -39,6 +39,10 @@ func (obj TrackSequence) NBins() int {
   return len(obj.sequence)
 }
 
+func (obj TrackSequence) GetBinSize() int {
+  return obj.binSize
+}
+
 /* -------------------------------------------------------------------------- */
 
 type TrackMutableSequence struct {

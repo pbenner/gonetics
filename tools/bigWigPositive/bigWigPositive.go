@@ -317,7 +317,6 @@ func main() {
   threshold := 0.0
 
   options := getopt.New()
-  options.SetProgram(fmt.Sprintf("%s positive", os.Args[0]))
 
   optBinSize   := options.    IntLong("bin-size",       0 ,      0, "bin size")
   optBinStat   := options. StringLong("bin-summary",    0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")

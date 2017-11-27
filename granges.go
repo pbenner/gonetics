@@ -334,7 +334,7 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, f BinSummarySt
       if binSize == 0 {
         binSize = record.To - record.From
       }
-      if r == nil {
+      if len(r) == 0 {
         n = (to - from)/binSize
         r = make([]BbiSummaryRecord, n)
         s = make([]float64, n)

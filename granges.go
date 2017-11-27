@@ -326,11 +326,19 @@ func (r *GRanges) ImportBigWig(reader *BigWigReader, name string, f BinSummarySt
     from    := r.Ranges[i].From
     to      := r.Ranges[i].To
     strand  := r.Strand[i]
-    n := (to - from)/binSize
-    r := make([]BbiSummaryRecord, n)
-    s := make([]float64, n)
+    n := 0
+    r := []BbiSummaryRecord{}
+    s := []float64{}
     // first collect all records
     for record := range reader.Query(seqname, from, to, binSize) {
+      if binSize == 0 {
+        binSize = record.To - record.From
+      }
+      if r == nil {
+        n = (to - from)/binSize
+        r = make([]BbiSummaryRecord, n)
+        s = make([]float64, n)
+      }
       if record.Error != nil {
         return fmt.Errorf("%v", record.Error)
       }

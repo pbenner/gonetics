@@ -93,17 +93,8 @@ func extract(config Config, filenameBw, filenameBed, filenameOut string) {
 
   // import bed file first to check if it exists
   granges := importBed3(config, filenameBed)
-  // if this is a BigWig file, we do not have to import
-  // the full track
-  if f, err := os.Open(filenameBw); err != nil {
+  if err := granges.ImportBigWig(filenameBw, "counts", config.BinStat, config.BinSize, config.BinOver, config.TrackInit, false); err != nil {
     log.Fatal(err)
-  } else {
-    if reader, err := NewBigWigReader(f); err != nil {
-      log.Fatal(err)
-    } else {
-      granges.ImportBigWig(reader, "counts", config.BinStat, config.BinSize, config.BinOver, config.TrackInit, false)
-    }
-    f.Close()
   }
   exportTable(config, granges, filenameOut)
 }

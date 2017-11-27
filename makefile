@@ -1,14 +1,19 @@
 
 SUBDIRS = \
 	. \
-	tools/bigWigExtractChroms \
-	tools/bigWigQuerySequence \
-	tools/chromHmmTablesToBigWig \
-	tools/bigWigGenome \
+	tools/bamToBigWig \
 	tools/bigWigEditChromNames \
-	tools/gtfToBed \
+	tools/bigWigExtract \
+	tools/bigWigExtractChroms \
+	tools/bigWigGenome \
+	tools/bigWigMap \
+	tools/bigWigPositive \
 	tools/bigWigQuery \
-	tools/bamToBigWig
+	tools/bigWigQuerySequence \
+	tools/bigWigStatistics \
+	tools/chromHmmTablesToBigWig \
+	tools/drawGenomicRegions \
+	tools/gtfToBed
 
 all:
 

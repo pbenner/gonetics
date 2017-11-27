@@ -30,11 +30,12 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Verbose   int
-  BinSize   int
-  BinOver   int
-  TrackInit float64
-  BinStat   BinSummaryStatistics
+  Verbose    int
+  Scientific bool
+  BinSize    int
+  BinOver    int
+  TrackInit  float64
+  BinStat    BinSummaryStatistics
 }
 
 /* -------------------------------------------------------------------------- */
@@ -78,7 +79,7 @@ func importBed3(config Config, filename string) GRanges {
 
 func exportTable(config Config, granges GRanges, filename string) {
   PrintStderr(config, 1, "Writing table `%s'... ", filename)
-  if err := granges.ExportTable(filename, true, true, false); err != nil {
+  if err := granges.ExportTable(filename, true, true, false, OptionPrintScientific{config.Scientific}); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   } else {
@@ -115,12 +116,13 @@ func main() {
 
   options := getopt.New()
 
-  optBinSize   := options.    IntLong("bin-size",     0 ,      0, "bin size")
-  optBinStat   := options. StringLong("bin-summary",  0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
-  optBinOver   := options.    IntLong("bin-overlap",  0 ,      0, "number of overlapping bins when computing the summary")
-  optTrackInit := options. StringLong("initial-value",  0 , "", "track initial value [default: 0]")
-  optHelp      := options.   BoolLong("help",        'h',         "print help")
-  optVerbose   := options.CounterLong("verbose",     'v',         "be verbose")
+  optBinSize    := options.    IntLong("bin-size",       0 ,      0, "bin size")
+  optBinStat    := options. StringLong("bin-summary",    0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
+  optBinOver    := options.    IntLong("bin-overlap",    0 ,      0, "number of overlapping bins when computing the summary")
+  optTrackInit  := options. StringLong("initial-value",  0 ,     "", "track initial value [default: 0]")
+  optScientific := options.   BoolLong("scientific",     0 ,         "use scientific format to print values")
+  optHelp       := options.   BoolLong("help",          'h',         "print help")
+  optVerbose    := options.CounterLong("verbose",       'v',         "be verbose")
 
   options.SetParameters("<INPUT.bw> <INPUT.bed> <OUTPUT.table>")
   options.Parse(os.Args)
@@ -142,10 +144,11 @@ func main() {
   } else {
     config.TrackInit = 0.0
   }
-  config.Verbose = *optVerbose
-  config.BinSize = *optBinSize
-  config.BinOver = *optBinOver
-  config.BinStat = getBinSummaryStatistics(*optBinStat)
+  config.Verbose    = *optVerbose
+  config.Scientific = *optScientific
+  config.BinSize    = *optBinSize
+  config.BinOver    = *optBinOver
+  config.BinStat    = getBinSummaryStatistics(*optBinStat)
 
   filenameBw  := options.Args()[0]
   filenameBed := options.Args()[1]

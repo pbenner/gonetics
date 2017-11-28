@@ -19,16 +19,11 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "io"
 import "os"
 
 /* -------------------------------------------------------------------------- */
 
-func (r *GRanges) ReadBigWig(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64, revNegStrand bool) error {
-  bwr, err := NewBigWigReader(reader)
-  if err != nil {
-    return err
-  }
+func (r *GRanges) ReadBigWig(bwr *BigWigReader, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64, revNegStrand bool) error {
   counts := [][]float64{}
   for i := 0; i < r.Length(); i++ {
     seqname := r.Seqnames[i]
@@ -101,7 +96,11 @@ func (r *GRanges) ImportBigWig(filename string, name string, s BinSummaryStatist
   }
   defer f.Close()
 
-  if err := r.ReadBigWig(f, name, s, binSize, binOverlap, init, revNegStrand); err != nil {
+  bwr, err := NewBigWigReader(f)
+  if err != nil {
+    return err
+  }
+  if err := r.ReadBigWig(bwr, name, s, binSize, binOverlap, init, revNegStrand); err != nil {
     return fmt.Errorf("importing bigWig file from `%s' failed: %v", filename, err)
   }
   return nil

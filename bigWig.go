@@ -314,7 +314,7 @@ func (reader *BigWigReader) QuerySlice(seqregex string, from, to int, f BinSumma
       if record.Error != nil {
         return nil, -1, record.Error
       }
-      for idx := record.From/binSize; idx < record.To/binSize; idx++ {
+      for idx := (record.From - from)/binSize; idx < (record.To - from)/binSize; idx++ {
         if idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }

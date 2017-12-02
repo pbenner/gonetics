@@ -11,6 +11,7 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 | bigWigExtract          | extract regions from a bigWig file and write them to a table             |
 | bigWigExtractChroms    | extract a subset of the chromosomes from a bigWig file                   |
 | bigWigGenome           | print the genome (sequence table) of a bigWig file                       |
+| bigWigHistogram        | compute a histogram of the values in a bigWig file                       |
 | bigWigMap              | apply a function to a set of bigWig files                                |
 | bigWigPositive         | simple peak finding (i.e. every region with a value above a threshold)   |
 | bigWigQuery            | retrieve data from a bigWig file                                         |

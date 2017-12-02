@@ -58,7 +58,7 @@ func main() {
   options := getopt.New()
   options.SetProgram(fmt.Sprintf("%s", os.Args[0]))
 
-  optBinSize    := options.    IntLong("binsize",      0 ,  0, "bin size")
+  optBinSize    := options.    IntLong("bin-size",     0 ,  0, "bin size")
   optHelp       := options.   BoolLong("help",        'h',     "print help")
   optVerbose    := options.CounterLong("verbose",     'v',     "be verbose")
 

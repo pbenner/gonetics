@@ -144,7 +144,7 @@ func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut strin
   }
   PrintStderr(config, 1, "done\n")
 
-  PrintStderr(config, 1, "Writing bigWig file `%s'... ", filenameBw)
+  PrintStderr(config, 1, "Writing bigWig file `%s'... ", filenameOut)
   if err := track.ExportBigWig(filenameOut); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)

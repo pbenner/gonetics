@@ -134,7 +134,7 @@ func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut strin
       } else {
         // copy result to track
         for j := granges.Ranges[i].From; j < granges.Ranges[i].To; j += binSize {
-          dst.Set(j, src[j/binSize])
+          dst.Set(j, src[(j-granges.Ranges[i].From)/binSize])
         }
       }
     }

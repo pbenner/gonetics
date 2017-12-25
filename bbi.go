@@ -504,6 +504,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
   n := divIntUp(it.reductionLevel, it.binSize)
   // beginning of region covered by a single block
   f := -1
+  t := -1
   // number of records written to block
   m := 0
   // reset result
@@ -541,6 +542,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
         // save position
         f = int(record.Start)
       }
+      t  = int(record.End)
       m += 1
     }
     // check if block is full or if the end of the
@@ -549,7 +551,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
       if tmp := b.Bytes(); len(tmp) > 0 {
         // save result
         it.r.From  = f
-        it.r.To    = int(record.End)
+        it.r.To    = t
         it.r.Block = tmp
         // update position
         it.position = p + it.reductionLevel

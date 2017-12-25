@@ -82,7 +82,6 @@ func importBed3(config Config, filename string) GRanges {
 func exportTable(config Config, granges GRanges, filename string) {
   if filename == "" {
     if err := granges.WriteTable(os.Stdout, true, true, false, OptionPrintScientific{config.Scientific}); err != nil {
-      PrintStderr(config, 1, "failed\n")
       log.Fatal(err)
     }
   } else {
@@ -106,12 +105,15 @@ func extractTable(config Config, granges GRanges, filenameBw, filenameOut string
 }
 
 func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut string) {
+  PrintStderr(config, 1, "Reading bigWig file `%s'... ", filenameBw)
   f, err := os.Open(filenameBw)
   if err != nil {
+    PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   }
   r, err := NewBigWigReader(f)
   if err != nil {
+    PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   }
   var track *SimpleTrack
@@ -130,6 +132,7 @@ func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut strin
         track = &t
       }
       if dst, err := track.GetMutableSequence(granges.Seqnames[i]); err != nil {
+        PrintStderr(config, 1, "failed\n")
         log.Fatal(err)
       } else {
         // copy result to track
@@ -139,9 +142,14 @@ func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut strin
       }
     }
   }
+  PrintStderr(config, 1, "done\n")
+
+  PrintStderr(config, 1, "Writing bigWig file `%s'... ", filenameBw)
   if err := track.ExportBigWig(filenameOut); err != nil {
+    PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   }
+  PrintStderr(config, 1, "done\n")
 }
 
 func extract(config Config, filenameBed, filenameBw, filenameOut string) {

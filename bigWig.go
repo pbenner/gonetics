@@ -500,7 +500,7 @@ func (bww *BigWigWriter) getLeavesSorted() []*RVertex {
   }
   sort.Ints(indices)
 
-  for idx := range indices {
+  for _, idx := range indices {
     leaves = append(leaves, bww.Leaves[idx]...)
   }
   return leaves

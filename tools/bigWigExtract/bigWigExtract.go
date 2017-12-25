@@ -20,6 +20,7 @@ package main
 
 import   "fmt"
 import   "log"
+import   "math"
 import   "os"
 import   "path/filepath"
 import   "strconv"
@@ -121,7 +122,12 @@ func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut strin
     } else {
       config.BinSize = binSize
       if track == nil {
-        t := AllocSimpleTrack("", r.Genome, binSize); track = &t
+        t := AllocSimpleTrack("", r.Genome, binSize)
+        // initialize track
+        GenericMutableTrack{t}.Map(t, func(string, int, float64) float64 {
+          return math.NaN()
+        })
+        track = &t
       }
       if dst, err := track.GetMutableSequence(granges.Seqnames[i]); err != nil {
         log.Fatal(err)

@@ -21,6 +21,7 @@ package main
 import   "fmt"
 import   "log"
 import   "os"
+import   "path/filepath"
 import   "strconv"
 
 import   "github.com/pborman/getopt"
@@ -78,25 +79,79 @@ func importBed3(config Config, filename string) GRanges {
 }
 
 func exportTable(config Config, granges GRanges, filename string) {
-  PrintStderr(config, 1, "Writing table `%s'... ", filename)
-  if err := granges.ExportTable(filename, true, true, false, OptionPrintScientific{config.Scientific}); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
+  if filename == "" {
+    if err := granges.WriteTable(os.Stdout, true, true, false, OptionPrintScientific{config.Scientific}); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    }
   } else {
-    PrintStderr(config, 1, "done\n")
+    PrintStderr(config, 1, "Writing table `%s'... ", filename)
+    if err := granges.ExportTable(filename, true, true, false, OptionPrintScientific{config.Scientific}); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      PrintStderr(config, 1, "done\n")
+    }
   }
 }
 
 /* -------------------------------------------------------------------------- */
 
-func extract(config Config, filenameBw, filenameBed, filenameOut string) {
-
-  // import bed file first to check if it exists
-  granges := importBed3(config, filenameBed)
+func extractTable(config Config, granges GRanges, filenameBw, filenameOut string) {
   if err := granges.ImportBigWig(filenameBw, "counts", config.BinStat, config.BinSize, config.BinOver, config.TrackInit, false); err != nil {
     log.Fatal(err)
   }
   exportTable(config, granges, filenameOut)
+}
+
+func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut string) {
+  f, err := os.Open(filenameBw)
+  if err != nil {
+    log.Fatal(err)
+  }
+  r, err := NewBigWigReader(f)
+  if err != nil {
+    log.Fatal(err)
+  }
+  var track *SimpleTrack
+
+  for i := 0; i < granges.Length(); i++ {
+    if src, binSize, err := r.QuerySlice(granges.Seqnames[i], granges.Ranges[i].From, granges.Ranges[i].To, config.BinStat, config.BinSize, config.BinOver, config.TrackInit); err != nil {
+      log.Fatal(err)
+    } else {
+      config.BinSize = binSize
+      if track == nil {
+        t := AllocSimpleTrack("", r.Genome, binSize); track = &t
+      }
+      if dst, err := track.GetMutableSequence(granges.Seqnames[i]); err != nil {
+        log.Fatal(err)
+      } else {
+        // copy result to track
+        for j := granges.Ranges[i].From; j < granges.Ranges[i].To; j += binSize {
+          dst.Set(j, src[j/binSize])
+        }
+      }
+    }
+  }
+  if err := track.ExportBigWig(filenameOut); err != nil {
+    log.Fatal(err)
+  }
+}
+
+func extract(config Config, filenameBed, filenameBw, filenameOut string) {
+  // import bed file first to check if it exists
+  granges := importBed3(config, filenameBed)
+
+  switch filepath.Ext(filenameOut) {
+  case ".bw"    : fallthrough
+  case ".bigWig":
+    extractBigWig(config, granges, filenameBw, filenameOut)
+  case ""       : fallthrough
+  case ".table" :
+    extractTable(config, granges, filenameBw, filenameOut)
+  default:
+    log.Fatal("output file has invalid file extension")
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -115,14 +170,19 @@ func main() {
   optHelp       := options.   BoolLong("help",          'h',         "print help")
   optVerbose    := options.CounterLong("verbose",       'v',         "be verbose")
 
-  options.SetParameters("<INPUT.bw> <INPUT.bed> <OUTPUT.table>")
+  options.SetParameters(
+    "<INPUT.bw> <INPUT.bed> [<OUTPUT.(table|bw)]>\n\n" +
+    "  The extracted data is saved as a table if the output file has extension\n"  +
+    "  `.table'. If the extension is `.bw' or '.bigWig' then the output format\n"  +
+    "  is bigWig. The data is printed as a table to stdout if no output file is\n" +
+    "  given.\n")
   options.Parse(os.Args)
 
   if *optHelp {
     options.PrintUsage(os.Stdout)
     os.Exit(0)
   }
-  if len(options.Args()) != 3 {
+  if len(options.Args()) != 2 && len(options.Args()) != 3 {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
@@ -143,7 +203,10 @@ func main() {
 
   filenameBw  := options.Args()[0]
   filenameBed := options.Args()[1]
-  filenameOut := options.Args()[2]
+  filenameOut := ""
 
-  extract(config, filenameBw, filenameBed, filenameOut)
+  if len(options.Args()) == 3 {
+    filenameOut = options.Args()[2]
+  }
+  extract(config, filenameBed, filenameBw, filenameOut)
 }

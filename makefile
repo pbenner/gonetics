@@ -17,6 +17,11 @@ SUBDIRS = \
 
 all:
 
+build:
+	@for i in $(SUBDIRS); do \
+		echo "Building $$i"; (cd $$i && go build); \
+	done
+
 test:
 	@for i in $(SUBDIRS); do \
 		echo "Testing $$i"; (cd $$i && go test); \

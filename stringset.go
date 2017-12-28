@@ -18,10 +18,11 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "fmt"
 import "bufio"
 import "bytes"
 import "compress/gzip"
-import "fmt"
+import "io"
 import "os"
 import "strings"
 import "unicode"
@@ -95,27 +96,9 @@ func (s StringSet) Scan(query []byte) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func (s StringSet) ReadFasta(filename string) error {
+func (s StringSet) ReadFasta(reader io.Reader) error {
+  scanner := bufio.NewScanner(reader)
 
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
   // current sequence
   name := ""
   seq  := []byte{}
@@ -154,23 +137,57 @@ func (s StringSet) ReadFasta(filename string) error {
   return nil
 }
 
-func (s StringSet) WriteFasta(filename string, compress bool) error {
-  var buffer bytes.Buffer
+func (s StringSet) ImportFasta(filename string) error {
 
-  w := bufio.NewWriter(&buffer)
+  var reader io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
 
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    reader = g
+  } else {
+    reader = f
+  }
+  return s.ReadFasta(reader)
+}
+
+func (s StringSet) WriteFasta(writer io.Writer) error {
   for name, seq := range s {
-    fmt.Fprintf(w,  ">%s\n", name)
+    if _, err := fmt.Fprintf(writer,  ">%s\n", name); err != nil {
+      return err
+    }
     for i := 0; i < len(seq); i += 80 {
       from := i
       to   := i+80
       if to >= len(seq) {
         to = len(seq)
       }
-      fmt.Fprintf(w, "%s\n", seq[from:to])
+      if _, err := fmt.Fprintf(writer, "%s\n", seq[from:to]); err != nil {
+        return err
+      }
     }
   }
+  return nil
+}
 
-  w.Flush()
+func (s StringSet) ExportFasta(filename string, compress bool) error {
+  var buffer bytes.Buffer
+
+  writer := bufio.NewWriter(&buffer)
+  if err := s.WriteFasta(writer); err != nil {
+    return err
+  }
+  writer.Flush()
+
   return writeFile(filename, &buffer, compress)
 }

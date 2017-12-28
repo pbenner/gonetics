@@ -26,7 +26,7 @@ import   "testing"
 func TestStringSet1(t *testing.T) {
 
   ss  := EmptyStringSet()
-  err := ss.ReadFasta("stringset_test.fa")
+  err := ss.ImportFasta("stringset_test.fa")
 
   if err != nil {
     t.Error("TestStringSet1 failed")

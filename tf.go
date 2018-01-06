@@ -18,10 +18,11 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+import "fmt"
 import "bufio"
 import "compress/gzip"
-import "fmt"
 import "math"
+import "io"
 import "os"
 import "strconv"
 import "strings"
@@ -101,31 +102,13 @@ func (t TFMatrix) Scan(sequence []byte, x0 float64, revcomp bool, f func(float64
 
 /* -------------------------------------------------------------------------- */
 
-func (t *TFMatrix) ReadMatrix(filename string) error {
+func (t *TFMatrix) ReadMatrix(reader io.Reader) error {
+
+  scanner := bufio.NewScanner(reader)
 
   ncols := -1
   // allocate memory
   t.Values = make([][]float64, NucleotideAlphabet{}.Length())
-
-  var scanner *bufio.Scanner
-  // open file
-  f, err := os.Open(filename)
-  if err != nil {
-    return err
-  }
-  defer f.Close()
-
-  // check if file is gzipped
-  if isGzip(filename) {
-    g, err := gzip.NewReader(f)
-    if err != nil {
-      return err
-    }
-    defer g.Close()
-    scanner = bufio.NewScanner(g)
-  } else {
-    scanner = bufio.NewScanner(f)
-  }
 
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
@@ -159,6 +142,29 @@ func (t *TFMatrix) ReadMatrix(filename string) error {
     t.Values[i] = data
   }
   return nil
+}
+
+func (t *TFMatrix) ImportMatrix(filename string) error {
+  var reader io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    reader = g
+  } else {
+    reader = f
+  }
+  return t.ReadMatrix(reader)
 }
 
 /* scanning

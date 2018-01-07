@@ -27,7 +27,7 @@ import "testing"
 func TestTF1(t *testing.T) {
 
   tf  := EmptyTFMatrix()
-  err := tf.ReadMatrix("tf_test.table")
+  err := tf.ImportMatrix("tf_test.table")
 
   if err != nil {
     t.Error("TestTF1 failed")
@@ -40,7 +40,7 @@ func TestTF1(t *testing.T) {
 func TestTF2(t *testing.T) {
 
   tf  := EmptyTFMatrix()
-  err := tf.ReadMatrix("tf_test.table")
+  err := tf.ImportMatrix("tf_test.table")
 
   if err != nil {
     t.Error("TestTF2 failed")
@@ -59,7 +59,7 @@ func TestTF2(t *testing.T) {
 func TestTF3(t *testing.T) {
 
   tf  := EmptyTFMatrix()
-  err := tf.ReadMatrix("tf_test.table")
+  err := tf.ImportMatrix("tf_test.table")
 
   if err != nil {
     t.Error("TestTF3 failed")

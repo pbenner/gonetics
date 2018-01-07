@@ -74,9 +74,10 @@ func (t TFMatrix) RevComp() TFMatrix {
   return TFMatrix{s}
 }
 
-func (t TFMatrix) Scan(sequence []byte, x0 float64, revcomp bool, f func(float64, float64) float64) float64 {
+// Generic function for evaluating a motif on a sequence.
+func (t TFMatrix) Score(sequence []byte, revcomp bool, x0 float64, f func(float64, float64) float64) (float64, error) {
   if len(sequence) != t.Length() {
-    panic("Scan(): sequence has invalid length")
+    return math.NaN(), fmt.Errorf("TFMatrix.Score(): sequence has invalid length")
   }
   alphabet := NucleotideAlphabet{}
   // number of positions where the pwm could fit
@@ -97,7 +98,7 @@ func (t TFMatrix) Scan(sequence []byte, x0 float64, revcomp bool, f func(float64
       }
     }
   }
-  return x
+  return x, nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -174,6 +175,12 @@ type PWM struct {
   TFMatrix
 }
 
+func (t PWM) Score(sequence []byte, revcomp bool) (float64, error) {
+  // function for adding scanning results
+  f := func(a, b float64) float64 { return a+b }
+  return t.TFMatrix.Score(sequence, revcomp, 0.0, f)
+}
+
 func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1
@@ -183,7 +190,7 @@ func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
   result := math.Inf(-1)
   // loop over sequence
   for i := 0; i < n; i++ {
-    if tmp := t.Scan(sequence[i:i+t.Length()], 0.0, revcomp, f); tmp > result {
+    if tmp, _ := t.TFMatrix.Score(sequence[i:i+t.Length()], revcomp, 0.0, f); tmp > result {
       result = tmp
     }
   }

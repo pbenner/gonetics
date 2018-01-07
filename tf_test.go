@@ -48,8 +48,8 @@ func TestTF2(t *testing.T) {
 
   seq := []byte("cacgtg")
 
-  score1 := PWM{tf}.Scan(seq, 0.0, false, func(a, b float64) float64 { return a+b })
-  score2 := PWM{tf}.Scan(seq, 0.0, true , func(a, b float64) float64 { return a+b })
+  score1, _ := PWM{tf}.Score(seq, false)
+  score2, _ := PWM{tf}.Score(seq, true)
 
   if score1 != score2 {
     t.Error("TestTF2 failed")

@@ -189,6 +189,32 @@ type BbiSummaryStatistics struct {
   SumSquares float64
 }
 
+func (obj *BbiSummaryStatistics) Reset() {
+  obj.Valid      = 0.0
+  obj.Min        = math.Inf( 1)
+  obj.Max        = math.Inf(-1)
+  obj.Sum        = 0.0
+  obj.SumSquares = 0.0
+}
+
+func (obj *BbiSummaryStatistics) AddValue(x float64) {
+  obj.Valid      += 1.0
+  obj.Min         = math.Min(obj.Min, x)
+  obj.Max         = math.Max(obj.Max, x)
+  obj.Sum        += x
+  obj.SumSquares += x*x
+}
+
+func (obj *BbiSummaryStatistics) Add(x BbiSummaryStatistics) {
+  obj.Valid      += x.Valid
+  obj.Min         = math.Min(obj.Min, x.Min)
+  obj.Max         = math.Max(obj.Max, x.Max)
+  obj.Sum        += x.Sum
+  obj.SumSquares += x.SumSquares
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BbiSummaryRecord struct {
   ChromId    int
   From       int
@@ -203,14 +229,10 @@ func NewBbiSummaryRecord() BbiSummaryRecord {
 }
 
 func (record *BbiSummaryRecord) Reset() {
-  record.ChromId    = -1
-  record.From       = 0
-  record.To         = 0
-  record.Valid      = 0.0
-  record.Min        = math.Inf( 1)
-  record.Max        = math.Inf(-1)
-  record.Sum        = 0.0
-  record.SumSquares = 0.0
+  record.ChromId = -1
+  record.From    =  0
+  record.To      =  0
+  record.BbiSummaryStatistics.Reset()
 }
 
 func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
@@ -229,12 +251,8 @@ func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
       record.Max = 0.0
     }
   }
-  record.To          = x.To
-  record.Valid      += x.Valid
-  record.Min         = math.Min(record.Min, x.Min)
-  record.Max         = math.Max(record.Max, x.Max)
-  record.Sum        += x.Sum
-  record.SumSquares += x.SumSquares
+  record.To = x.To
+  record.BbiSummaryStatistics.Add(x.BbiSummaryStatistics)
 }
 
 /* -------------------------------------------------------------------------- */

@@ -20,7 +20,7 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 | chromHmmTablesToBigWig | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
 | drawGenomicRegions     | draw random genomic regions                                              |
 | gtfToBed               | convert GTF files to Bed6 format                                         |
-
+| pwmScanSequences       | scan sequences for pwm hits                                              |
 
 ### GRanges
 

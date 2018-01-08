@@ -2,6 +2,7 @@
 SUBDIRS = \
 	. \
 	tools/bamToBigWig \
+	tools/bamGenome \
 	tools/bigWigEditChromNames \
 	tools/bigWigExtract \
 	tools/bigWigExtractChroms \

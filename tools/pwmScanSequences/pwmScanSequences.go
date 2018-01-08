@@ -32,7 +32,6 @@ import . "github.com/pbenner/threadpool"
 type Config struct {
   BinSize int
   BinStat BinSummaryStatistics
-  Status  bool
   Threads int
   Verbose int
 }
@@ -168,7 +167,6 @@ func main() {
 
   optBinStat := options. StringLong("bin-summary", 0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
   optBinSize := options.    IntLong("bin-size",    0 ,     10, "track bin size [default: 10]")
-  optStatus  := options.   BoolLong("status",      0 ,         "show status bar")
   optThreads := options.    IntLong("threads",     0 ,      1, "number of threads [default: 1]")
   optVerbose := options.CounterLong("verbose",    'v',         "verbose level [-v or -vv]")
   optHelp    := options.   BoolLong("help",       'h',         "print help")
@@ -186,7 +184,6 @@ func main() {
   }
   config.BinSize = *optBinSize
   config.BinStat = getBinSummaryStatistics(*optBinStat)
-  config.Status  = *optStatus
   config.Threads = *optThreads
   config.Verbose = *optVerbose
   // check required arguments

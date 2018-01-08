@@ -156,6 +156,13 @@ func pwmScanSequences(config Config, filenamePWM, filenameFasta, filenameOut str
       PrintStderr(config, 1, "done\n")
     }
   }
+  PrintStderr(config, 1, "Writing track `%s'... ", filenameOut)
+  if err := (GenericTrack{result}).ExportBigWig(filenameOut); err != nil {
+    PrintStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  } else {
+    PrintStderr(config, 1, "done\n")
+  }
 }
 
 /* -------------------------------------------------------------------------- */

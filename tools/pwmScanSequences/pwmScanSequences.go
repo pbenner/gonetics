@@ -172,7 +172,7 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optBinStat := options. StringLong("bin-summary", 0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
+  optBinStat := options. StringLong("bin-summary", 0 ,  "max", "bin summary statistic [mean, max (default), min, discrete mean]")
   optBinSize := options.    IntLong("bin-size",    0 ,     10, "track bin size [default: 10]")
   optThreads := options.    IntLong("threads",     0 ,      1, "number of threads [default: 1]")
   optVerbose := options.CounterLong("verbose",    'v',         "verbose level [-v or -vv]")

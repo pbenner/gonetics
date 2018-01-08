@@ -13,7 +13,8 @@ SUBDIRS = \
 	tools/bigWigStatistics \
 	tools/chromHmmTablesToBigWig \
 	tools/drawGenomicRegions \
-	tools/gtfToBed
+	tools/gtfToBed \
+	tools/pwmScanSequences
 
 all:
 

@@ -101,17 +101,14 @@ func genomeFromStringSet(ss StringSet) Genome {
 
 /* -------------------------------------------------------------------------- */
 
-func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequence, pool ThreadPool) {
+func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequence, pool ThreadPool) error {
 
   jobGroup := pool.NewJobGroup()
 
   if err := pool.AddRangeJob(0, r.NBins(), jobGroup, func(i int, pool ThreadPool, erf func() error) error {
-    j_from := (i+0)*config.BinSize - pwm.Length()/2
-    j_to   := (i+1)*config.BinSize - pwm.Length()/2 + 1
+    j_from := (i+0)*config.BinSize
+    j_to   := (i+1)*config.BinSize
     // trim range
-    if j_from < 0 {
-      j_from = 0
-    }
     if j_to+pwm.Length() > len(sequence) {
       j_to = len(sequence)-pwm.Length()
     }
@@ -130,11 +127,12 @@ func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequ
     r.SetBin(i, config.BinStat(s.Sum, s.SumSquares, s.Min, s.Max, s.Valid))
     return nil
   }); err != nil {
-    log.Fatal(err)
+    return err
   }
   if err := pool.Wait(jobGroup); err != nil {
-    log.Fatal(err)
+    return err
   }
+  return nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -151,7 +149,13 @@ func pwmScanSequences(config Config, filenamePWM, filenameFasta, filenameOut str
     if err != nil {
       log.Fatal(err)
     }
-    pwmScanSequence(config, pwm, seq, r, pool)
+    PrintStderr(config, 1, "Scanning sequence `%s'... ", name)
+    if err := pwmScanSequence(config, pwm, seq, r, pool); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      PrintStderr(config, 1, "done\n")
+    }
   }
 }
 

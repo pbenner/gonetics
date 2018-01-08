@@ -74,6 +74,14 @@ func (genome Genome) SeqLength(seqname string) (int, error) {
   return 0, fmt.Errorf("sequence `%s' not found in genome", seqname)
 }
 
+func (genome Genome) SumLengths() int {
+  r := 0
+  for _, l := range genome.Lengths {
+    r += l
+  }
+  return r
+}
+
 func (genome *Genome) AddSequence(seqname string, length int) (int, error) {
   if idx, err := genome.GetIdx(seqname); err != nil {
     genome.Seqnames = append(genome.Seqnames, seqname)

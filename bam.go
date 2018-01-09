@@ -299,13 +299,32 @@ func (cigar BamCigar) String() string {
   var buffer bytes.Buffer
   writer := bufio.NewWriter(&buffer)
 
-  t := []byte{'M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'}
-
-  for i := 0; i < len(cigar); i++ {
-    fmt.Fprintf(writer, "%d%c", cigar[i] >> 4, t[cigar[i] & 0xf])
+  for cigarBlock := range ParseCigar(cigar) {
+    fmt.Fprintf(writer, "%d%c", cigarBlock.N, cigarBlock.Type)
   }
   writer.Flush()
   return buffer.String()
+}
+
+/* -------------------------------------------------------------------------- */
+
+type CigarBlock struct {
+  N    int
+  Type byte
+}
+
+func ParseCigar(cigar BamCigar) <- chan CigarBlock {
+  channel := make(chan CigarBlock)
+  types   := []byte{'M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X'}
+  go func() {
+    for i := 0; i < len(cigar); i++ {
+      n := cigar[i] >> 4
+      t := types[cigar[i] & 0xf]
+      channel <- CigarBlock{int(n), t}
+    }
+    close(channel)
+  }()
+  return channel
 }
 
 /* -------------------------------------------------------------------------- */

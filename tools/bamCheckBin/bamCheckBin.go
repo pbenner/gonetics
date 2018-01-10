@@ -94,16 +94,23 @@ func checkBin(filenameIn string, verbose bool) {
     if block.Error != nil {
       log.Fatal(block.Error)
     }
-    from := int(block.Position)
-    to   := int(block.Position) + alignmentLength(block.Cigar)
-    bin  := reg2bin(from, to)
+    bin := 0
 
+    if block.Flag.Unmapped() {
+      from := int(block.Position)
+      to   := int(block.Position) + 1
+      bin   = reg2bin(from, to)
+    } else {
+      from := int(block.Position)
+      to   := int(block.Position) + alignmentLength(block.Cigar)
+      bin   = reg2bin(from, to)
+    }
     if bin != int(block.Bin) {
-      fmt.Printf("record `%d' has invalid bin value (expected `%d' but bin value is `%d')\n", i, bin, block.Bin)
+      fmt.Printf("record `%d' has invalid bin value (expected `%d' but bin value is `%d')\n", i+1, bin, block.Bin)
       fmt.Printf(" -> %+v\n\n", block)
     } else {
       if verbose {
-        fmt.Printf("record `%d' has correct bin value `%d'\n", i, bin)
+        fmt.Printf("record `%d' has correct bin value `%d'\n", i+1, bin)
         fmt.Printf(" -> %+v\n\n", block)
       }
     }

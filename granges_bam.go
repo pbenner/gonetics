@@ -74,7 +74,6 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
     seqnames = append(seqnames, reader.Genome.Seqnames[block.RefID])
     from     = append(from,     int(block.Position))
     to       = append(to,       int(block.Position + block.LSeq))
-    // check if read is unmapped
     if block.Flag.ReverseStrand() {
       strand = append(strand,   '-')
     } else {

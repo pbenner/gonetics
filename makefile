@@ -1,8 +1,10 @@
 
 SUBDIRS = \
 	. \
-	tools/bamToBigWig \
+	tools/bamCheckBin \
 	tools/bamGenome \
+	tools/bamView \
+	tools/bamToBigWig \
 	tools/bigWigEditChromNames \
 	tools/bigWigExtract \
 	tools/bigWigExtractChroms \

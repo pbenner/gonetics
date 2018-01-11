@@ -84,13 +84,25 @@ func bamView(config Config, filenameIn string) {
       block.MapQ)
     
     if options.ReadCigar {
-      fmt.Printf(" %20s", block.Cigar)
+      if s := block.Cigar.String(); s == "" {
+        fmt.Printf(" %20s", "-")
+      } else {
+        fmt.Printf(" %20s", s)
+      }
     }
     if options.ReadName {
-      fmt.Printf(" %40s", block.ReadName)
+      if s := block.ReadName; s == "" {
+        fmt.Printf(" %40s", "-")
+      } else {
+        fmt.Printf(" %40s", s)
+      }
     }
     if options.ReadSequence {
-      fmt.Printf(" %s", block.Seq)      
+      if s := block.Seq.String(); s == "" {
+        fmt.Printf(" %s", "-")
+      } else {
+        fmt.Printf(" %s", s)
+      }
     }
     fmt.Println()
   }

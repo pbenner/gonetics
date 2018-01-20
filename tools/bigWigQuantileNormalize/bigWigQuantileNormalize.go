@@ -20,7 +20,6 @@ package main
 
 import   "fmt"
 import   "log"
-import   "math"
 import   "os"
 import   "sort"
 import   "strconv"
@@ -213,7 +212,7 @@ func main() {
     }
     config.TrackInit = v
   } else {
-    config.TrackInit = math.NaN()
+    config.TrackInit = 0.0
   }
   config.Verbose    = *optVerbose
   config.BinSize    = *optBinSize

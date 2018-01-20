@@ -157,7 +157,7 @@ func bigWigQuantileNormalize(config Config, filenameRef, filenameIn, filenameOut
   distRef := newCumDist(mapRef)
   distIn  := newCumDist(mapIn)
 
-  for i, j := 0, 0; i < len(distRef.x); i++ {
+  for i, j := 0, 0; i < len(distRef.x) && j < len(distIn.x); i++ {
     pRef := float64(distRef.y[i])/float64(distRef.n)
     for ;; j++ {
       pIn := float64(distIn.y[j])/float64(distIn.n)

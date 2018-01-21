@@ -22,6 +22,49 @@ import "fmt"
 import "math"
 import "sort"
 
+/* -------------------------------------------------------------------------- */
+
+type cumDist struct {
+  x []float64
+  y []int
+  n   int
+}
+
+func (obj cumDist) Len() int {
+  return len(obj.x)
+}
+
+func (obj cumDist) Less(i, j int) bool {
+  return obj.x[i] < obj.x[j]
+}
+
+func (obj cumDist) Swap(i, j int) {
+  obj.x[i], obj.x[j] = obj.x[j], obj.x[i]
+  obj.y[i], obj.y[j] = obj.y[j], obj.y[i]
+}
+
+func newCumDist(m map[float64]int) cumDist {
+  x := make([]float64, len(m))
+  y := make([]int,     len(m))
+  i := 0
+  for k, v := range m {
+    x[i] = k
+    y[i] = v
+    i++
+  }
+  c := cumDist{x, y, 0}
+  sort.Sort(c)
+
+  // compute cumulative distribution
+  n := 0
+  for i := 0; i < len(x); i++ {
+    n += y[i]; y[i] = n
+  }
+  c.n = n
+
+  return c
+}
+
 /* add read counts to the track
  * -------------------------------------------------------------------------- */
 
@@ -91,6 +134,55 @@ func (track GenericMutableTrack) Normalize(treatment, control Track, c1, c2 floa
         seq.SetBin(i, (seq1.AtBin(i)+c1)/(seq2.AtBin(i)+c2)*c2/c1)
       }
     }
+  }
+  return nil
+}
+
+// Quantile normalize track to reference.
+func (track GenericMutableTrack) QuantileNormalize(trackRef Track) error {
+  mapRef := make(map[float64]int)
+  mapIn  := make(map[float64]int)
+  mapTr  := make(map[float64]float64)
+
+  if err := (GenericMutableTrack{}).Map(trackRef, func(seqname string, position int, value float64) float64 {
+    if !math.IsNaN(value) {
+      mapRef[value] += 1
+    }
+    return 0.0
+  }); err != nil {
+    return err
+  }
+  if err := (GenericMutableTrack{}).Map(track, func(seqname string, position int, value float64) float64 {
+    if !math.IsNaN(value) {
+      mapIn[value] += 1
+    }
+    return 0.0
+  }); err != nil {
+    return err
+  }
+  distRef := newCumDist(mapRef)
+  distIn  := newCumDist(mapIn)
+
+  for i, j := 0, 0; i < len(distRef.x); i++ {
+    pRef := float64(distRef.y[i])/float64(distRef.n)
+    for ; j < len(distIn.x); j++ {
+      pIn := float64(distIn.y[j])/float64(distIn.n)
+      if pIn > pRef {
+        break
+      }
+      // map input x_j to reference x_i
+      mapTr[distIn.x[j]] = distRef.x[i]
+    }
+  }
+
+  if err := track.Map(track, func(seqname string, position int, value float64) float64 {
+    if math.IsNaN(value) {
+      return value
+    } else {
+      return mapTr[value]
+    }
+  }); err != nil {
+    return err
   }
   return nil
 }

@@ -19,10 +19,8 @@ package main
 /* -------------------------------------------------------------------------- */
 
 import   "fmt"
-import   "math"
 import   "log"
 import   "os"
-import   "sort"
 import   "strconv"
 
 import   "github.com/pborman/getopt"
@@ -89,98 +87,12 @@ func exportTrack(config Config, filename string, track SimpleTrack) {
 
 /* -------------------------------------------------------------------------- */
 
-type cumDist struct {
-  x []float64
-  y []int
-  n   int
-}
-
-func (obj cumDist) Len() int {
-  return len(obj.x)
-}
-
-func (obj cumDist) Less(i, j int) bool {
-  return obj.x[i] < obj.x[j]
-}
-
-func (obj cumDist) Swap(i, j int) {
-  obj.x[i], obj.x[j] = obj.x[j], obj.x[i]
-  obj.y[i], obj.y[j] = obj.y[j], obj.y[i]
-}
-
-func newCumDist(m map[float64]int) cumDist {
-  x := make([]float64, len(m))
-  y := make([]int,     len(m))
-  i := 0
-  for k, v := range m {
-    x[i] = k
-    y[i] = v
-    i++
-  }
-  c := cumDist{x, y, 0}
-  sort.Sort(c)
-
-  // compute cumulative distribution
-  n := 0
-  for i := 0; i < len(x); i++ {
-    n += y[i]; y[i] = n
-  }
-  c.n = n
-
-  return c
-}
-
-/* -------------------------------------------------------------------------- */
-
 func bigWigQuantileNormalize(config Config, filenameRef, filenameIn, filenameOut string) {
   trackRef := importTrack(config, filenameRef)
   trackIn  := importTrack(config, filenameIn)
-  mapRef := make(map[float64]int)
-  mapIn  := make(map[float64]int)
-  mapTr  := make(map[float64]float64)
 
   PrintStderr(config, 1, "Quantile normalizing track... ")
-
-  if err := (GenericMutableTrack{}).Map(trackRef, func(seqname string, position int, value float64) float64 {
-    if !math.IsNaN(value) {
-      mapRef[value] += 1
-    }
-    return 0.0
-  }); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
-  }
-  if err := (GenericMutableTrack{}).Map(trackIn, func(seqname string, position int, value float64) float64 {
-    if !math.IsNaN(value) {
-      mapIn[value] += 1
-    }
-    return 0.0
-  }); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
-  }
-  distRef := newCumDist(mapRef)
-  distIn  := newCumDist(mapIn)
-
-  for i, j := 0, 0; i < len(distRef.x); i++ {
-    pRef := float64(distRef.y[i])/float64(distRef.n)
-    for ; j < len(distIn.x); j++ {
-      pIn := float64(distIn.y[j])/float64(distIn.n)
-      if pIn > pRef {
-        break
-      }
-      // map input x_j to reference x_i
-      mapTr[distIn.x[j]] = distRef.x[i]
-    }
-  }
-
-  if err := (GenericMutableTrack{trackIn}).Map(trackIn, func(seqname string, position int, value float64) float64 {
-    if math.IsNaN(value) {
-      return value
-    } else {
-      return mapTr[value]
-    }
-  }); err != nil {
+  if err := (GenericMutableTrack{trackIn}).QuantileNormalize(trackRef); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   }

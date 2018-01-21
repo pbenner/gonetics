@@ -11,6 +11,7 @@ SUBDIRS = \
 	tools/bigWigGenome \
 	tools/bigWigMap \
 	tools/bigWigPositive \
+	tools/bigWigQuantileNormalize \
 	tools/bigWigQuery \
 	tools/bigWigQuerySequence \
 	tools/bigWigStatistics \

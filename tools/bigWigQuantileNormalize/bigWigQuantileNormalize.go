@@ -19,6 +19,7 @@ package main
 /* -------------------------------------------------------------------------- */
 
 import   "fmt"
+import   "math"
 import   "log"
 import   "os"
 import   "sort"
@@ -141,14 +142,18 @@ func bigWigQuantileNormalize(config Config, filenameRef, filenameIn, filenameOut
   PrintStderr(config, 1, "Quantile normalizing track... ")
 
   if err := (GenericMutableTrack{}).Map(trackRef, func(seqname string, position int, value float64) float64 {
-    mapRef[value] += 1
+    if !math.IsNaN(value) {
+      mapRef[value] += 1
+    }
     return 0.0
   }); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
   }
   if err := (GenericMutableTrack{}).Map(trackIn, func(seqname string, position int, value float64) float64 {
-    mapIn[value] += 1
+    if !math.IsNaN(value) {
+      mapIn[value] += 1
+    }
     return 0.0
   }); err != nil {
     PrintStderr(config, 1, "failed\n")
@@ -170,7 +175,11 @@ func bigWigQuantileNormalize(config Config, filenameRef, filenameIn, filenameOut
   }
 
   if err := (GenericMutableTrack{trackIn}).Map(trackIn, func(seqname string, position int, value float64) float64 {
-    return mapTr[value]
+    if math.IsNaN(value) {
+      return value
+    } else {
+      return mapTr[value]
+    }
   }); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)

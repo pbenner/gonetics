@@ -18,8 +18,8 @@ dev.off()
 ## -----------------------------------------------------------------------------
 if (FALSE) {
     ## reduce bin size
-    system("../bigWigMap/bigWigMap -v --bin-size=50 README.so ATAC-mm10-forebrain-day11.5.rpm.bw /project/wig-data/mouse-embryo/ATAC-mm10-forebrain-day11.5.rpm.bw")
-    system("../bigWigMap/bigWigMap -v --bin-size=50 README.so ATAC-mm10-forebrain-day13.5.rpm.bw /project/wig-data/mouse-embryo/ATAC-mm10-forebrain-day13.5.rpm.bw")
+    system("../bigWigNil/bigWigNil -v --bin-size=50 /project/wig-data/mouse-embryo/ATAC-mm10-forebrain-day11.5.rpm.bw ATAC-mm10-forebrain-day11.5.rpm.bw")
+    system("../bigWigNil/bigWigNil -v --bin-size=50 /project/wig-data/mouse-embryo/ATAC-mm10-forebrain-day13.5.rpm.bw ATAC-mm10-forebrain-day13.5.rpm.bw")
 
     ## quantile normalize track
     system("./bigWigQuantileNormalize -v ATAC-mm10-forebrain-day11.5.rpm.bw ATAC-mm10-forebrain-day13.5.rpm.bw ATAC-mm10-forebrain-day13.5.normalized.bw")

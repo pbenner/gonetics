@@ -20,6 +20,7 @@ package main
 
 import   "fmt"
 import   "log"
+import   "math"
 import   "os"
 import   "strconv"
 
@@ -104,7 +105,7 @@ func main() {
   optBinSize   := options.    IntLong("bin-size",       0 ,      0, "bin size")
   optBinStat   := options. StringLong("bin-summary",    0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
   optBinOver   := options.    IntLong("bin-overlap",    0 ,      0, "number of overlapping bins when computing the summary")
-  optTrackInit := options. StringLong("initial-value",  0 ,     "", "track initial value [default: 0]")
+  optTrackInit := options. StringLong("initial-value",  0 ,     "", "track initial value [default: NaN]")
   optHelp      := options.   BoolLong("help",          'h',         "print help")
   optVerbose   := options.CounterLong("verbose",       'v',         "be verbose")
 
@@ -126,7 +127,7 @@ func main() {
     }
     config.TrackInit = v
   } else {
-    config.TrackInit = 0.0
+    config.TrackInit = math.NaN()
   }
   config.Verbose = *optVerbose
   config.BinSize = *optBinSize

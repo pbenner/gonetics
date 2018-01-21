@@ -4,26 +4,27 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 
 ### Tools
 
-| Tool                   | Description                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| bamCheckBin            | check bin records of a bam file                                          |
-| bamGenome              | print the genome (sequence table) of a bam file                          |
-| bamToBigWig            | convert bam to bigWig (estimate fragment length if required)             |
-| bamView                | print contents of a bam file                                             |
-| bigWigEditChromNames   | edit chromosome names of a bigWig file (i.e. replace `chr1` by just `1`) |
-| bigWigExtract          | extract regions from a bigWig file and save them as table or bigWig file |
-| bigWigExtractChroms    | extract a subset of the chromosomes from a bigWig file                   |
-| bigWigGenome           | print the genome (sequence table) of a bigWig file                       |
-| bigWigHistogram        | compute a histogram of the values in a bigWig file                       |
-| bigWigMap              | apply a function to a set of bigWig files                                |
-| bigWigPositive         | simple peak finding (i.e. every region with a value above a threshold)   |
-| bigWigQuery            | retrieve data from a bigWig file                                         |
-| bigWigQuerySequence    | retrieve sequences from a bigWig file                                    |
-| bigWigStatistics       | compute summary statistics of a bigWig file                              |
-| chromHmmTablesToBigWig | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
-| drawGenomicRegions     | draw random genomic regions                                              |
-| gtfToBed               | convert GTF files to Bed6 format                                         |
-| pwmScanSequences       | scan sequences for pwm hits                                              |
+| Tool                    | Description                                                              |
+| ----------------------- | ------------------------------------------------------------------------ |
+| bamCheckBin             | check bin records of a bam file                                          |
+| bamGenome               | print the genome (sequence table) of a bam file                          |
+| bamToBigWig             | convert bam to bigWig (estimate fragment length if required)             |
+| bamView                 | print contents of a bam file                                             |
+| bigWigEditChromNames    | edit chromosome names of a bigWig file (i.e. replace `chr1` by just `1`) |
+| bigWigExtract           | extract regions from a bigWig file and save them as table or bigWig file |
+| bigWigExtractChroms     | extract a subset of the chromosomes from a bigWig file                   |
+| bigWigGenome            | print the genome (sequence table) of a bigWig file                       |
+| bigWigHistogram         | compute a histogram of the values in a bigWig file                       |
+| bigWigMap               | apply a function to a set of bigWig files                                |
+| bigWigPositive          | simple peak finding (i.e. every region with a value above a threshold)   |
+| bigWigQuantileNormalize | quantile normalize a bigWig file to a reference                          |
+| bigWigQuery             | retrieve data from a bigWig file                                         |
+| bigWigQuerySequence     | retrieve sequences from a bigWig file                                    |
+| bigWigStatistics        | compute summary statistics of a bigWig file                              |
+| chromHmmTablesToBigWig  | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
+| drawGenomicRegions      | draw random genomic regions                                              |
+| gtfToBed                | convert GTF files to Bed6 format                                         |
+| pwmScanSequences        | scan sequences for pwm hits                                              |
 
 ### GRanges
 

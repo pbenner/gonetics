@@ -103,7 +103,15 @@ func bigWigMap(config Config, filenamePlugin, filenameOutput string, filenameInp
   }
 
   tracks := importTracks(config, filenameInputs)
-  trackr := AllocSimpleTrack("", tracks[0].GetGenome(), config.BinSize)
+
+  binSize := config.BinSize
+  if binSize == 0 {
+    binSize = tracks[0].GetBinSize()
+  }
+  if binSize == 0 {
+    log.Fatal("could not determine track bin-size")
+  }
+  trackr := AllocSimpleTrack("", tracks[0].GetGenome(), binSize)
 
   if err := (GenericMutableTrack{trackr}).MapList(tracks, f); err != nil {
     log.Fatal(err)

@@ -2111,11 +2111,12 @@ type BbiFile struct {
 
 type BbiQueryType struct {
   BbiSummaryRecord
+  Quit  func()
   Error error
 }
 
-func NewBbiQueryType() BbiQueryType {
-  return BbiQueryType{NewBbiSummaryRecord(), nil}
+func NewBbiQueryType(quit func()) BbiQueryType {
+  return BbiQueryType{NewBbiSummaryRecord(), quit, nil}
 }
 
 func NewBbiFile() *BbiFile {
@@ -2129,15 +2130,19 @@ func NewBbiFile() *BbiFile {
 /* query interface
  * -------------------------------------------------------------------------- */
 
-func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, zoomIdx, chromId, from, to, binSize int) {
+func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, done chan bool, zoomIdx, chromId, from, to, binSize int) bool {
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
-  result    := NewBbiQueryType()
-
+  result    := NewBbiQueryType(func() {
+    done <- true
+    for len(channel) > 0 {
+      <- channel
+    }
+  })
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(reader, bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
-      return
+      return false
     }
     decoder := NewBbiZoomBlockDecoder(block, bwf.Order)
 
@@ -2158,8 +2163,12 @@ func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, z
       // a gap
       if result.To  - result.From >= binSize || result.From + binSize < record.From {
         if result.From != result.To {
-          // send resulting zoom record
-          channel <- result
+          select {
+          case <- done:
+            return false
+          case channel <- result:
+            // send resulting zoom record
+          }
         }
         // prepare new zoom record
         result.Reset()
@@ -2171,23 +2180,28 @@ func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, z
   if result.ChromId != -1 {
     channel <- result
   }
+  return true
 }
 
-func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, chromId, from, to, binSize int) {
+func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, done chan bool, chromId, from, to, binSize int) bool {
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
-  result    := NewBbiQueryType()
-
+  result    := NewBbiQueryType(func() {
+    done <- true
+    for len(channel) > 0 {
+      <- channel
+    }
+  })
   for r := traverser.Get(); traverser.Ok(); traverser.Next() {
     block, err := r.Vertex.ReadBlock(reader, bwf, r.Idx)
     if err != nil {
       channel <- BbiQueryType{Error: err}
-      return
+      return false
     }
     decoder, err := NewBbiRawBlockDecoder(block, bwf.Order)
     if err != nil {
       channel <- BbiQueryType{Error: err}
-      return
+      return false
     }
     it := decoder.Decode()
     for record := it.Get(); it.Ok(); it.Next() {
@@ -2206,8 +2220,12 @@ func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, ch
       // a gap
       if result.To  - result.From >= binSize || result.From + binSize < record.From {
         if result.From != result.To {
-          // send resulting zoom record
-          channel <- result
+          select {
+          case <- done:
+            return false
+          case channel <- result:
+            // send resulting zoom record
+          }
         }
         // prepare new zoom record
         result.Reset()
@@ -2219,9 +2237,10 @@ func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, ch
   if result.ChromId != -1 {
     channel <- result
   }
+  return true
 }
 
-func (bwf *BbiFile) query(reader io.ReadSeeker, channel chan BbiQueryType, chromId, from, to, binSize int) {
+func (bwf *BbiFile) query(reader io.ReadSeeker, channel chan BbiQueryType, done chan bool, chromId, from, to, binSize int) bool {
   // a binSize of zero is used to query raw data without
   // any further summary
   if binSize != 0 {
@@ -2237,17 +2256,19 @@ func (bwf *BbiFile) query(reader io.ReadSeeker, channel chan BbiQueryType, chrom
     }
   }
   if zoomIdx != -1 {
-    bwf.queryZoom(reader, channel, zoomIdx, chromId, from, to, binSize)
+    return bwf.queryZoom(reader, channel, done, zoomIdx, chromId, from, to, binSize)
   } else {
-    bwf.queryRaw(reader, channel, chromId, from, to, binSize)
+    return bwf.queryRaw(reader, channel, done, chromId, from, to, binSize)
   }
 }
 
 func (bwf *BbiFile) Query(reader io.ReadSeeker, chromId, from, to, binSize int) <- chan BbiQueryType {
   channel := make(chan BbiQueryType, 100)
+  done    := make(chan bool)
   go func() {
-    bwf.query(reader, channel, chromId, from, to, binSize)
-    close(channel)
+    defer close(channel)
+    defer close(done)
+    bwf.query(reader, channel, done, chromId, from, to, binSize)
   }()
   return channel
 }

@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
+import "math"
 import "io"
 import "os"
 
@@ -39,6 +40,15 @@ type LazyTrack struct {
 func NewLazyTrack(reader io.ReadSeeker, name string, f BinSummaryStatistics, binSize, binOverlap int, init float64) (LazyTrack, error) {
   bwr, err := NewBigWigReader(reader); if err != nil {
     return LazyTrack{}, err
+  }
+  if binSize == 0 {
+    for record := range bwr.Query(".*", 0, math.MaxInt64, binSize) {
+      if record.Error != nil {
+        return LazyTrack{}, record.Error
+      }
+      binSize = record.To - record.From
+      record.Quit()
+    }
   }
   return LazyTrack{name, binSize, binOverlap, *bwr, f, init}, nil
 }

@@ -267,7 +267,10 @@ func (reader *BigWigReader) fillChannel(channel chan BigWigReaderType, vertex *R
 
 func (reader *BigWigReader) Query(seqRegex string, from, to, binSize int) <- chan BbiQueryType {
   channel := make(chan BbiQueryType, 100)
+  done    := make(chan bool)
   go func() {
+    defer close(channel)
+    defer close(done)
     if r, err := regexp.Compile("^"+seqRegex+"$"); err != nil {
       return
     } else {
@@ -278,11 +281,12 @@ func (reader *BigWigReader) Query(seqRegex string, from, to, binSize int) <- cha
         if idx, err := reader.Genome.GetIdx(seqname); err != nil {
           return
         } else {
-          reader.Bwf.query(reader.Reader, channel, idx, from, to, binSize)
+          if ok := reader.Bwf.query(reader.Reader, channel, done, idx, from, to, binSize); !ok {
+            return
+          }
         }
       }
     }
-    close(channel)
   }()
   return channel
 }

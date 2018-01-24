@@ -303,6 +303,9 @@ func (reader *BigWigReader) QuerySlice(seqregex string, from, to int, f BinSumma
       // try to determine binSize from the first record (this most likely
       // fails for bedGraph files)
       if binSize == 0 {
+        if record.DataType == BbiTypeBedGraph {
+          return nil, -1, fmt.Errorf("failed determine bin-size for bigWig file: data has type bedGraph")
+        }
         binSize = record.To - record.From
         r = make([]BbiSummaryRecord, divIntDown(to-from, binSize))
       }

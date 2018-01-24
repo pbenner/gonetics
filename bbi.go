@@ -39,6 +39,10 @@ const     IDX_MAGIC = 0x2468ace0
 const BbiMaxZoomLevels = 10 /* Max number of zoom levels */
 const BbiResIncrement  =  4 /* Amount to reduce at each zoom level */
 
+const BbiTypeFixed    = 3
+const BbiTypeVariable = 2
+const BbiTypeBedGraph = 1
+
 /* -------------------------------------------------------------------------- */
 
 func fileReadAt(file io.ReadSeeker, order binary.ByteOrder, offset int64, data interface{}) error {
@@ -258,17 +262,17 @@ func (record *BbiSummaryRecord) AddRecord(x BbiSummaryRecord) {
 /* -------------------------------------------------------------------------- */
 
 type BbiBlockDecoder interface {
-  Decode() BbiBlockDecoderIterator
-}
-
-type BbiBlockDecoderType struct {
-  BbiSummaryRecord
+  Decode()   BbiBlockDecoderIterator
 }
 
 type BbiBlockDecoderIterator interface {
   Get () *BbiBlockDecoderType
   Ok  ()  bool
   Next()
+}
+
+type BbiBlockDecoderType struct {
+  BbiSummaryRecord
 }
 
 /* -------------------------------------------------------------------------- */
@@ -299,15 +303,15 @@ func NewBbiRawBlockDecoder(buffer []byte, order binary.ByteOrder) (*BbiRawBlockD
   switch reader.Header.Type {
   default:
     return nil, fmt.Errorf("unsupported block type")
-  case 1:
+  case BbiTypeBedGraph:
     if len(reader.Buffer) % 12 != 0 {
       return nil, fmt.Errorf("bedGraph data block has invalid length")
     }
-  case 2:
+  case BbiTypeVariable:
     if len(buffer) % 8 != 0 {
       return nil, fmt.Errorf("variable step data block has invalid length")
     }
-  case 3:
+  case BbiTypeFixed:
     if len(buffer) % 4 != 0 {
       return nil, fmt.Errorf("fixed step data block has invalid length")
     }
@@ -354,6 +358,10 @@ func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
   r.SumSquares *= r.Valid
 }
 
+func (reader *BbiRawBlockDecoder) GetDataType() byte {
+  return reader.Header.Type
+}
+
 func (reader *BbiRawBlockDecoder) Decode() BbiBlockDecoderIterator {
   it := BbiRawBlockDecoderIterator{}
   it.BbiRawBlockDecoder = reader
@@ -379,13 +387,13 @@ func (it *BbiRawBlockDecoderIterator) Next() {
   default:
     // this shouldn't happen
     panic("internal error (unsupported block type)")
-  case 1:
+  case BbiTypeBedGraph:
     it.readBedGraph(&it.r, it.i)
     it.i += 12
-  case 2:
+  case BbiTypeVariable:
     it.readVariable(&it.r, it.i)
     it.i += 8
-  case 3:
+  case BbiTypeFixed:
     it.readFixed(&it.r, it.i)
     it.i += 4
   }
@@ -2111,12 +2119,13 @@ type BbiFile struct {
 
 type BbiQueryType struct {
   BbiSummaryRecord
-  Quit  func()
-  Error error
+  DataType byte
+  Quit     func()
+  Error    error
 }
 
 func NewBbiQueryType(quit func()) BbiQueryType {
-  return BbiQueryType{NewBbiSummaryRecord(), quit, nil}
+  return BbiQueryType{NewBbiSummaryRecord(), 0, quit, nil}
 }
 
 func NewBbiFile() *BbiFile {
@@ -2155,9 +2164,10 @@ func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, d
         continue
       }
       if result.ChromId == -1 {
-        result.ChromId = record.ChromId
-        result.From    = record.From
-        result.To      = record.From
+        result.ChromId  = record.ChromId
+        result.From     = record.From
+        result.To       = record.From
+        result.DataType = BbiTypeBedGraph
       }
       // check if current result record is full or if there is
       // a gap
@@ -2212,9 +2222,10 @@ func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, do
         continue
       }
       if result.ChromId == -1 {
-        result.ChromId = record.ChromId
-        result.From    = record.From
-        result.To      = record.From
+        result.ChromId  = record.ChromId
+        result.From     = record.From
+        result.To       = record.From
+        result.DataType = decoder.GetDataType()
       }
       // check if current result record is full or if there is
       // a gap

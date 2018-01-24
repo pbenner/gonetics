@@ -366,6 +366,21 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
   }
 }
 
+func (reader *BigWigReader) GetBinSize() (int, error) {
+  binSize := 0
+  for record := range reader.Query(".*", 0, math.MaxInt64, binSize) {
+    if record.Error != nil {
+      return 0, record.Error
+    }
+    if record.DataType == BbiTypeBedGraph {
+      return 0, fmt.Errorf("failed determine bin-size for bigWig file: data has type bedGraph")
+    }
+    record.Quit()
+    binSize = record.To - record.From
+  }
+  return binSize, nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 type BigWigWriter struct {

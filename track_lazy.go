@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
-import "math"
 import "io"
 import "os"
 
@@ -42,12 +41,10 @@ func NewLazyTrack(reader io.ReadSeeker, name string, f BinSummaryStatistics, bin
     return LazyTrack{}, err
   }
   if binSize == 0 {
-    for record := range bwr.Query(".*", 0, math.MaxInt64, binSize) {
-      if record.Error != nil {
-        return LazyTrack{}, record.Error
-      }
-      binSize = record.To - record.From
-      record.Quit()
+    if b, err := bwr.GetBinSize(); err != nil {
+      return LazyTrack{}, err
+    } else {
+      binSize = b
     }
   }
   return LazyTrack{name, binSize, binOverlap, *bwr, f, init}, nil

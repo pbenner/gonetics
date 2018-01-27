@@ -4,9 +4,9 @@ library(rjson)
 ## plot densities
 ## -----------------------------------------------------------------------------
 
-json1 <- fromJSON(file="ATAC-mm10-forebrain-day11.5.json")$Distributions[[1]]$Parameters
-json2 <- fromJSON(file="ATAC-mm10-forebrain-day13.5.json")$Distributions[[1]]$Parameters
-json3 <- fromJSON(file="ATAC-mm10-forebrain-day13.5.normalized.json")$Distributions[[1]]$Parameters
+json1 <- fromJSON(file="ATAC-mm10-forebrain-day11.5.json")$Parameters
+json2 <- fromJSON(file="ATAC-mm10-forebrain-day13.5.json")$Parameters
+json3 <- fromJSON(file="ATAC-mm10-forebrain-day13.5.normalized.json")$Parameters
 
 pdf("README.pdf", height=4, width=5)
 par(mar=c(5,4,1,2))

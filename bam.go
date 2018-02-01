@@ -371,7 +371,7 @@ func IsBamFile(filename string) (bool, error) {
   } else {
     reader.BgzfReader = *tmp
   }
-  if _, err := reader.Read(magic); err != nil {
+  if _, err := reader.BgzfReader.Read(magic); err != nil {
     return false, nil
   }
   if string(magic) != "BAM\001" {
@@ -434,20 +434,20 @@ func NewBamReader(r io.Reader, args... interface{}) (*BamReader, error) {
   } else {
     reader.BgzfReader = *tmp
   }
-  if _, err := reader.Read(magic); err != nil {
+  if _, err := reader.BgzfReader.Read(magic); err != nil {
     return nil, err
   }
   if string(magic) != "BAM\001" {
     return nil, fmt.Errorf("not a BAM file")
   }
-  if err := binary.Read(reader, binary.LittleEndian, &reader.Header.TextLength); err != nil {
+  if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &reader.Header.TextLength); err != nil {
     return nil, err
   } else {
     tmp = make([]byte, reader.Header.TextLength)
 
     // number of bytes read
     for n := 0; n < int(reader.Header.TextLength); {
-      if m, err := reader.Read(tmp[n:]); err != nil {
+      if m, err := reader.BgzfReader.Read(tmp[n:]); err != nil {
         return nil, err
       } else {
         n += m
@@ -456,28 +456,28 @@ func NewBamReader(r io.Reader, args... interface{}) (*BamReader, error) {
     reader.Header.Text = string(tmp)
   }
 
-  if err := binary.Read(reader, binary.LittleEndian, &reader.Header.NRef); err != nil {
+  if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &reader.Header.NRef); err != nil {
     return nil, err
   }
   for i := 0; i < int(reader.Header.NRef); i++ {
     lengthName := int32(0)
     lengthSeq  := int32(0)
     // read length of sequence name
-    if err := binary.Read(reader, binary.LittleEndian, &lengthName); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &lengthName); err != nil {
       return nil, err
     }
     // allocate memory for reading the name
     tmp = make([]byte, lengthName)
     // read sequence name
     for n := 0; n < int(lengthName); {
-      if m, err := reader.Read(tmp[n:]); err != nil {
+      if m, err := reader.BgzfReader.Read(tmp[n:]); err != nil {
         return nil, err
       } else {
         n += m
       }
     }
     // read sequence length
-    if err := binary.Read(reader, binary.LittleEndian, &lengthSeq); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &lengthSeq); err != nil {
       return nil, err
     }
     reader.Genome.AddSequence(strings.Trim(string(tmp), "\n\000"), int(lengthSeq))
@@ -506,7 +506,7 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
   for {
     buf := bytes.NewBuffer([]byte{})
     // read block size
-    if err := binary.Read(reader, binary.LittleEndian, &blockSize); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &blockSize); err != nil {
       if err == io.EOF {
         return
       }
@@ -514,48 +514,48 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
       return
     }
     // read block data
-    if err := binary.Read(reader, binary.LittleEndian, &block.RefID); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.RefID); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.Position); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.Position); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &binMqNl); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &binMqNl); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
     block.Bin      = uint16((binMqNl >> 16) & 0xffff)
     block.MapQ     = uint8 ((binMqNl >>  8) & 0xff)
     block.RNLength = uint8 ((binMqNl >>  0) & 0xff)
-    if err := binary.Read(reader, binary.LittleEndian, &flagNc); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &flagNc); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
     // get Flag and NCigarOp from FlagNc
     block.Flag     = BamFlag(flagNc >> 16)
     block.NCigarOp = uint16(flagNc & 0xffff)
-    if err := binary.Read(reader, binary.LittleEndian, &block.LSeq); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.LSeq); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.NextRefID); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.NextRefID); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.NextPosition); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.NextPosition); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
-    if err := binary.Read(reader, binary.LittleEndian, &block.TLength); err != nil {
+    if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.TLength); err != nil {
       channel <- &BamReaderType1{Error: err}
       return
     }
     // parse the read name
     var b byte
     for {
-      if err := binary.Read(reader, binary.LittleEndian, &b); err != nil {
+      if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &b); err != nil {
         channel <- &BamReaderType1{Error: err}
         return
       }
@@ -569,14 +569,14 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
     if reader.Options.ReadCigar {
       block.Cigar = make(BamCigar, block.NCigarOp)
       for i := 0; i < int(block.NCigarOp); i++ {
-        if err := binary.Read(reader, binary.LittleEndian, &block.Cigar[i]); err != nil {
+        if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.Cigar[i]); err != nil {
           channel <- &BamReaderType1{Error: err}
           return
         }
       }
     } else {
       for i := 0; i < int(block.NCigarOp); i++ {
-        if _, err := io.CopyN(ioutil.Discard, reader, 4); err != nil {
+        if _, err := io.CopyN(ioutil.Discard, &reader.BgzfReader, 4); err != nil {
           channel <- &BamReaderType1{Error: err}
           return
         }
@@ -586,13 +586,13 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
     if reader.Options.ReadSequence {
       block.Seq = make([]byte, (block.LSeq+1)/2)
       for i := 0; i < int((block.LSeq+1)/2); i++ {
-        if err := binary.Read(reader, binary.LittleEndian, &block.Seq[i]); err != nil {
+        if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.Seq[i]); err != nil {
           channel <- &BamReaderType1{Error: err}
           return
         }
       }
     } else {
-      if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq+1)/2); err != nil {
+      if _, err := io.CopyN(ioutil.Discard, &reader.BgzfReader, int64(block.LSeq+1)/2); err != nil {
         channel <- &BamReaderType1{Error: err}
         return
       }
@@ -601,13 +601,13 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
     if reader.Options.ReadQual {
       block.Qual = make([]byte, block.LSeq)
       for i := 0; i < int(block.LSeq); i++ {
-        if err := binary.Read(reader, binary.LittleEndian, &block.Qual[i]); err != nil {
+        if err := binary.Read(&reader.BgzfReader, binary.LittleEndian, &block.Qual[i]); err != nil {
           channel <- &BamReaderType1{Error: err}
           return
         }
       }
     } else {
-      if _, err := io.CopyN(ioutil.Discard, reader, int64(block.LSeq)); err != nil {
+      if _, err := io.CopyN(ioutil.Discard, &reader.BgzfReader, int64(block.LSeq)); err != nil {
         channel <- &BamReaderType1{Error: err}
         return
       }
@@ -617,7 +617,7 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
     if reader.Options.ReadAuxiliary {
       for i := 0; position + i < int(blockSize); {
         aux := BamAuxiliary{}
-        if n, err := aux.Read(reader); err != nil {
+        if n, err := aux.Read(&reader.BgzfReader); err != nil {
           channel <- &BamReaderType1{Error: err}
           return
         } else {
@@ -626,7 +626,7 @@ func (reader *BamReader) readSingleEnd(channel chan *BamReaderType1) {
         block.Auxiliary = append(block.Auxiliary, aux)
       }
     } else {
-      if _, err := io.CopyN(ioutil.Discard, reader, int64(blockSize) - int64(position)); err != nil {
+      if _, err := io.CopyN(ioutil.Discard, &reader.BgzfReader, int64(blockSize) - int64(position)); err != nil {
         channel <- &BamReaderType1{Error: err}
         return
       }
@@ -675,6 +675,49 @@ func (reader *BamReader) readPairedEnd(channel chan *BamReaderType2) {
     } else {
       // mate not found
       cache[block1.ReadName] = block1
+    }
+  }
+}
+
+// Read single or paired end reads
+func (reader *BamReader) Read() <- chan *BamReaderType2 {
+  channel := make(chan *BamReaderType2)
+  // fill channel with blocks
+  go func() {
+    reader.read(channel)
+    // close channel and file
+    close(channel)
+  }()
+  return channel
+}
+
+func (reader *BamReader) read(channel chan *BamReaderType2) {
+  cache := make(map[string]BamBlock)
+  // force parsing read names
+  reader.Options.ReadName = true
+  // parse reads as single-end and try to match paired-reads
+  for r := range reader.ReadSingleEnd() {
+    if r.Error != nil {
+      channel <- &BamReaderType2{Error: r.Error}
+    }
+    block1 := r.BamBlock
+    // skip all reads that are not paired
+    if block1.Flag.ReadPaired() {
+      if block2, ok := cache[block1.ReadName]; ok {
+        // found second read in pair
+        if block1.Position < block2.Position {
+          channel <- &BamReaderType2{Block1: block1, Block2: block2}
+        } else {
+          channel <- &BamReaderType2{Block2: block1, Block1: block2}
+        }
+        // delete read from cache
+        delete(cache, block1.ReadName)
+      } else {
+      // mate not found
+        cache[block1.ReadName] = block1
+      }
+    } else {
+      channel <- &BamReaderType2{Block1: block1}
     }
   }
 }

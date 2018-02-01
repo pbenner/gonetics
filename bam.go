@@ -659,8 +659,8 @@ func (reader *BamReader) readPairedEnd(channel chan *BamReaderType2) {
       channel <- &BamReaderType2{Error: r.Error}
     }
     block1 := r.BamBlock
-    // skip all reads that are not properly paired
-    if !block1.Flag.ReadMappedProperPaired() {
+    // skip all reads that are not paired
+    if !block1.Flag.ReadPaired() {
       continue
     }
     if block2, ok := cache[block1.ReadName]; ok {

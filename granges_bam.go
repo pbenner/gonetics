@@ -155,6 +155,14 @@ func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error
     }
     block1 := &r.Block1
     block2 := &r.Block2
+    if block1.Flag.Unmapped() || !block1.Flag.ReadMappedProperPaired() {
+      // read is unmapped, skip...
+      continue
+    }
+    if block2.Flag.Unmapped() || !block2.Flag.ReadMappedProperPaired() {
+      // read is unmapped, skip...
+      continue
+    }
     if block1.RefID == -1 || block1.RefID != block2.RefID {
       continue
     }

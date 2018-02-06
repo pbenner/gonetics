@@ -71,6 +71,18 @@ func EmptySimpleTrack(name string) SimpleTrack {
 
 /* -------------------------------------------------------------------------- */
 
+func (track SimpleTrack) ShallowClone() SimpleTrack {
+  name    := track.Name
+  binSize := track.BinSize
+  data    := make(TMapType)
+  genome  := track.Genome.Clone()
+
+  for name, sequence := range track.Data {
+    data[name] = sequence
+  }
+  return SimpleTrack{name, genome, data, binSize}
+}
+
 func (track SimpleTrack) Clone() SimpleTrack {
   name    := track.Name
   binSize := track.BinSize
@@ -157,6 +169,8 @@ func (track SimpleTrack) GetSlice(r GRangesRow) ([]float64, error) {
   }
   return seq[from:to], nil
 }
+
+/* -------------------------------------------------------------------------- */
 
 func (track *SimpleTrack) FilterGenome(f func(name string, length int) bool) {
   for i, seqname := range track.Genome.Seqnames {

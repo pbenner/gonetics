@@ -753,14 +753,14 @@ func (reader *BamReader) read(channel chan *BamReaderType2) {
 // minimum quality of the two reads.
 func (reader *BamReader) ReadRanges() <- chan *BamReaderRange {
   // force parsing cigars
-  reader.Options.ReadName = true
+  reader.Options.ReadCigar = true
   channel := make(chan *BamReaderRange)
   go func() {
     for r := range reader.Read() {
       if r.Block1.Flag.ReadPaired() {
         seqname   := reader.Genome.Seqnames[r.Block1.RefID]
         from      := int(r.Block1.Position)
-        to        := int(r.Block2.Position)+ r.Block2.Cigar.AlignmentLength()
+        to        := int(r.Block2.Position) + r.Block2.Cigar.AlignmentLength()
         strand    := byte('*')
         mapq      := 0
         duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()

@@ -73,7 +73,7 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
     }
     seqnames = append(seqnames, reader.Genome.Seqnames[block.RefID])
     from     = append(from,     int(block.Position))
-    to       = append(to,       int(block.Position + block.LSeq))
+    to       = append(to,       int(block.Position) + block.Cigar.AlignmentLength())
     if block.Flag.ReverseStrand() {
       strand = append(strand,   '-')
     } else {
@@ -171,7 +171,7 @@ func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error
     }
     seqnames  = append(seqnames,  reader.Genome.Seqnames[block1.RefID])
     from      = append(from,      int(block1.Position))
-    to        = append(to,        int(block2.Position + block2.LSeq))
+    to        = append(to,        int(block2.Position) + block2.Cigar.AlignmentLength())
     strand    = append(strand,    '*')
     // parse meta data
     mapq1     = append(mapq1,     int(block1.MapQ))

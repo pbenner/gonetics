@@ -306,6 +306,21 @@ func (cigar BamCigar) String() string {
   return buffer.String()
 }
 
+func (cigar BamCigar) AlignmentLength() int {
+  length := 0
+  for cigarBlock := range ParseCigar(cigar) {
+    switch cigarBlock.Type {
+    case 'M': fallthrough
+    case 'D': fallthrough
+    case 'N': fallthrough
+    case '=': fallthrough
+    case 'X':
+      length += cigarBlock.N
+    }
+  }
+  return length
+}
+
 /* -------------------------------------------------------------------------- */
 
 type CigarBlock struct {
@@ -406,6 +421,16 @@ type BamReaderType2 struct {
   Block1 BamBlock
   Block2 BamBlock
   Error error
+}
+
+type BamReaderRange struct {
+  Seqname   string
+  From      int
+  To        int
+  Strand    byte
+  MapQ      int
+  Duplicate bool
+  Paired    bool
 }
 
 func NewBamReader(r io.Reader, args... interface{}) (*BamReader, error) {
@@ -713,13 +738,51 @@ func (reader *BamReader) read(channel chan *BamReaderType2) {
         // delete read from cache
         delete(cache, block1.ReadName)
       } else {
-      // mate not found
+        // mate not found
         cache[block1.ReadName] = block1
       }
     } else {
       channel <- &BamReaderType2{Block1: block1}
     }
   }
+}
+
+// Read single or paired end reads as ranges. For paired end reads,
+// if any of the two reads is marked as duplicate, then the range
+// is marked as duplicate. The mapping quality of the range is the
+// the minimum quality of the two reads.
+func (reader *BamReader) ReadRanges() <- chan *BamReaderRange {
+  // force parsing cigars
+  reader.Options.ReadName = true
+  channel := make(chan *BamReaderRange)
+  go func() {
+    for r := range reader.Read() {
+      if r.Block1.Flag.ReadPaired() {
+        seqname   := reader.Genome.Seqnames[r.Block1.RefID]
+        from      := int(r.Block1.Position)
+        to        := int(r.Block2.Position)+ r.Block2.Cigar.AlignmentLength()
+        strand    := byte('*')
+        mapq      := 0
+        duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()
+        if int(r.Block1.MapQ) < int(r.Block2.MapQ) {
+          mapq = int(r.Block1.MapQ)
+        } else {
+          mapq = int(r.Block2.MapQ)
+        }
+        channel <- &BamReaderRange{seqname, from, to, strand, mapq, duplicate, true}
+      } else {
+        seqname   := reader.Genome.Seqnames[r.Block1.RefID]
+        from      := int(r.Block1.Position)
+        to        := int(r.Block1.Position) + r.Block1.Cigar.AlignmentLength()
+        strand    := byte('*')
+        mapq      := 0
+        duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()
+        channel <- &BamReaderRange{seqname, from, to, strand, mapq, duplicate, false}
+      }
+    }
+    close(channel)
+  }()
+  return channel
 }
 
 /* utility

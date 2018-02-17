@@ -50,23 +50,6 @@ func reg2bin(beg, end int) int {
 
 /* -------------------------------------------------------------------------- */
 
-func alignmentLength(cigar BamCigar) int {
-  length := 0
-  for cigarBlock := range ParseCigar(cigar) {
-    switch cigarBlock.Type {
-    case 'M': fallthrough
-    case 'D': fallthrough
-    case 'N': fallthrough
-    case '=': fallthrough
-    case 'X':
-      length += cigarBlock.N
-    }
-  }
-  return length
-}
-
-/* -------------------------------------------------------------------------- */
-
 func checkBin(filenameIn string, verbose bool) {
   var reader *BamReader
   // options for the bam reader
@@ -102,7 +85,7 @@ func checkBin(filenameIn string, verbose bool) {
       bin   = reg2bin(from, to)
     } else {
       from := int(block.Position)
-      to   := int(block.Position) + alignmentLength(block.Cigar)
+      to   := int(block.Position) + block.Cigar.AlignmentLength()
       bin   = reg2bin(from, to)
     }
     if bin != int(block.Bin) {

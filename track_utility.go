@@ -68,41 +68,48 @@ func newCumDist(m map[float64]int) cumDist {
 /* add read counts to the track
  * -------------------------------------------------------------------------- */
 
+func (track GenericMutableTrack) AddRead(read GRangesRow, d int, addOverlap bool) error {
+  seq, err := track.GetSequence(read.Seqname); if err != nil {
+    return nil
+  }
+  from := read.Range.From
+  to   := read.Range.To
+  if d != 0 && to - from < d {
+    // extend read in 3' direction
+    if read.Strand == '+' {
+      to = from + d - 1
+    } else if read.Strand == '-' {
+      from = to - d + 1
+      if from < 0 { from = 0 }
+    } else {
+      return fmt.Errorf("strand information is missing for read `%v'", read)
+    }
+  }
+  binSize := track.GetBinSize()
+  for j := from/binSize; j <= to/binSize; j++ {
+    jfrom := iMax(from, (j+0)*binSize)
+    jto   := iMin(to  , (j+1)*binSize)
+    if j >= seq.NBins() {
+      break
+    } else {
+      if addOverlap {
+        seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binSize))
+      } else {
+        seq.SetBin(j, seq.AtBin(j) + 1.0)
+      }
+    }
+  }
+  return nil
+}
+
 // Add reads to track. All reads are extended in 3' direction to have
 // a length of [d]. This is the same as the macs2 `extsize' parameter.
 // Reads are not extended if [d] is zero. If [addOverlap] is true, the
 // percentage of overlap between reads and bins is added.
 func (track GenericMutableTrack) AddReads(reads GRanges, d int, addOverlap bool) error {
   for i := 0; i < reads.Length(); i++ {
-    seq, err := track.GetSequence(reads.Seqnames[i]); if err != nil {
-      continue
-    }
-    from := reads.Ranges[i].From
-    to   := reads.Ranges[i].To
-    if d != 0 && to - from < d {
-      // extend read in 3' direction
-      if reads.Strand[i] == '+' {
-        to = from + d - 1
-      } else if reads.Strand[i] == '-' {
-        from = to - d + 1
-        if from < 0 { from = 0 }
-      } else {
-        return fmt.Errorf("strand information is missing for read `%d'", i)
-      }
-    }
-    binSize := track.GetBinSize()
-    for j := from/binSize; j <= to/binSize; j++ {
-      jfrom := iMax(from, (j+0)*binSize)
-      jto   := iMin(to  , (j+1)*binSize)
-      if j >= seq.NBins() {
-        break
-      } else {
-        if addOverlap {
-          seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binSize))
-        } else {
-          seq.SetBin(j, seq.AtBin(j) + 1.0)
-        }
-      }
+    if err := track.AddRead(reads.Row(i), d, addOverlap); err != nil {
+      return err
     }
   }
   return nil

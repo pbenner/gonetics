@@ -750,7 +750,7 @@ func (reader *BamReader) read(channel chan *BamReaderType2) {
 // Read single or paired end reads as ranges. For paired end reads,
 // if any of the two reads is marked as duplicate, then the range
 // is marked as duplicate. The mapping quality of the range is the
-// the minimum quality of the two reads.
+// minimum quality of the two reads.
 func (reader *BamReader) ReadRanges() <- chan *BamReaderRange {
   // force parsing cigars
   reader.Options.ReadName = true

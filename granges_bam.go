@@ -41,8 +41,11 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
       return fmt.Errorf("invalid optional argument")
     case BamReaderOptions:
       options = a
+      // force reading cigar string
+      options.ReadCigar = true
     }
   }
+
   if r, err := NewBamReader(r, options); err != nil {
     return err
   } else {
@@ -128,6 +131,8 @@ func (granges *GRanges) ReadBamPairedEnd(r io.Reader, args... interface{}) error
       return fmt.Errorf("invalid optional argument")
     case BamReaderOptions:
       options = a
+      // force reading cigar string
+      options.ReadCigar = true
     }
   }
   if r, err := NewBamReader(r, options); err != nil {

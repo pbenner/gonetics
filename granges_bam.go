@@ -211,3 +211,30 @@ func (granges *GRanges) ImportBamPairedEnd(filename string, args... interface{})
   defer f.Close()
   return granges.ReadBamPairedEnd(f, args...)
 }
+
+/* -------------------------------------------------------------------------- */
+
+// Convert GRanges object to ReadChannel
+func (obj GRanges) AsReadChannel() ReadChannel {
+  channel := make(chan Read)
+  mapq    := obj.GetMetaInt("mapq")
+  flag    := obj.GetMetaInt("flag")
+  go func() {
+    for i := 0; i < obj.Length(); i++ {
+      read := Read{}
+      read.Seqname    = obj.Seqnames[i]
+      read.Range.From = obj.Ranges  [i].From
+      read.Range.To   = obj.Ranges  [i].To
+      read.Strand     = obj.Strand  [i]
+      if len(mapq) != 0 {
+        read.MapQ = mapq[i]
+      }
+      if len(flag) != 0 {
+        read.Duplicate = BamFlag(flag[i]).Duplicate()
+      }
+      channel <- read
+    }
+    close(channel)
+  }()
+  return channel
+}

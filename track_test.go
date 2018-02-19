@@ -45,7 +45,7 @@ func TestTrack2(t *testing.T) {
   strand   := []byte{'+', '+', '+'}
   reads    := NewGRanges(seqnames, from, to, strand)
 
-  GenericMutableTrack{track}.AddReads(reads, 0, true)
+  GenericMutableTrack{track}.AddReads(reads.AsReadChannel(), 0, true)
 
   seq, _ := track.GetSequence("chr1")
   

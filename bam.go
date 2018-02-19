@@ -423,16 +423,6 @@ type BamReaderType2 struct {
   Error error
 }
 
-type BamReaderRange struct {
-  Seqname   string
-  From      int
-  To        int
-  Strand    byte
-  MapQ      int
-  Duplicate bool
-  Paired    bool
-}
-
 func NewBamReader(r io.Reader, args... interface{}) (*BamReader, error) {
   reader := new(BamReader)
   magic  := make([]byte, 4)
@@ -747,17 +737,28 @@ func (reader *BamReader) read(channel chan *BamReaderType2) {
   }
 }
 
-// Read single or paired end reads as ranges. For paired end reads,
-// if any of the two reads is marked as duplicate, then the range
-// is marked as duplicate. The mapping quality of the range is the
-// minimum quality of the two reads.
-func (reader *BamReader) ReadRanges() <- chan *BamReaderRange {
+// Simplified reader of single and paired-end reads. All reads that are not
+// mapped are dropped. For paired end reads, if [joinPairs] is true then the
+// range gives the position and length of the entire fragment. If any of the
+// two reads is marked as duplicate, then the result is marked as duplicate.
+// The mapping quality of the result is the minimum quality of the two reads.
+// Any paired end reads that are not properly paired are ignored
+func (reader *BamReader) ReadSimple(joinPairs bool) ReadChannel {
   // force parsing cigars
   reader.Options.ReadCigar = true
-  channel := make(chan *BamReaderRange)
+  channel := make(chan Read)
   go func() {
     for r := range reader.Read() {
-      if r.Block1.Flag.ReadPaired() {
+      if r.Error != nil {
+        break
+      }
+      if r.Block1.Flag.ReadPaired() && joinPairs {
+        if r.Block1.Flag.Unmapped() || !r.Block1.Flag.ReadMappedProperPaired() {
+          continue
+        }
+        if r.Block2.Flag.Unmapped() || !r.Block2.Flag.ReadMappedProperPaired() {
+          continue
+        }
         seqname   := reader.Genome.Seqnames[r.Block1.RefID]
         from      := int(r.Block1.Position)
         to        := int(r.Block2.Position) + r.Block2.Cigar.AlignmentLength()
@@ -769,20 +770,70 @@ func (reader *BamReader) ReadRanges() <- chan *BamReaderRange {
         } else {
           mapq = int(r.Block2.MapQ)
         }
-        channel <- &BamReaderRange{seqname, from, to, strand, mapq, duplicate, true}
+        channel <- Read{GRange{seqname, Range{from, to}, strand}, mapq, duplicate, true}
       } else {
-        seqname   := reader.Genome.Seqnames[r.Block1.RefID]
-        from      := int(r.Block1.Position)
-        to        := int(r.Block1.Position) + r.Block1.Cigar.AlignmentLength()
-        strand    := byte('*')
-        mapq      := 0
-        duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()
-        channel <- &BamReaderRange{seqname, from, to, strand, mapq, duplicate, false}
+        if !r.Block1.Flag.Unmapped() { // send first block
+          seqname   := reader.Genome.Seqnames[r.Block1.RefID]
+          from      := int(r.Block1.Position)
+          to        := int(r.Block1.Position) + r.Block1.Cigar.AlignmentLength()
+          strand    := byte('*')
+          if r.Block1.Flag.ReverseStrand() {
+            strand = byte('-')
+          } else {
+            strand = byte('+')
+          }
+          mapq      := int(r.Block1.MapQ)
+          duplicate := r.Block1.Flag.Duplicate()
+          paired    := r.Block1.Flag.ReadPaired()
+          channel <- Read{GRange{seqname, Range{from, to}, strand}, mapq, duplicate, paired}
+        }
+        if r.Block1.Flag.ReadPaired() && !r.Block2.Flag.Unmapped() {
+          // if this read is paired, send second block
+          seqname   := reader.Genome.Seqnames[r.Block2.RefID]
+          from      := int(r.Block2.Position)
+          to        := int(r.Block2.Position) + r.Block2.Cigar.AlignmentLength()
+          strand    := byte('*')
+          if r.Block2.Flag.ReverseStrand() {
+            strand = byte('-')
+          } else {
+            strand = byte('+')
+          }
+          mapq      := int(r.Block2.MapQ)
+          duplicate := r.Block2.Flag.Duplicate()
+          channel <- Read{GRange{seqname, Range{from, to}, strand}, mapq, duplicate, true}
+        }
       }
     }
     close(channel)
   }()
   return channel
+}
+
+/* -------------------------------------------------------------------------- */
+
+type BamFile struct {
+  BamReader
+  f *os.File
+}
+
+func OpenBamFile(filename string, args... interface{}) (*BamFile, error) {
+  f, err := os.Open(filename)
+  if err != nil {
+    return nil, err
+  }
+  r  := BamFile{}
+  r.f = f
+  if reader, err := NewBamReader(f, args...); err != nil {
+    f.Close()
+    return nil, err
+  } else {
+    r.BamReader = *reader
+  }
+  return &r, nil
+}
+
+func (obj *BamFile) Close() error {
+  return obj.f.Close()
 }
 
 /* utility

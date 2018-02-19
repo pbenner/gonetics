@@ -37,12 +37,10 @@ func TestTrackCrosscorrelation(t *testing.T) {
   // output:
   
   y1 := []float64{
-     0.0005482399,
-     0.0211633071,  0.0129903831,  0.0138011575,  0.0106894531,
-    -0.0274756566,  0.0017533539, -0.0181861776, -0.0067751107,
-    -0.0038123595,  0.0020096182,  0.0022340036, -0.0357639711,
-    -0.0350814350, -0.0163243527, -0.0074565095, -0.0130368542,
-     0.0046453726, -0.0101288881, -0.0408354593, -0.0066084254 }
+     0.022738,  0.037315,  0.039222,  0.034716,  0.013813, -0.011113,
+    -0.011442, -0.011026, -0.007629,  0.003967,  0.011386, -0.004300,
+    -0.041619, -0.050234, -0.026522, -0.011391, -0.004422,  0.002634,
+    -0.017630, -0.037979, -0.026556 }
 
   // printVector := func(x []float64) {
   //   for i := 0; i < len(x); i++ {
@@ -59,10 +57,10 @@ func TestTrackCrosscorrelation(t *testing.T) {
   reads  := NewEmptyGRanges(0)
   reads.ImportBed6("track_statistics_test.bed")
 
-  _, y2, err := CrosscorrelateReads(reads, genome, 21, 1)
+  _, y2, _, err := CrosscorrelateReads(reads.AsReadChannel(), genome, 21, 1)
 
   if err != nil {
-    t.Error(err)
+    t.Error(err); return
   }
   if len(y1) != len(y2) {
     t.Error("cross-correlation test failed")

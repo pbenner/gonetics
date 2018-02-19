@@ -150,44 +150,52 @@ func TrackCrosscorrelation(track1, track2 Track, from, to int, normalize bool) (
 /* -------------------------------------------------------------------------- */
 
 // Compute crosscorrelation between reads on the forward and reverse strand.
-func CrosscorrelateReads(reads GRanges, genome Genome, maxDelay, binSize int) ([]int, []float64, error) {
+func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int) ([]int, []float64, int, error) {
   track1 := AllocSimpleTrack("forward", genome, binSize)
   track2 := AllocSimpleTrack("reverse", genome, binSize)
 
-  s := reads.SetLengths(1)
-  // move reads on the reverse strand one bp to the right
-  for i := 0; i < s.Length(); i++ {
-    if s.Strand[i] == '-' {
-      s.Ranges[i].From++
-      s.Ranges[i].To  ++
+  // number of reads
+  n := uint64(0)
+  // mean read length
+  readLength := uint64(0)
+
+  for read := range reads {
+    if read.Strand == '+' {
+      // set length to one
+      read.Range.To = read.Range.From+1
+      // add read
+      if err := (GenericMutableTrack{track1}).AddRead(read, 0, false); err == nil {
+        readLength += uint64(read.Range.To - read.Range.From); n++
+      }
+    } else
+    if read.Strand == '-' {
+      // set length to one
+      read.Range.From = read.Range.To-1
+      // move reads on the reverse strand one bp to the right
+      read.Range.From++
+      read.Range.To  ++
+      // add read
+      if err := (GenericMutableTrack{track2}).AddRead(read, 0, false); err == nil {
+        readLength += uint64(read.Range.To - read.Range.From); n++
+      }
     }
   }
-  // split reads into forward and reverse strand
-  forward := s.FilterStrand('+')
-  reverse := s.FilterStrand('-')
-  GenericMutableTrack{track1}.AddReads(forward, 0, true)
-  GenericMutableTrack{track2}.AddReads(reverse, 0, true)
+  if n == 0 {
+    return nil, nil, 0, fmt.Errorf("computing cross-correlation failed: no reads available")
+  }
+  readLength /= uint64(n)
 
-  return TrackCrosscorrelation(track1, track2, 0, maxDelay, true)
+  x, y, err := TrackCrosscorrelation(track1, track2, 0, maxDelay, true)
+
+  return x, y, int(readLength), err
 }
 
 /* estimate mean fragment length
  * -------------------------------------------------------------------------- */
 
-func EstimateFragmentLength(reads GRanges, genome Genome, maxDelay, binSize int, fraglenRange [2]int) (int, []int, []float64, error) {
+func EstimateFragmentLength(reads ReadChannel, genome Genome, maxDelay, binSize int, fraglenRange [2]int) (int, []int, []float64, error) {
 
-  if reads.Length() == 0 {
-    return -1, nil, nil, fmt.Errorf("no reads given")
-  }
-
-  // compute mean read length
-  readLength := uint64(0)
-  for i := 0; i < reads.Length(); i++ {
-    readLength += uint64(reads.Ranges[i].To - reads.Ranges[i].From)
-  }
-  readLength /= uint64(reads.Length())
-
-  x, y, err := CrosscorrelateReads(reads, genome, maxDelay, binSize)
+  x, y, readLength, err := CrosscorrelateReads(reads, genome, maxDelay, binSize)
 
   if err != nil {
     return -1, nil, nil, err

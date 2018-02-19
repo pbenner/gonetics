@@ -18,46 +18,15 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
-import "bufio"
-import "bytes"
-
-/* -------------------------------------------------------------------------- */
-
-type GRange struct {
-  Seqname   string
-  Range     Range
-  Strand    byte
-}
-
-type GRangesRow struct {
+// Structure containing information about a read. For paired-end sequencing
+// the range may cover the whole fragment instead of a single read
+type Read struct {
   GRange
-  MetaRow
+  MapQ      int
+  Duplicate bool
+  PairedEnd bool
 }
 
 /* -------------------------------------------------------------------------- */
 
-func NewGRangesRow(granges GRanges, i int) GRangesRow {
-  return GRangesRow{
-    GRange{
-      granges.Seqnames[i],
-      granges.Ranges  [i],
-      granges.Strand  [i]},
-    granges.Meta.Row(i) }
-}
-
-/* -------------------------------------------------------------------------- */
-
-func (r GRangesRow) String() string {
-  var buffer bytes.Buffer
-  writer := bufio.NewWriter(&buffer)
-
-  if r.Strand == '*' {
-    fmt.Fprintf(writer, "%s:%d-%d", r.Seqname, r.Range.From, r.Range.To)
-  } else {
-    fmt.Fprintf(writer, "%s:%d-%d (%c)", r.Seqname, r.Range.From, r.Range.To, r.Strand)
-  }
-  writer.Flush()
-
-  return buffer.String()
-}
+type ReadChannel <- chan Read

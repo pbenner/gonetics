@@ -68,13 +68,18 @@ func newCumDist(m map[float64]int) cumDist {
 /* add read counts to the track
  * -------------------------------------------------------------------------- */
 
-func (track GenericMutableTrack) AddRead(read GRangesRow, d int, addOverlap bool) error {
+// Add a single read to the track. Single end reads are extended in 3' direction
+// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Reads are not extended if [d] is zero. If [addOverlap] is true, the
+// percentage of overlap between reads and bins is added. The function
+// returns an error if the read's position is out of range
+func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) error {
   seq, err := track.GetSequence(read.Seqname); if err != nil {
-    return nil
+    return err
   }
   from := read.Range.From
   to   := read.Range.To
-  if d != 0 && to - from < d {
+  if !read.PairedEnd && d != 0 && to - from < d {
     // extend read in 3' direction
     if read.Strand == '+' {
       to = from + d - 1
@@ -86,6 +91,9 @@ func (track GenericMutableTrack) AddRead(read GRangesRow, d int, addOverlap bool
     }
   }
   binSize := track.GetBinSize()
+  if from/binSize >= seq.NBins() {
+    return fmt.Errorf("read %+v is out of range", read)
+  }
   for j := from/binSize; j <= to/binSize; j++ {
     jfrom := iMax(from, (j+0)*binSize)
     jto   := iMin(to  , (j+1)*binSize)
@@ -102,17 +110,19 @@ func (track GenericMutableTrack) AddRead(read GRangesRow, d int, addOverlap bool
   return nil
 }
 
-// Add reads to track. All reads are extended in 3' direction to have
-// a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Add reads to track. All single end reads are extended in 3' direction
+// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
 // Reads are not extended if [d] is zero. If [addOverlap] is true, the
-// percentage of overlap between reads and bins is added.
-func (track GenericMutableTrack) AddReads(reads GRanges, d int, addOverlap bool) error {
-  for i := 0; i < reads.Length(); i++ {
-    if err := track.AddRead(reads.Row(i), d, addOverlap); err != nil {
-      return err
+// percentage of overlap between reads and bins is added. The function
+// returns the number of reads added to the track
+func (track GenericMutableTrack) AddReads(reads ReadChannel, d int, addOverlap bool) int {
+  n := 0
+  for read := range reads {
+    if err := track.AddRead(read, d, addOverlap); err == nil {
+      n++
     }
   }
-  return nil
+  return n
 }
 
 // Combine treatment and control from a ChIP-seq experiment into a single track.

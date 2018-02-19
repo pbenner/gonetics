@@ -44,9 +44,9 @@ type Config struct {
   BinningMethod          string
   BinSize                int
   BinOverlap             int
-  PairedEnd              bool
   NormalizeTrack         string
   ShiftReads          [2]int
+  PairedAsSingleEnd      bool
   LogScale               bool
   Pseudocounts        [2]float64
   FraglenRange        [2]int
@@ -54,6 +54,8 @@ type Config struct {
   FilterReadLengths   [2]int
   FilterDuplicates       bool
   FilterStrand           byte
+  FilterPairedEnd        bool
+  FilterSingleEnd        bool
   SmoothenControl        bool
   SmoothenSizes        []int
   SmoothenMin            float64
@@ -75,6 +77,8 @@ func DefaultConfig() Config {
   config.FilterMapQ           = 0
   config.FilterDuplicates     = false
   config.FilterStrand         = '*'
+  config.FilterPairedEnd      = false
+  config.FilterSingleEnd      = false
   config.LogScale             = false
   config.Pseudocounts         = [2]float64{0.0, 0.0}
   config.SmoothenControl      = false
@@ -115,128 +119,154 @@ func parseFilename(filename string) (string, int) {
 /* read filters
  * -------------------------------------------------------------------------- */
 
-func filterDuplicates(config Config, reads GRanges) GRanges {
+func filterPairedEnd(config Config, chanIn ReadChannel) ReadChannel {
+  if config.FilterPairedEnd == false {
+    return chanIn
+  }
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      if r.PairedEnd {
+        chanOut <- r; m++
+      }
+      n++
+    }
+    PrintStderr(config, 1, "Filtered out %d unpaired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
+}
+
+func filterSingleEnd(config Config, veto bool, chanIn ReadChannel) ReadChannel {
+  if config.FilterSingleEnd == false && !veto {
+    return chanIn
+  }
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      if !r.PairedEnd {
+        chanOut <- r; m++
+      }
+      n++
+    }
+    PrintStderr(config, 1, "Filtered out %d paired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
+}
+
+func filterDuplicates(config Config, chanIn ReadChannel) ReadChannel {
   if config.FilterDuplicates == false {
-    return reads
+    return chanIn
   }
-  PrintStderr(config, 1, "Filtering reads (duplicates)... ")
-  idx := []int{}
-  if config.PairedEnd {
-    flag1 := reads.GetMetaInt("flag1")
-    flag2 := reads.GetMetaInt("flag2")
-    for i := 0; i < reads.Length(); i++ {
-      if BamFlag(flag1[i]).Duplicate() || BamFlag(flag2[i]).Duplicate() {
-        idx = append(idx, i)
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      if !r.Duplicate {
+        chanOut <- r; m++
       }
+      n++
     }
-  } else {
-    flag := reads.GetMetaInt("flag")
-    for i := 0; i < reads.Length(); i++ {
-      if BamFlag(flag[i]).Duplicate() {
-        idx = append(idx, i)
-      }
-    }
-  }
-  PrintStderr(config, 1, "done\n")
-  PrintStderr(config, 1, "Filtered out %d reads (%.2f%%)\n", len(idx), 100.0*float64(len(idx))/float64(reads.Length()))
-  return reads.Remove(idx)
+    PrintStderr(config, 1, "Filtered out %d duplicates (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
 }
 
-func filterStrand(config Config, reads GRanges) GRanges {
+func filterStrand(config Config, chanIn ReadChannel) ReadChannel {
   if config.FilterStrand == '*' {
-    return reads
+    return chanIn
   }
-  PrintStderr(config, 1, "Filtering reads (strand: %c)... ", config.FilterStrand)
-  idx := []int{}
-  for i := 0; i < reads.Length(); i++ {
-    if reads.Strand[i] != config.FilterStrand {
-      idx = append(idx, i)
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      if r.Strand == config.FilterStrand {
+        chanOut <- r; m++
+      }
+      n++
     }
-  }
-  PrintStderr(config, 1, "done\n")
-  PrintStderr(config, 1, "Filtered out %d reads (%.2f%%)\n", len(idx), 100.0*float64(len(idx))/float64(reads.Length()))
-  return reads.Remove(idx)
+    PrintStderr(config, 1, "Filtered out %d reads not on strand %v (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
 }
 
-func filterMapQ(config Config, reads GRanges) GRanges {
+func filterMapQ(config Config, chanIn ReadChannel) ReadChannel {
   if config.FilterMapQ <= 0 {
-    return reads
+    return chanIn
   }
-  PrintStderr(config, 1, "Filtering reads (minimum mapping quality: %d)... ", config.FilterMapQ)
-  idx := []int{}
-  if config.PairedEnd {
-    mapq1 := reads.GetMetaInt("mapq1")
-    mapq2 := reads.GetMetaInt("mapq2")
-    if len(mapq1) == 0 || len(mapq2) == 0 {
-      PrintStderr(config, 1, "failed\n")
-      log.Fatalf("no mapping quality available")
-    }
-    for i := 0; i < reads.Length(); i++ {
-      if mapq1[i] < config.FilterMapQ || mapq2[i] < config.FilterMapQ {
-        idx = append(idx, i)
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      if r.MapQ >= config.FilterMapQ {
+        chanOut <- r; m++
       }
+      n++
     }
-  } else {
-    mapq := reads.GetMetaInt("score")
-    if len(mapq) == 0 {
-      mapq = reads.GetMetaInt("mapq")
-      if len(mapq) == 0 {
-        PrintStderr(config, 1, "failed\n")
-        log.Fatalf("no mapping quality available")
-      }
-    }
-    for i := 0; i < reads.Length(); i++ {
-      if mapq[i] < config.FilterMapQ {
-        idx = append(idx, i)
-      }
-    }
-  }
-  PrintStderr(config, 1, "done\n")
-  PrintStderr(config, 1, "Filtered out %d reads (%.2f%%)\n", len(idx), 100.0*float64(len(idx))/float64(reads.Length()))
-  return reads.Remove(idx)
+    PrintStderr(config, 1, "Filtered out %d reads with mapping quality lower than %d (%.2f%%)\n", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
 }
 
-func filterReadLength(config Config, reads GRanges) GRanges {
+func filterReadLength(config Config, chanIn ReadChannel) ReadChannel {
   if config.FilterReadLengths[0] == 0 && config.FilterReadLengths[1] == 0 {
-    return reads
+    return chanIn
   }
-  PrintStderr(config, 1, "Filtering reads (admissible read length: %v) ... ", config.FilterReadLengths)
-  idx := []int{}
-  for i := 0; i < reads.Length(); i++ {
-    len := reads.Ranges[i].To - reads.Ranges[i].From
-    if len < config.FilterReadLengths[0] ||
-      (len > config.FilterReadLengths[1] && config.FilterReadLengths[1] != 0) {
-      idx = append(idx, i)
+  chanOut := make(chan Read)
+  go func() {
+    n := 0
+    m := 0
+    for r := range chanIn {
+      len := r.Range.To - r.Range.From
+      if len >= config.FilterReadLengths[0] &&
+        (len <= config.FilterReadLengths[1] || config.FilterReadLengths[1] == 0) {
+        chanOut <- r; m++
+      }
+      n++
     }
-  }
-  PrintStderr(config, 1, "done\n")
-  PrintStderr(config, 1, "Filtered out %d reads (%.2f%%) with non-admissible length\n", len(idx), 100.0*float64(len(idx))/float64(reads.Length()))
-  return reads.Remove(idx)
+    PrintStderr(config, 1, "Filtered out %d reads with non-admissible length (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    close(chanOut)
+  }()
+  return chanOut
 }
 
-func shiftReads(config Config, reads GRanges) GRanges {
+func shiftReads(config Config, chanIn ReadChannel) ReadChannel {
   if config.ShiftReads[0] == 0 && config.ShiftReads[1] == 0 {
-    return reads
+    return chanIn
   }
-  PrintStderr(config, 1, "Shifting reads reads (forward strand: %d, reverse strand: %d) ... ",
-    config.ShiftReads[0], config.ShiftReads[1])
-  reads = reads.Clone()
-  for i := 0; i < reads.Length(); i++ {
-    if reads.Strand[i] == '+' {
-      reads.Ranges[i].From += config.ShiftReads[0]
-      reads.Ranges[i].To   += config.ShiftReads[0]
-    } else
-    if reads.Strand[i] == '-' {
-      reads.Ranges[i].From += config.ShiftReads[1]
-      reads.Ranges[i].To   += config.ShiftReads[1]
+  chanOut := make(chan Read)
+  go func() {
+    for r := range chanIn {
+      if r.Strand == '+' {
+        r.Range.From += config.ShiftReads[0]
+        r.Range.To   += config.ShiftReads[0]
+      } else
+      if r.Strand == '-' {
+        r.Range.From += config.ShiftReads[1]
+        r.Range.To   += config.ShiftReads[1]
+      }
+      if r.Range.From < 0 {
+        r.Range.To   -= r.Range.From
+        r.Range.From  = 0
+      }
+      chanOut <- r
     }
-    if reads.Ranges[i].From < 0 {
-      reads.Ranges[i].To   -= reads.Ranges[i].From
-      reads.Ranges[i].From  = 0
-    }
-  }
-  PrintStderr(config, 1, "done\n")
-  return reads
+    PrintStderr(config, 1, "Shifted reads (forward strand: %d, reverse strand: %d)\n",
+      config.ShiftReads[0], config.ShiftReads[1])
+    close(chanOut)
+  }()
+  return chanOut
 }
 
 /* fragment length estimation
@@ -344,15 +374,19 @@ func importFraglen(config Config, filename string, genome Genome) int {
 }
 
 func estimateFraglen(config Config, filename string, genome Genome) int {
-  PrintStderr(config, 1, "Reading tags from `%s'... ", filename)
-  reads := GRanges{}
-  if err := reads.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
+  var reads ReadChannel
+
+  PrintStderr(config, 1, "Reading tags from `%s'...\n", filename)
+  if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
+  } else {
+    defer bam.Close()
+    reads = bam.ReadSimple(false)
   }
-  PrintStderr(config, 1, "done\n")
 
   // first round of filtering
+  reads = filterSingleEnd(config, true, reads)
   reads = filterReadLength(config, reads)
   reads = filterDuplicates(config, reads)
   reads = filterMapQ(config, reads)
@@ -400,22 +434,19 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
   for i, filename := range filenamesTreatment {
     fraglen := fraglenTreatment[i]
 
-    PrintStderr(config, 1, "Reading treatment tags from `%s'... ", filename)
-    treatment := GRanges{}
-    if config.PairedEnd {
-      if err := treatment.ImportBamPairedEnd(filename, BamReaderOptions{}); err != nil {
-        PrintStderr(config, 1, "failed\n")
-        log.Fatal(err)
-      }
+    var treatment ReadChannel
+    PrintStderr(config, 1, "Reading treatment tags from `%s'...\n", filename)
+    if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
     } else {
-      if err := treatment.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
-        PrintStderr(config, 1, "failed\n")
-        log.Fatal(err)
-      }
+      defer bam.Close()
+      treatment = bam.ReadSimple(!config.PairedAsSingleEnd)
     }
-    PrintStderr(config, 1, "done\n")
 
     // first round of filtering
+    treatment = filterPairedEnd(config, treatment)
+    treatment = filterSingleEnd(config, false, treatment)
     treatment = filterReadLength(config, treatment)
     treatment = filterDuplicates(config, treatment)
     treatment = filterMapQ(config, treatment)
@@ -423,13 +454,11 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
     treatment = filterStrand(config, treatment)
     treatment = shiftReads(config, treatment)
 
-    n_treatment += treatment.Length()
-
     switch config.BinningMethod {
     case "simple":
-      GenericMutableTrack{track1}.AddReads(treatment, fraglen, false)
+      n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, false)
     case "overlap":
-      GenericMutableTrack{track1}.AddReads(treatment, fraglen, true)
+      n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, true)
     default:
       log.Fatal("invalid binning method `%s'", config.BinningMethod)
     }
@@ -452,22 +481,19 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
     for i, filename := range filenamesControl {
       fraglen  := fraglenControl[i]
 
-      PrintStderr(config, 1, "Reading control tags from `%s'... ", filename)
-      control := GRanges{}
-      if config.PairedEnd {
-        if err := control.ImportBamPairedEnd(filename, BamReaderOptions{}); err != nil {
-          PrintStderr(config, 1, "failed\n")
-          log.Fatal(err)
-        }
+      var control ReadChannel
+      PrintStderr(config, 1, "Reading treatment tags from `%s'...\n", filename)
+      if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
+        PrintStderr(config, 1, "failed\n")
+        log.Fatal(err)
       } else {
-        if err := control.ImportBamSingleEnd(filename, BamReaderOptions{}); err != nil {
-          PrintStderr(config, 1, "failed\n")
-          log.Fatal(err)
-        }
+        defer bam.Close()
+        control = bam.ReadSimple(true)
       }
-      PrintStderr(config, 1, "done\n")
 
       // first round of filtering
+      control = filterPairedEnd(config, control)
+      control = filterSingleEnd(config, false, control)
       control = filterReadLength(config, control)
       control = filterDuplicates(config, control)
       control = filterMapQ(config, control)
@@ -475,13 +501,11 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       control = filterStrand(config, control)
       control = shiftReads(config, control)
 
-      n_control = control.Length()
-
       switch config.BinningMethod {
       case "simple":
-        GenericMutableTrack{track2}.AddReads(control, fraglen, false)
+        n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, false)
       case "overlap":
-        GenericMutableTrack{track2}.AddReads(control, fraglen, true)
+        n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, true)
       default:
         log.Fatal("invalid binning method `%s'", config.BinningMethod)
       }
@@ -541,12 +565,14 @@ func main() {
   optBWZoomLevels      := options. StringLong("bigwig-zoom-levels",         0 , "", "comma separated list of BigWig zoom levels")
   // read options
   optShiftReads        := options. StringLong("shift-reads",                0 , "", "shift reads on the positive strand by `x' bps and those on the negative strand by `y' bps [format: x,y]")
-  optPairedEnd         := options.   BoolLong("paired-end",                 0 ,     "reads are paired-end")
+  optPairedAsSingleEnd := options.   BoolLong("paired-as-single-end",       0 ,     "treat paired as single end reads")
   // options for filterering reads
   optFilterStrand      := options. StringLong("filter-strand",              0 , "", "use reads on either the forward `+' or reverse `-' strand")
   optReadLength        := options. StringLong("filter-read-lengths",        0 , "", "feasible range of read-lengths [format: min:max]")
   optFilterMapQ        := options.    IntLong("filter-mapq",                0 ,  0, "filter reads for minimum mapping quality (default: 0)")
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
+  optFilterPairedEnd   := options.   BoolLong("filter-paired-end",          0 ,     "remove all single end reads")
+  optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
   // track options
   optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple [default] or overlap)")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
@@ -610,12 +636,6 @@ func main() {
     }
     config.Pseudocounts[0] = t1
     config.Pseudocounts[1] = t2
-  }
-  if *optLogScale {
-    config.LogScale = true
-  }
-  if *optPairedEnd && *optEstimateFraglen {
-    log.Fatal("cannot estimate fragment length for paired-end reads")
   }
   if *optReadLength != "" {
     tmp := strings.Split(*optReadLength, ":")
@@ -727,8 +747,17 @@ func main() {
     config.FraglenRange[0] = int(t1)
     config.FraglenRange[1] = int(t2)
   }
+  if *optFilterPairedEnd && *optEstimateFraglen {
+    log.Fatal("cannot estimate fragment length for paired end reads")
+  }
+  if *optFilterPairedEnd && *optFilterSingleEnd {
+    log.Fatal("cannot filter for paired and single end reads")
+  }
+  config.LogScale          = *optLogScale
+  config.PairedAsSingleEnd = *optPairedAsSingleEnd
   config.FilterDuplicates  = *optFilterDuplicates
-  config.PairedEnd         = *optPairedEnd
+  config.FilterPairedEnd   = *optFilterPairedEnd
+  config.FilterSingleEnd   = *optFilterSingleEnd
   config.SaveFraglen       = *optSaveFraglen
   config.SaveCrossCorr     = *optSaveCrossCorr
   config.SaveCrossCorrPlot = *optSaveCrossCorrPlot

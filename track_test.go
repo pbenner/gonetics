@@ -48,7 +48,6 @@ func TestTrack2(t *testing.T) {
   GenericMutableTrack{track}.AddReads(reads.AsReadChannel(), 0, true)
 
   seq, _ := track.GetSequence("chr1")
-  
   if v := seq.At(  0); math.Abs(v - 0.35) > 1e-8 {
     t.Error("TestTrack2 failed!")
   }

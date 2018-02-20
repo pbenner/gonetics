@@ -119,6 +119,23 @@ func parseFilename(filename string) (string, int) {
 /* read filters
  * -------------------------------------------------------------------------- */
 
+// treat all paired end reads as single end reads, this allows
+// to extend/crop paired end reads when adding them to the track
+// with AddReads()
+func filterPairedAsSingleEnd(config Config, chanIn ReadChannel) ReadChannel {
+  if config.PairedAsSingleEnd == false {
+    return chanIn
+  }
+  chanOut := make(chan Read)
+  go func() {
+    for r := range chanIn {
+      r.PairedEnd = false; chanOut <- r
+    }
+    close(chanOut)
+  }()
+  return chanOut
+}
+
 func filterPairedEnd(config Config, chanIn ReadChannel) ReadChannel {
   if config.FilterPairedEnd == false {
     return chanIn
@@ -445,6 +462,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
     }
 
     // first round of filtering
+    treatment = filterPairedAsSingleEnd(config, treatment)
     treatment = filterPairedEnd(config, treatment)
     treatment = filterSingleEnd(config, false, treatment)
     treatment = filterReadLength(config, treatment)
@@ -492,6 +510,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       }
 
       // first round of filtering
+      control = filterPairedAsSingleEnd(config, control)
       control = filterPairedEnd(config, control)
       control = filterSingleEnd(config, false, control)
       control = filterReadLength(config, control)

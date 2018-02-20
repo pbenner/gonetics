@@ -79,12 +79,12 @@ func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) erro
   }
   from := read.Range.From
   to   := read.Range.To
-  if !read.PairedEnd && d != 0 && to - from < d {
+  if !read.PairedEnd && d > 0 {
     // extend read in 3' direction
     if read.Strand == '+' {
-      to = from + d - 1
+      to = from + d
     } else if read.Strand == '-' {
-      from = to - d + 1
+      from = to - d
       if from < 0 { from = 0 }
     } else {
       return fmt.Errorf("strand information is missing for read `%v'", read)
@@ -94,13 +94,13 @@ func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) erro
   if from/binSize >= seq.NBins() {
     return fmt.Errorf("read %+v is out of range", read)
   }
-  for j := from/binSize; j <= to/binSize; j++ {
-    jfrom := iMax(from, (j+0)*binSize)
-    jto   := iMin(to  , (j+1)*binSize)
+  for j := from/binSize; j <= (to-1)/binSize; j++ {
     if j >= seq.NBins() {
       break
     } else {
       if addOverlap {
+        jfrom := iMax(from, (j+0)*binSize)
+        jto   := iMin(to  , (j+1)*binSize)
         seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binSize))
       } else {
         seq.SetBin(j, seq.AtBin(j) + 1.0)

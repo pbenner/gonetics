@@ -33,7 +33,7 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
   options.ReadCigar     = true
   options.ReadSequence  = true
   options.ReadAuxiliary = false
-  options.ReadQual      = false
+  options.ReadQual      = true
   // parse optional arguments
   for _, arg := range args {
     switch a := arg.(type) {
@@ -59,6 +59,7 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
   mapq     := []int{}
   cigar    := []string{}
   flag     := []int{}
+  qual     := []string{}
 
   for block := range reader.ReadSingleEnd() {
     if block.Error != nil {
@@ -90,6 +91,9 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
     if options.ReadCigar {
       cigar    = append(cigar,    block.Cigar.String())
     }
+    if options.ReadQual {
+      qual     = append(qual,     string(block.Qual))
+    }
   }
   *granges = NewGRanges(seqnames, from, to, strand)
   granges.AddMeta("flag", flag)
@@ -99,6 +103,9 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
   }
   if options.ReadCigar {
     granges.AddMeta("cigar", cigar)
+  }
+  if options.ReadQual {
+    granges.AddMeta("qual", qual)
   }
   
   return nil

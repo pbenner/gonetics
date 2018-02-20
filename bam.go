@@ -52,6 +52,22 @@ func (seq BamSeq) String() string {
 
 /* -------------------------------------------------------------------------- */
 
+type BamQual []byte
+
+func (qual BamQual) String() string {
+  var buffer bytes.Buffer
+  writer := bufio.NewWriter(&buffer)
+
+  for i := 0; i < len(qual); i++ {
+    fmt.Fprintf(writer, "%c", qual[i]+33)
+  }
+  writer.Flush()
+
+  return buffer.String()
+}
+
+/* -------------------------------------------------------------------------- */
+
 type BamAuxiliary struct {
   Tag   [2]byte
   Value interface{}
@@ -365,7 +381,7 @@ type BamBlock struct {
   ReadName     string
   Cigar        BamCigar
   Seq          BamSeq
-  Qual         []byte
+  Qual         BamQual
   Auxiliary    []BamAuxiliary
 }
 

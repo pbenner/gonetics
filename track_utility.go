@@ -156,7 +156,7 @@ func (track GenericMutableTrack) Normalize(treatment, control Track, c1, c2 floa
 }
 
 // Quantile normalize track to reference
-func (track GenericMutableTrack) QuantileNormalize(trackRef Track, keepMinimum bool) error {
+func (track GenericMutableTrack) QuantileNormalize(trackRef Track) error {
   mapRef := make(map[float64]int)
   mapIn  := make(map[float64]int)
   mapTr  := make(map[float64]float64)

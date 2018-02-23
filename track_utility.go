@@ -155,8 +155,8 @@ func (track GenericMutableTrack) Normalize(treatment, control Track, c1, c2 floa
   return nil
 }
 
-// Quantile normalize track to reference.
-func (track GenericMutableTrack) QuantileNormalize(trackRef Track) error {
+// Quantile normalize track to reference
+func (track GenericMutableTrack) QuantileNormalize(trackRef Track, keepMinimum bool) error {
   mapRef := make(map[float64]int)
   mapIn  := make(map[float64]int)
   mapTr  := make(map[float64]float64)
@@ -180,7 +180,13 @@ func (track GenericMutableTrack) QuantileNormalize(trackRef Track) error {
   distRef := newCumDist(mapRef)
   distIn  := newCumDist(mapIn)
 
-  for i, j := 0, 0; i < len(distRef.x); i++ {
+  if len(distRef.x) == 0 {
+    return nil
+  }
+  // set first value to keep data on the same range
+  mapTr[distIn.x[0]] = distRef.x[0]
+
+  for i, j := 1, 1; i < len(distRef.x); i++ {
     pRef := float64(distRef.y[i])/float64(distRef.n)
     for ; j < len(distIn.x); j++ {
       pIn := float64(distIn.y[j])/float64(distIn.n)

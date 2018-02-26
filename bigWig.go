@@ -307,21 +307,21 @@ func (reader *BigWigReader) QuerySlice(seqregex string, from, to int, f BinSumma
           return nil, -1, fmt.Errorf("failed determine bin-size for bigWig file: data has type bedGraph")
         }
         binSize = record.To - record.From
-        r = make([]BbiSummaryRecord, divIntDown(to-from-1, binSize)+1)
+        r = make([]BbiSummaryRecord, divIntDown(to-from, binSize))
       }
-      for idx := record.From/binSize; idx <= (record.To-1)/binSize; idx++ {
+      for idx := record.From/binSize; idx < record.To/binSize; idx++ {
         if idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }
       }
     }
   } else {
-    r = make([]BbiSummaryRecord, divIntDown(to-from-1, binSize)+1)
+    r = make([]BbiSummaryRecord, divIntDown(to-from, binSize))
     for record := range reader.Query(seqregex, from, to, binSize) {
       if record.Error != nil {
         return nil, -1, record.Error
       }
-      for idx := (record.From - from)/binSize; idx <= (record.To-from-1)/binSize; idx++ {
+      for idx := (record.From - from)/binSize; idx < (record.To - from)/binSize; idx++ {
         if idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }
@@ -365,12 +365,7 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, -1, err
   } else {
-    if s, binSize, err := reader.QuerySlice(seqregex, 0, seqlength, f, binSize, binOverlap, init); err != nil {
-      return s, binSize, err
-    } else {
-      // drop the last bin if it is not fully covered
-      return s[0:seqlength/binSize], binSize, err
-    }
+    return reader.QuerySlice(seqregex, 0, seqlength, f, binSize, binOverlap, init)
   }
 }
 

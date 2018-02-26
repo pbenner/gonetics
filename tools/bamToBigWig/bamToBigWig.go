@@ -612,7 +612,7 @@ func main() {
   optVerbose           := options.CounterLong("verbose",                   'v',     "verbose level [-v or -vv]")
   optHelp              := options.   BoolLong("help",                      'h',     "print help")
 
-  options.SetParameters("<TREATMENT1.bam[:FRAGLEN],TREATMENT2.bam[:FRAGLEN],...> <CONTROL1.bam[:FRAGLEN],CONTROL2.bam[:FRAGLEN],...> <RESULT.bw>")
+  options.SetParameters("<TREATMENT1.bam[:FRAGLEN],TREATMENT2.bam[:FRAGLEN],...> [<CONTROL1.bam[:FRAGLEN],CONTROL2.bam[:FRAGLEN],...>] <RESULT.bw>")
   options.Parse(os.Args)
 
   // parse options

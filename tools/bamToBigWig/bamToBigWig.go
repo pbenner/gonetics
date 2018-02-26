@@ -50,6 +50,7 @@ type Config struct {
   LogScale               bool
   Pseudocounts        [2]float64
   FraglenRange        [2]int
+  FraglenBinSize         int
   FilterMapQ             int
   FilterReadLengths   [2]int
   FilterDuplicates       bool
@@ -73,6 +74,7 @@ func DefaultConfig() Config {
   config.BinSize              = 10
   config.BinOverlap           = 0
   config.FraglenRange         = [2]int{-1, -1}
+  config.FraglenBinSize       = 10
   config.FilterReadLengths    = [2]int{0,0}
   config.FilterMapQ           = 0
   config.FilterDuplicates     = false
@@ -410,7 +412,7 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
 
   // estimate fragment length
   PrintStderr(config, 1, "Estimating mean fragment length... ")
-  if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.BinSize, config.FraglenRange); err != nil {
+  if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
     PrintStderr(config, 1, "failed\n")
     if x != nil && y != nil && config.SaveCrossCorr {
       saveCrossCorr(config, filename, x, y)
@@ -588,7 +590,7 @@ func main() {
   // options for filterering reads
   optFilterStrand      := options. StringLong("filter-strand",              0 , "", "use reads on either the forward `+' or reverse `-' strand")
   optReadLength        := options. StringLong("filter-read-lengths",        0 , "", "feasible range of read-lengths [format: min:max]")
-  optFilterMapQ        := options.    IntLong("filter-mapq",                0 ,  0, "filter reads for minimum mapping quality (default: 0)")
+  optFilterMapQ        := options.    IntLong("filter-mapq",                0 ,  0, "filter reads for minimum mapping quality [default: 0]")
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   optFilterPairedEnd   := options.   BoolLong("filter-paired-end",          0 ,     "remove all single end reads")
   optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
@@ -596,7 +598,7 @@ func main() {
   optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple [default] or overlap)")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
   optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method (i.e. rpm)")
-  optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal (default: `0,0')")
+  optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal [default: `0,0']")
   optSmoothenControl   := options.   BoolLong("smoothen-control",           0 ,     "smoothen control with an adaptive window method")
   optSmoothenSizes     := options. StringLong("smoothen-window-sizes",      0 , "", "feasible window sizes for the smoothening method [format: s1,s2,...]")
   optSmoothenMin       := options. StringLong("smoothen-min-counts",        0 , "", "minimum number of counts for the smoothening method")
@@ -604,6 +606,7 @@ func main() {
   // options for estimating and setting fragment lengths
   optFraglen           := options.    IntLong("fragment-length",            0 ,  0, "fragment length for all input files (reads are extended to the given length)")
   optFraglenRange      := options. StringLong("fragment-length-range",      0 , "", "feasible range of fragment lengths (format from:to)")
+  optFraglenBinSize    := options.    IntLong("fragment-length-bin-size",   0 ,  0, "bin size used when estimating the fragment length [default: 10]")
   optEstimateFraglen   := options.   BoolLong("estimate-fragment-length",   0 ,     "use crosscorrelation to estimate the fragment length")
   optSaveFraglen       := options.   BoolLong("save-fraglen",               0 ,     "save estimated fragment length in a file named <BAM_BASENAME>.fraglen.txt")
   optSaveCrossCorr     := options.   BoolLong("save-crosscorrelation",      0 ,     "save crosscorrelation between forward and reverse strands in a file named <BAM_BASENAME>.fraglen.table")
@@ -765,6 +768,9 @@ func main() {
     }
     config.FraglenRange[0] = int(t1)
     config.FraglenRange[1] = int(t2)
+  }
+  if *optFraglenBinSize > 0 {
+    config.FraglenBinSize = *optFraglenBinSize
   }
   if *optFilterPairedEnd && *optEstimateFraglen {
     log.Fatal("cannot estimate fragment length for paired end reads")

@@ -365,7 +365,12 @@ func (reader *BigWigReader) QuerySequence(seqregex string, f BinSummaryStatistic
   if seqlength, err := reader.Genome.SeqLength(seqregex); err != nil {
     return nil, -1, err
   } else {
-    return reader.QuerySlice(seqregex, 0, seqlength, f, binSize, binOverlap, init)
+    if s, binSize, err := reader.QuerySlice(seqregex, 0, seqlength, f, binSize, binOverlap, init); err != nil {
+      return s, binSize, err
+    } else {
+      // drop the last bin if it is not fully covered
+      return s[0:seqlength/binSize], binSize, err
+    }
   }
 }
 

@@ -51,6 +51,7 @@ type Config struct {
   Pseudocounts        [2]float64
   FraglenRange        [2]int
   FraglenBinSize         int
+  FilterChroms         []string
   FilterMapQ             int
   FilterReadLengths   [2]int
   FilterDuplicates       bool
@@ -562,6 +563,17 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       PrintStderr(config, 1, "done\n")
     }
   }
+  if len(config.FilterChroms) != 0 {
+    PrintStderr(config, 1, "Removing all reads from `%v'... ", config.FilterChroms)
+    for _, chr := range config.FilterChroms {
+      if s, err := track1.GetMutableSequence(chr); err == nil {
+        for i := 0; i < s.NBins(); i++ {
+          s.SetBin(i, 0.0)
+        }
+      }
+    }
+    PrintStderr(config, 1, "done\n")
+  }
   PrintStderr(config, 1, "Writing track `%s'... ", filenameTrack)
   parameters := DefaultBigWigParameters()
   parameters.ReductionLevels = config.BWZoomLevels
@@ -593,6 +605,7 @@ func main() {
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   optFilterPairedEnd   := options.   BoolLong("filter-paired-end",          0 ,     "remove all single end reads")
   optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
+  optFilterChroms      := options. StringLong("filter-chromosomes",         0 , "", "remove all reads on the given chromosomes (comma separated list)")
   // track options
   optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple [default] or overlap)")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
@@ -776,6 +789,9 @@ func main() {
   }
   if *optFilterPairedEnd && *optFilterSingleEnd {
     log.Fatal("cannot filter for paired and single end reads")
+  }
+  if *optFilterChroms != "" {
+    config.FilterChroms = strings.Split(*optFilterChroms, ",")
   }
   config.LogScale          = *optLogScale
   config.PairedAsSingleEnd = *optPairedAsSingleEnd

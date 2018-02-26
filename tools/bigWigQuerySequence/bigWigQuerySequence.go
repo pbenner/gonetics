@@ -53,10 +53,10 @@ func query(filenameIn, chrom string, from, to, binSize, binOverlap int, summary 
   if reader, err := NewBigWigReader(f); err != nil {
     log.Fatal(err)
   } else {
-    if r, _, err := reader.QuerySequence(chrom, summary, binSize, binOverlap, math.NaN()); err != nil {
+    if r, _, err := reader.QuerySlice(chrom, from, to, summary, binSize, binOverlap, math.NaN()); err != nil {
       log.Fatal(err)
     } else {
-      fmt.Println(r[from/binSize:to/binSize])
+      fmt.Println(r)
     }
   }
 }

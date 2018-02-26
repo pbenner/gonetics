@@ -29,7 +29,7 @@ build:
 
 install:
 	@for i in $(SUBDIRS); do \
-		echo "Building $$i"; (cd $$i && go install); \
+		echo "Installing $$i"; (cd $$i && go install); \
 	done
 
 test:

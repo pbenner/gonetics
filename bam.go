@@ -309,6 +309,14 @@ func (flag BamFlag) SecondInPair() bool {
   return flag.Bit(7)
 }
 
+func (flag BamFlag) SecondaryAlignment() bool {
+  return flag.Bit(8)
+}
+
+func (flag BamFlag) NotPassingFilters() bool {
+  return flag.Bit(9)
+}
+
 func (flag BamFlag) Duplicate() bool {
   return flag.Bit(10)
 }

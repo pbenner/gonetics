@@ -27,6 +27,11 @@ build:
 		echo "Building $$i"; (cd $$i && go build); \
 	done
 
+install:
+	@for i in $(SUBDIRS); do \
+		echo "Building $$i"; (cd $$i && go install); \
+	done
+
 test:
 	@for i in $(SUBDIRS); do \
 		echo "Testing $$i"; (cd $$i && go test); \

@@ -411,7 +411,7 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
   reads = filterMapQ(config, reads)
 
   // estimate fragment length
-  PrintStderr(config, 1, "Estimating mean fragment length... ")
+  PrintStderr(config, 1, "Estimating mean fragment length...\n")
   if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
     PrintStderr(config, 1, "failed\n")
     if x != nil && y != nil && config.SaveCrossCorr {
@@ -420,10 +420,9 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
     if x != nil && y != nil && config.SaveCrossCorrPlot {
       saveCrossCorrPlot(config, filename, -1, x, y)
     }
-    log.Fatalf("estimating read length failed: %v", err)
+    log.Fatalf("Estimating read length failed: %v", err)
     return 0
   } else {
-    PrintStderr(config, 1, "done\n")
     PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
 
     if config.SaveFraglen {

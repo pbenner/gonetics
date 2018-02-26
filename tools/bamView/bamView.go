@@ -30,9 +30,10 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  PrintReadName bool
-  PrintCigar    bool
-  PrintSequence bool
+  PrintReadName  bool
+  PrintCigar     bool
+  PrintSequence  bool
+  PrintAuxiliary bool
 }
 
 /* -------------------------------------------------------------------------- */
@@ -45,7 +46,7 @@ func bamView(config Config, filenameIn string) {
   options.ReadName      = config.PrintReadName
   options.ReadCigar     = config.PrintCigar
   options.ReadSequence  = config.PrintSequence
-  options.ReadAuxiliary = false
+  options.ReadAuxiliary = config.PrintAuxiliary
   options.ReadQual      = false
 
   if f, err := os.Open(filenameIn); err != nil {
@@ -69,6 +70,9 @@ func bamView(config Config, filenameIn string) {
   }
   if options.ReadSequence {
     fmt.Printf(" %s", "Sequence")
+  }
+  if options.ReadAuxiliary {
+    fmt.Printf(" %s", "Auxiliary")
   }
   fmt.Println()
 
@@ -104,6 +108,15 @@ func bamView(config Config, filenameIn string) {
         fmt.Printf(" %s", s)
       }
     }
+    if options.ReadAuxiliary {
+      if len(block.Auxiliary) == 0 {
+        fmt.Printf(" %s", "-")
+      } else {
+        for i := 0; i < len(block.Auxiliary); i++ {
+          fmt.Printf(" %s", block.Auxiliary[i].String())
+        }
+      }
+    }
     fmt.Println()
   }
 }
@@ -113,14 +126,14 @@ func main() {
   config  := Config{}
   config.PrintReadName = true
   config.PrintCigar    = true
-  config.PrintSequence = true
 
   options := getopt.New()
   options.SetProgram(fmt.Sprintf("%s", os.Args[0]))
 
   optNoReadName := options.  BoolLong("no-read-name",  0 ,     "do not print read names")
   optNoCigar    := options.  BoolLong("no-cigar",      0 ,     "do not print cigar strings")
-  optNoSequence := options.  BoolLong("no-sequence",   0 ,     "do not print read sequences")
+  optSequence   := options.  BoolLong("sequence",      0 ,     "print read sequences")
+  optAuxiliary  := options.  BoolLong("auxiliary",     0 ,     "print auxiliary information")
   optHelp       := options.  BoolLong("help",         'h',     "print help")
 
   options.SetParameters("<input.bam>")
@@ -134,9 +147,10 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  config.PrintReadName = !*optNoReadName
-  config.PrintCigar    = !*optNoCigar
-  config.PrintSequence = !*optNoSequence
+  config.PrintReadName  = !*optNoReadName
+  config.PrintCigar     = !*optNoCigar
+  config.PrintSequence  =  *optSequence
+  config.PrintAuxiliary =  *optAuxiliary
 
   bamView(config, options.Args()[0])
 }

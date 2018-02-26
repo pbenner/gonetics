@@ -73,6 +73,12 @@ type BamAuxiliary struct {
   Value interface{}
 }
 
+func (aux *BamAuxiliary) String() string {
+  var buffer bytes.Buffer
+  fmt.Fprintf(&buffer, "%c%c:%v", aux.Tag[0], aux.Tag[1], aux.Value)
+  return buffer.String()
+}
+
 func (aux *BamAuxiliary) Read(reader io.Reader) (int, error) {
   var valueType byte
   // number of read bytes

@@ -67,10 +67,10 @@ func (track *SimpleTrack) ReadBedGraph(reader io.Reader) error {
     if from < 0 || to < 0 {
       continue
     }
-    if from/binsize >= len(cur_seq) || to/binsize >= len(cur_seq) {
+    if from/binsize >= len(cur_seq) || (to-1)/binsize >= len(cur_seq) {
       continue
     }
-    for i := from/binsize; i < to/binsize; i++ {
+    for i := from/binsize; i <= (to-1)/binsize; i++ {
       cur_seq[i] = value
     }
   }

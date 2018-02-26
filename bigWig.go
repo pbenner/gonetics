@@ -307,21 +307,21 @@ func (reader *BigWigReader) QuerySlice(seqregex string, from, to int, f BinSumma
           return nil, -1, fmt.Errorf("failed determine bin-size for bigWig file: data has type bedGraph")
         }
         binSize = record.To - record.From
-        r = make([]BbiSummaryRecord, divIntDown(to-from, binSize))
+        r = make([]BbiSummaryRecord, divIntDown(to-from-1, binSize)+1)
       }
-      for idx := record.From/binSize; idx < record.To/binSize; idx++ {
+      for idx := record.From/binSize; idx <= (record.To-1)/binSize; idx++ {
         if idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }
       }
     }
   } else {
-    r = make([]BbiSummaryRecord, divIntDown(to-from, binSize))
+    r = make([]BbiSummaryRecord, divIntDown(to-from-1, binSize)+1)
     for record := range reader.Query(seqregex, from, to, binSize) {
       if record.Error != nil {
         return nil, -1, record.Error
       }
-      for idx := (record.From - from)/binSize; idx < (record.To - from)/binSize; idx++ {
+      for idx := (record.From - from)/binSize; idx <= (record.To-from-1)/binSize; idx++ {
         if idx >= 0 && idx < len(r) {
           r[idx] = record.BbiSummaryRecord
         }

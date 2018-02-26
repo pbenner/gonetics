@@ -39,7 +39,7 @@ func (r *GRanges) ReadBigWig(bwr *BigWigReader, name string, f BinSummaryStatist
         binSize = record.To - record.From
       }
       if len(r) == 0 {
-        n = (to - from)/binSize
+        n = (to - from - 1)/binSize
         r = make([]BbiSummaryRecord, n)
         s = make([]float64, n)
       }
@@ -47,11 +47,11 @@ func (r *GRanges) ReadBigWig(bwr *BigWigReader, name string, f BinSummaryStatist
         return fmt.Errorf("%v", record.Error)
       }
       if revNegStrand == false || strand == '+' {
-        if idx := (record.From - from)/binSize; idx >= 0 && idx < n {
+        if idx := (record.From - from)/binSize; idx >= 0 && idx <= n {
           r[idx] = record.BbiSummaryRecord
         }
       } else {
-        if idx := (record.From - from)/binSize; idx >= 0 && idx < n {
+        if idx := (record.From - from)/binSize; idx >= 0 && idx <= n {
           r[n-1-idx] = record.BbiSummaryRecord
         }
       }

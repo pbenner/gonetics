@@ -112,7 +112,7 @@ type BbiZoomRecord struct {
   SumSquares float32
 }
 
-func (record *BbiZoomRecord) AddValue(x float64) {
+func (record *BbiZoomRecord) AddValue(x float64, binSize int) {
   if math.IsNaN(x) {
     return
   }
@@ -122,7 +122,7 @@ func (record *BbiZoomRecord) AddValue(x float64) {
   if math.IsNaN(float64(record.Max)) || record.Max < float32(x) {
     record.Max = float32(x)
   }
-  record.Valid      += 1
+  record.Valid      +=  uint32(binSize)
   record.Sum        += float32(x)
   record.SumSquares += float32(x*x)
 }
@@ -201,8 +201,8 @@ func (obj *BbiSummaryStatistics) Reset() {
   obj.SumSquares = 0.0
 }
 
-func (obj *BbiSummaryStatistics) AddValue(x float64) {
-  obj.Valid      += 1.0
+func (obj *BbiSummaryStatistics) AddValue(x float64, binSize int) {
+  obj.Valid      += float64(binSize)
   obj.Min         = math.Min(obj.Min, x)
   obj.Max         = math.Max(obj.Max, x)
   obj.Sum        += x
@@ -555,7 +555,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     }
     // add records
     for j := 0; j < n && i+j < len(it.sequence); j++ {
-      record.AddValue(it.sequence[i+j])
+      record.AddValue(it.sequence[i+j], it.binSize)
     }
     // check if there was some data
     if record.Valid > 0 {

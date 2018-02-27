@@ -201,6 +201,17 @@ func (obj *BbiSummaryStatistics) Reset() {
   obj.SumSquares = 0.0
 }
 
+func (obj *BbiSummaryStatistics) AddValue(x float64) {
+  if math.IsNaN(x) {
+    return
+  }
+  obj.Valid      += 1.0
+  obj.Min         = math.Min(obj.Min, x)
+  obj.Max         = math.Max(obj.Max, x)
+  obj.Sum        += x
+  obj.SumSquares += x*x
+}
+
 func (obj *BbiSummaryStatistics) Add(x BbiSummaryStatistics) {
   obj.Valid      += x.Valid
   obj.Min         = math.Min(obj.Min, x.Min)

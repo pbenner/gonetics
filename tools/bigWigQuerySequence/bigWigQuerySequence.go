@@ -30,20 +30,6 @@ import . "github.com/pbenner/gonetics"
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatisticse(str string) (BinSummaryStatistics, error) {
-  switch str {
-  case "mean":
-    return BinMean, nil
-  case "discrete mean":
-    return BinDiscreteMean, nil
-  case "min":
-    return BinMin, nil
-  case "max":
-    return BinMax, nil
-  }
-  return nil, fmt.Errorf("invalid bin summary statistics")
-}
-
 func query(filenameIn, chrom string, from, to, binSize, binOverlap int, summary BinSummaryStatistics, verbose bool) {
   f, err := os.Open(filenameIn); if err != nil {
     log.Fatal(err)
@@ -61,19 +47,19 @@ func query(filenameIn, chrom string, from, to, binSize, binOverlap int, summary 
   }
 }
 
+/* -------------------------------------------------------------------------- */
+
 func main() {
   options := getopt.New()
   options.SetProgram(fmt.Sprintf("%s", os.Args[0]))
 
-  optBinOverlap := options.   IntLong("bin-overlap", 'b',  0, "number of overlapping bins when computing the summary")
-  optSummary    := options.StringLong("summary",     's', "", "bin summary statistic [mean (default), max, min]")
-  optHelp       := options.  BoolLong("help",        'h',     "print help")
-  optVerbose    := options.  BoolLong("verbose",     'v',     "be verbose")
+  optBinOverlap := options.   IntLong("bin-overlap",  0 ,      0, "number of overlapping bins when computing the summary")
+  optSummary    := options.StringLong("bin-summary",  0 , "mean", "bin summary statistic [mean (default), max, min]")
+  optHelp       := options.  BoolLong("help",        'h',         "print help")
+  optVerbose    := options.  BoolLong("verbose",     'v',         "be verbose")
 
   options.SetParameters("<input.bw> <chrom> <from> <to> <binsize>")
   options.Parse(os.Args)
-
-  binSummary := BinMean
 
   if *optHelp {
     options.PrintUsage(os.Stdout)
@@ -83,13 +69,7 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  if *optSummary != "" {
-    if s, err := getBinSummaryStatisticse(*optSummary); err != nil {
-      log.Fatal(err)
-    } else {
-      binSummary = s
-    }
-  }
+  binSummary  := BinSummaryStatisticsFromString(*optSummary)
   filenameIn  := options.Args()[0]
   chrom       := options.Args()[1]
 

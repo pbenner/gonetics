@@ -348,13 +348,13 @@ func (reader *BigWigReader) QuerySlice(seqregex string, from, to int, f BinSumma
         }
       }
       if t.Valid > 0 {
-        s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
+        s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid, float64(binSize))
       }
     }
   } else {
     for i, t := range r {
       if t.Valid > 0 {
-        s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid)
+        s[i] = f(t.Sum, t.SumSquares, t.Min, t.Max, t.Valid, float64(binSize))
       }
     }
   }

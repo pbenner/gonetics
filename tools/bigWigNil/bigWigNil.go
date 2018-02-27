@@ -48,23 +48,6 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
-/* -------------------------------------------------------------------------- */
-
 func importTrack(config Config, filename string) SimpleTrack {
   track := SimpleTrack{}
   PrintStderr(config, 1, "Importing track `%s'... ", filename)
@@ -132,7 +115,7 @@ func main() {
   config.Verbose = *optVerbose
   config.BinSize = *optBinSize
   config.BinOver = *optBinOver
-  config.BinStat = getBinSummaryStatistics(*optBinStat)
+  config.BinStat = BinSummaryStatisticsFromString(*optBinStat)
 
   filenameIn  := options.Args()[0]
   filenameOut := options.Args()[1]

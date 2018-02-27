@@ -45,7 +45,7 @@ func TestTrack2(t *testing.T) {
   strand   := []byte{'+', '+', '+'}
   reads    := NewGRanges(seqnames, from, to, strand)
 
-  GenericMutableTrack{track}.AddReads(reads.AsReadChannel(), 0, true)
+  GenericMutableTrack{track}.AddReads(reads.AsReadChannel(), 0, "mean overlap")
 
   seq, _ := track.GetSequence("chr1")
   if v := seq.At(  0); math.Abs(v - 0.35) > 1e-8 {

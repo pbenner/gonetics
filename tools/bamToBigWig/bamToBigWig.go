@@ -39,7 +39,6 @@ import   "gonum.org/v1/plot/vg"
 
 type Config struct {
   Verbose                int
-  BinSummaryStatistics   string
   BWZoomLevels         []int
   BinningMethod          string
   BinSize                int
@@ -68,7 +67,6 @@ type Config struct {
 func DefaultConfig() Config {
   config := Config{}
   // set default values
-  config.BinSummaryStatistics = "mean"
   config.BWZoomLevels         = nil   // zoom levels are determined automatically
   config.BinningMethod        = "simple"
   config.BinSize              = 10

@@ -483,8 +483,18 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       log.Fatal("invalid binning method `%s'", config.BinningMethod)
     }
   }
-  if config.NormalizeTrack == "rpm" {
-    PrintStderr(config, 1, "Normalizing treatment track (rpm)... ")
+  if config.NormalizeTrack == "rpkm" {
+    PrintStderr(config, 1, "Normalizing treatment track (rpkm)... ")
+    c := float64(1000000)/(float64(n_treatment)*float64(config.BinSize))
+    GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
+      return c*x
+    })
+    // adapt pseudocounts!
+    config.Pseudocounts[0] *= c
+    PrintStderr(config, 1, "done\n")
+  }
+  if config.NormalizeTrack == "cpm" {
+    PrintStderr(config, 1, "Normalizing treatment track (cpm)... ")
     c := float64(1000000)/float64(n_treatment)
     GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
       return c*x
@@ -531,8 +541,18 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
         log.Fatal("invalid binning method `%s'", config.BinningMethod)
       }
     }
-    if config.NormalizeTrack == "rpm" {
-      PrintStderr(config, 1, "Normalizing control track (rpm)... ")
+    if config.NormalizeTrack == "rpkm" {
+      PrintStderr(config, 1, "Normalizing control track (rpkm)... ")
+      c := float64(1000000)/(float64(n_control)*float64(config.BinSize))
+      GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
+        return c*x
+      })
+      // adapt pseudocounts!
+      config.Pseudocounts[1] *= c
+      PrintStderr(config, 1, "done\n")
+    }
+    if config.NormalizeTrack == "cpm" {
+      PrintStderr(config, 1, "Normalizing control track (cpm)... ")
       c := float64(1000000)/float64(n_control)
       GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
         return c*x
@@ -605,19 +625,21 @@ func main() {
   optFilterDuplicates  := options.   BoolLong("filter-duplicates",          0 ,     "remove reads marked as duplicates")
   optFilterPairedEnd   := options.   BoolLong("filter-paired-end",          0 ,     "remove all single end reads")
   optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
-  optFilterChroms      := options. StringLong("filter-chromosomes",         0 , "", "remove all reads on the given chromosomes (comma separated list)")
+  optFilterChroms      := options. StringLong("filter-chromosomes",         0 , "", "remove all reads on the given chromosomes [comma separated list]")
   // track options
-  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method (i.e. simple [default] or overlap)")
+  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method [i.e. simple (default) or overlap]")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
-  optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method (i.e. rpm)")
+  optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method [i.e. rpkm (reads per kilobase " +
+                                                                                    "per million mapped reads, i.e. {bin read count}/({total number of reads in millions}*{bin size})), " +
+                                                                                    "or cpm (counts per million mapped reads, i.e. {bin read count}/{total number of reads in millions})]")
   optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal [default: `0,0']")
   optSmoothenControl   := options.   BoolLong("smoothen-control",           0 ,     "smoothen control with an adaptive window method")
   optSmoothenSizes     := options. StringLong("smoothen-window-sizes",      0 , "", "feasible window sizes for the smoothening method [format: s1,s2,...]")
   optSmoothenMin       := options. StringLong("smoothen-min-counts",        0 , "", "minimum number of counts for the smoothening method")
   optLogScale          := options.   BoolLong("log-scale",                  0 ,     "log-transform data")
   // options for estimating and setting fragment lengths
-  optFraglen           := options.    IntLong("fragment-length",            0 ,  0, "fragment length for all input files (reads are extended to the given length)")
-  optFraglenRange      := options. StringLong("fragment-length-range",      0 , "", "feasible range of fragment lengths (format from:to)")
+  optFraglen           := options.    IntLong("fragment-length",            0 ,  0, "fragment length for all input files [reads are extended to the given length]")
+  optFraglenRange      := options. StringLong("fragment-length-range",      0 , "", "feasible range of fragment lengths [format from:to]")
   optFraglenBinSize    := options.    IntLong("fragment-length-bin-size",   0 ,  0, "bin size used when estimating the fragment length [default: 10]")
   optEstimateFraglen   := options.   BoolLong("estimate-fragment-length",   0 ,     "use crosscorrelation to estimate the fragment length")
   optSaveFraglen       := options.   BoolLong("save-fraglen",               0 ,     "save estimated fragment length in a file named <BAM_BASENAME>.fraglen.txt")
@@ -757,12 +779,13 @@ func main() {
     }
   }
   if *optNormalizeTrack != "" {
-    switch *optNormalizeTrack {
-    case "rpm":
+    switch strings.ToLower(*optNormalizeTrack) {
+    case "rpkm":
+    case "cpm":
     default:
       log.Fatal("invalid normalization method `%s'", *optNormalizeTrack)
     }
-    config.NormalizeTrack = *optNormalizeTrack
+    config.NormalizeTrack = strings.ToLower(*optNormalizeTrack)
   }
   if *optFraglenRange != "" {
     tmp := strings.Split(*optFraglenRange, ":")

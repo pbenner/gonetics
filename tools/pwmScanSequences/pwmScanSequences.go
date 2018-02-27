@@ -106,7 +106,7 @@ func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequ
       s.AddValue(v1)
       s.AddValue(v2)
     }
-    r.SetBin(i, config.BinStat(s.Sum, s.SumSquares, s.Min, s.Max, s.Valid, float64(config.BinSize)))
+    r.SetBin(i, config.BinStat(s.Sum, s.SumSquares, s.Min, s.Max, s.Valid))
     return nil
   }); err != nil {
     return err

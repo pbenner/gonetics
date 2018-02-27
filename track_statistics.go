@@ -24,21 +24,21 @@ import "math"
 
 /* -------------------------------------------------------------------------- */
 
-type BinSummaryStatistics func(sum, sumSquares, min, max, n, binSize float64) float64
+type BinSummaryStatistics func(sum, sumSquares, min, max, n float64) float64
 
-func BinMean(sum, sumSquares, min, max, n, binSize float64) float64 {
+func BinMean(sum, sumSquares, min, max, n float64) float64 {
   return sum/n
 }
-func BinDiscreteMean(sum, sumSquares, min, max, n, binSize float64) float64 {
+func BinDiscreteMean(sum, sumSquares, min, max, n float64) float64 {
   return math.Floor(sum/n + 0.5)
 }
-func BinVariance(sum, sumSquares, min, max, n, binSize float64) float64 {
+func BinVariance(sum, sumSquares, min, max, n float64) float64 {
   return sumSquares/n - sum/n*sum/n
 }
-func BinMax (sum, sumSquares, min, max, n, binSize float64) float64 {
+func BinMax (sum, sumSquares, min, max, n float64) float64 {
   return max
 }
-func BinMin (sum, sumSquares, min, max, n, binSize float64) float64 {
+func BinMin (sum, sumSquares, min, max, n float64) float64 {
   return min
 }
 

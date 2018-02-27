@@ -164,7 +164,7 @@ func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int
       // set length to one
       read.Range.To = read.Range.From+1
       // add read
-      if err := (GenericMutableTrack{track1}).AddRead(read, 0, false); err == nil {
+      if err := (GenericMutableTrack{track1}).AddRead(read, 0); err == nil {
         readLength += uint64(read.Range.To - read.Range.From); n++
       }
     } else
@@ -175,7 +175,7 @@ func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int
       read.Range.From++
       read.Range.To  ++
       // add read
-      if err := (GenericMutableTrack{track2}).AddRead(read, 0, false); err == nil {
+      if err := (GenericMutableTrack{track2}).AddRead(read, 0); err == nil {
         readLength += uint64(read.Range.To - read.Range.From); n++
       }
     }

@@ -68,15 +68,7 @@ func newCumDist(m map[float64]int) cumDist {
 /* add read counts to the track
  * -------------------------------------------------------------------------- */
 
-// Add a single read to the track. Single end reads are extended in 3' direction
-// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
-// Reads are not extended if [d] is zero. If [addOverlap] is true, the
-// percentage of overlap between reads and bins is added. The function
-// returns an error if the read's position is out of range
-func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) error {
-  seq, err := track.GetSequence(read.Seqname); if err != nil {
-    return err
-  }
+func (track GenericMutableTrack) extendRead(read Read, d int) (int, int, error) {
   from := read.Range.From
   to   := read.Range.To
   if !read.PairedEnd && d > 0 {
@@ -87,23 +79,91 @@ func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) erro
       from = to - d
       if from < 0 { from = 0 }
     } else {
-      return fmt.Errorf("strand information is missing for read `%v'", read)
+      return -1, -1, fmt.Errorf("strand information is missing for read `%v'", read)
     }
   }
-  binSize := track.GetBinSize()
-  if from/binSize >= seq.NBins() {
-    return fmt.Errorf("read %+v is out of range", read)
+  return from, to, nil
+}
+
+// Add a single read to the track by incrementing the value of each bin that
+// overlaps with the read. Single end reads are extended in 3' direction
+// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Reads are not extended if [d] is zero.
+// The function returns an error if the read's position is out of range
+func (track GenericMutableTrack) AddRead(read Read, d int) error {
+  seq, err := track.GetSequence(read.Seqname); if err != nil {
+    return err
   }
-  for j := from/binSize; j <= (to-1)/binSize; j++ {
-    if j >= seq.NBins() {
-      break
-    } else {
-      if addOverlap {
+  if from, to, err := track.extendRead(read, d); err != nil {
+    return err
+  } else {
+    binSize := track.GetBinSize()
+    if from/binSize >= seq.NBins() {
+      return fmt.Errorf("read %+v is out of range", read)
+    }
+    for j := from/binSize; j <= (to-1)/binSize; j++ {
+      if j >= seq.NBins() {
+        break
+      } else {
+      seq.SetBin(j, seq.AtBin(j) + 1.0)
+      }
+    }
+  }
+  return nil
+}
+
+// Add a single read to the track by adding the fraction of overlap between
+// the read and each bin. Single end reads are extended in 3' direction
+// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Reads are not extended if [d] is zero.
+// The function returns an error if the read's position is out of range
+func (track GenericMutableTrack) AddReadMeanOverlap(read Read, d int) error {
+  seq, err := track.GetSequence(read.Seqname); if err != nil {
+    return err
+  }
+  if from, to, err := track.extendRead(read, d); err != nil {
+    return err
+  } else {
+    binSize := track.GetBinSize()
+    if from/binSize >= seq.NBins() {
+      return fmt.Errorf("read %+v is out of range", read)
+    }
+    for j := from/binSize; j <= (to-1)/binSize; j++ {
+      if j >= seq.NBins() {
+        break
+      } else {
         jfrom := iMax(from, (j+0)*binSize)
         jto   := iMin(to  , (j+1)*binSize)
         seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom)/float64(binSize))
+      }
+    }
+  }
+  return nil
+}
+
+// Add a single read to the track by adding the number of overlapping nucleotides
+// between the read and each bin. Single end reads are extended in 3' direction
+// to have a length of [d]. This is the same as the macs2 `extsize' parameter.
+// Reads are not extended if [d] is zero.
+// The function returns an error if the read's position is out of range
+func (track GenericMutableTrack) AddReadOverlap(read Read, d int) error {
+  seq, err := track.GetSequence(read.Seqname); if err != nil {
+    return err
+  }
+  if from, to, err := track.extendRead(read, d); err != nil {
+    return err
+  } else {
+    binSize := track.GetBinSize()
+    if from/binSize >= seq.NBins() {
+      return fmt.Errorf("read %+v is out of range", read)
+    }
+    for j := from/binSize; j <= (to-1)/binSize; j++ {
+      if j >= seq.NBins() {
+        break
       } else {
-        seq.SetBin(j, seq.AtBin(j) + 1.0)
+        jfrom := iMax(from, (j+0)*binSize)
+        jto   := iMin(to  , (j+1)*binSize)
+        seq.SetBin(j, seq.AtBin(j) + float64(jto-jfrom))
       }
     }
   }
@@ -112,15 +172,38 @@ func (track GenericMutableTrack) AddRead(read Read, d int, addOverlap bool) erro
 
 // Add reads to track. All single end reads are extended in 3' direction
 // to have a length of [d]. This is the same as the macs2 `extsize' parameter.
-// Reads are not extended if [d] is zero. If [addOverlap] is true, the
-// percentage of overlap between reads and bins is added. The function
-// returns the number of reads added to the track
-func (track GenericMutableTrack) AddReads(reads ReadChannel, d int, addOverlap bool) int {
+// Reads are not extended if [d] is zero.
+// If [method] is "default", the value of each bin that overlaps the read
+// is incremented. If [method] is "overlap", each bin that overlaps the read is
+// incremented by the number of overlapping nucleotides. If [method] is "mean
+// overlap", each bin that overlaps the read is incremented by the fraction
+// of overlapping nucleotides within the bin.
+// The function returns an error if the read's position is out of range
+func (track GenericMutableTrack) AddReads(reads ReadChannel, d int, method string) int {
   n := 0
-  for read := range reads {
-    if err := track.AddRead(read, d, addOverlap); err == nil {
-      n++
+  switch method {
+  case ""       : fallthrough
+  case "simple" : fallthrough
+  case "default":
+    for read := range reads {
+      if err := track.AddRead(read, d); err == nil {
+        n++
+      }
     }
+  case "mean overlap":
+    for read := range reads {
+      if err := track.AddReadMeanOverlap(read, d); err == nil {
+        n++
+      }
+    }
+  case "overlap":
+    for read := range reads {
+      if err := track.AddReadOverlap(read, d); err == nil {
+        n++
+      }
+    }
+  default:
+    panic("invalid binning method")
   }
   return n
 }

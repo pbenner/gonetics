@@ -43,7 +43,6 @@ type Config struct {
   BWZoomLevels         []int
   BinningMethod          string
   BinSize                int
-  BinOverlap             int
   NormalizeTrack         string
   ShiftReads          [2]int
   PairedAsSingleEnd      bool
@@ -73,7 +72,6 @@ func DefaultConfig() Config {
   config.BWZoomLevels         = nil   // zoom levels are determined automatically
   config.BinningMethod        = "simple"
   config.BinSize              = 10
-  config.BinOverlap           = 0
   config.FraglenRange         = [2]int{-1, -1}
   config.FraglenBinSize       = 10
   config.FilterReadLengths    = [2]int{0,0}
@@ -474,14 +472,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
     treatment = filterStrand(config, treatment)
     treatment = shiftReads(config, treatment)
 
-    switch config.BinningMethod {
-    case "simple":
-      n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, false)
-    case "overlap":
-      n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, true)
-    default:
-      log.Fatal("invalid binning method `%s'", config.BinningMethod)
-    }
+    n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, config.BinningMethod)
   }
   if config.NormalizeTrack == "rpkm" {
     PrintStderr(config, 1, "Normalizing treatment track (rpkm)... ")
@@ -532,14 +523,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       control = filterStrand(config, control)
       control = shiftReads(config, control)
 
-      switch config.BinningMethod {
-      case "simple":
-        n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, false)
-      case "overlap":
-        n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, true)
-      default:
-        log.Fatal("invalid binning method `%s'", config.BinningMethod)
-      }
+      n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, config.BinningMethod)
     }
     if config.NormalizeTrack == "rpkm" {
       PrintStderr(config, 1, "Normalizing control track (rpkm)... ")
@@ -627,7 +611,10 @@ func main() {
   optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
   optFilterChroms      := options. StringLong("filter-chromosomes",         0 , "", "remove all reads on the given chromosomes [comma separated list]")
   // track options
-  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method [i.e. simple (default) or overlap]")
+  optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method [`default' (increment the value of each bin by one " +
+                                                                                    "that overlaps a read), `overlap' (increment the value of each bin that " +
+                                                                                    "overlaps the read by the number of overlapping nucleotides), or `mean overlap' " +
+                                                                                    "(increment the value of each bin that overlaps a read by the mean number of overlapping nucleotides]")
   optBinSize           := options.    IntLong("bin-size",                   0 ,  0, "track bin size [default: 10]")
   optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method [i.e. rpkm (reads per kilobase " +
                                                                                     "per million mapped reads, i.e. {bin read count}/({total number of reads in millions}*{bin size})), " +
@@ -674,6 +661,14 @@ func main() {
     }
   }
   if *optBinningMethod != "" {
+    switch *optBinningMethod {
+    case "simple":
+    case "default":
+    case "overlap":
+    case "mean overlap":
+    default:
+      log.Fatal("invalid binning method `%s'", *optBinningMethod)
+    }
     config.BinningMethod = *optBinningMethod
   }
   if *optPseudocounts != "" {

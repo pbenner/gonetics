@@ -112,7 +112,7 @@ type BbiZoomRecord struct {
   SumSquares float32
 }
 
-func (record *BbiZoomRecord) AddValue(x float64, binSize int) {
+func (record *BbiZoomRecord) AddValue(x float64) {
   if math.IsNaN(x) {
     return
   }
@@ -122,7 +122,7 @@ func (record *BbiZoomRecord) AddValue(x float64, binSize int) {
   if math.IsNaN(float64(record.Max)) || record.Max < float32(x) {
     record.Max = float32(x)
   }
-  record.Valid      +=  uint32(binSize)
+  record.Valid      += 1
   record.Sum        += float32(x)
   record.SumSquares += float32(x*x)
 }
@@ -199,14 +199,6 @@ func (obj *BbiSummaryStatistics) Reset() {
   obj.Max        = math.Inf(-1)
   obj.Sum        = 0.0
   obj.SumSquares = 0.0
-}
-
-func (obj *BbiSummaryStatistics) AddValue(x float64, binSize int) {
-  obj.Valid      += float64(binSize)
-  obj.Min         = math.Min(obj.Min, x)
-  obj.Max         = math.Max(obj.Max, x)
-  obj.Sum        += x
-  obj.SumSquares += x*x
 }
 
 func (obj *BbiSummaryStatistics) Add(x BbiSummaryStatistics) {
@@ -323,39 +315,33 @@ func (reader *BbiRawBlockDecoder) readFixed(r *BbiBlockDecoderType, i int) {
   r.ChromId     = int(reader.Header.ChromId)
   r.From        = int(reader.Header.Start + uint32(i/4)*reader.Header.Step)
   r.To          = r.From + int(reader.Header.Span)
-  r.Valid       = float64(r.To - r.From)
+  r.Valid       = 1.0
   r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i:i+4])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
-  r.Sum        *= r.Valid
-  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) readVariable(r *BbiBlockDecoderType, i int) {
   r.ChromId     = int(reader.Header.ChromId)
   r.From        = int(reader.order.Uint32(reader.Buffer[i+0:i+4]))
   r.To          = r.From + int(reader.Header.Span)
-  r.Valid       = float64(r.To - r.From)
+  r.Valid       = 1.0
   r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i+4:i+8])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
-  r.Sum        *= r.Valid
-  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) readBedGraph(r *BbiBlockDecoderType, i int) {
   r.ChromId     = int(reader.Header.ChromId)
   r.From        = int(reader.order.Uint32(reader.Buffer[i+0:i+4]))
   r.To          = int(reader.order.Uint32(reader.Buffer[i+4:i+8]))
-  r.Valid       = float64(r.To - r.From)
+  r.Valid       = 1.0
   r.Sum         = float64(math.Float32frombits(reader.order.Uint32(reader.Buffer[i+8:i+12])))
   r.SumSquares  = r.Sum*r.Sum
   r.Min         = r.Sum
   r.Max         = r.Sum
-  r.Sum        *= r.Valid
-  r.SumSquares *= r.Valid
 }
 
 func (reader *BbiRawBlockDecoder) GetDataType() byte {
@@ -555,7 +541,7 @@ func (it *BbiZoomBlockEncoderIterator) Next() {
     }
     // add records
     for j := 0; j < n && i+j < len(it.sequence); j++ {
-      record.AddValue(it.sequence[i+j], it.binSize)
+      record.AddValue(it.sequence[i+j])
     }
     // check if there was some data
     if record.Valid > 0 {

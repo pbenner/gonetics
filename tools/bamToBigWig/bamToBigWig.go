@@ -38,58 +38,61 @@ import   "gonum.org/v1/plot/vg"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Verbose                int
-  BinSummaryStatistics   string
-  BWZoomLevels         []int
-  BinningMethod          string
-  BinSize                int
-  BinOverlap             int
-  NormalizeTrack         string
-  ShiftReads          [2]int
-  PairedAsSingleEnd      bool
-  LogScale               bool
-  Pseudocounts        [2]float64
-  FraglenRange        [2]int
+  Verbose                 int
+  BinSummaryStatistics    string
+  BWZoomLevels          []int
+  BinningMethod           string
+  BinSize                 int
+  BinOverlap              int
+  NormalizeTrack          string
+  ShiftReads           [2]int
+  PairedAsSingleEnd       bool
+  PairedEndStrandSpecific bool
+  LogScale                bool
+  Pseudocounts         [2]float64
+  FraglenRange         [2]int
   FraglenBinSize         int
-  FilterChroms         []string
-  FilterMapQ             int
-  FilterReadLengths   [2]int
-  FilterDuplicates       bool
-  FilterStrand           byte
-  FilterPairedEnd        bool
-  FilterSingleEnd        bool
-  SmoothenControl        bool
-  SmoothenSizes        []int
-  SmoothenMin            float64
-  SaveFraglen            bool
-  SaveCrossCorr          bool
-  SaveCrossCorrPlot      bool
+  FilterChroms          []string
+  FilterMapQ              int
+  FilterReadLengths    [2]int
+  FilterDuplicates        bool
+  FilterStrand            byte
+  FilterPairedEnd         bool
+  FilterSingleEnd         bool
+  SmoothenControl         bool
+  SmoothenSizes         []int
+  SmoothenMin             float64
+  SaveFraglen             bool
+  SaveCrossCorr           bool
+  SaveCrossCorrPlot       bool
 }
 
 func DefaultConfig() Config {
   config := Config{}
   // set default values
-  config.BinSummaryStatistics = "mean"
-  config.BWZoomLevels         = nil   // zoom levels are determined automatically
-  config.BinningMethod        = "simple"
-  config.BinSize              = 10
-  config.BinOverlap           = 0
-  config.FraglenRange         = [2]int{-1, -1}
-  config.FraglenBinSize       = 10
-  config.FilterReadLengths    = [2]int{0,0}
-  config.FilterMapQ           = 0
-  config.FilterDuplicates     = false
-  config.FilterStrand         = '*'
-  config.FilterPairedEnd      = false
-  config.FilterSingleEnd      = false
-  config.LogScale             = false
-  config.Pseudocounts         = [2]float64{0.0, 0.0}
-  config.SmoothenControl      = false
-  config.SmoothenSizes        = []int{}
-  config.SmoothenMin          = 20.0
-  config.SaveFraglen          = false
-  config.SaveCrossCorr        = false
-  config.SaveCrossCorrPlot    = false
+  config.BinSummaryStatistics    = "mean"
+  config.BWZoomLevels            = nil   // zoom levels are determined automatically
+  config.BinningMethod           = "simple"
+  config.BinSize                 = 10
+  config.BinOverlap              = 0
+  config.PairedAsSingleEnd       = false
+  config.PairedEndStrandSpecific = false
+  config.FraglenRange            = [2]int{-1, -1}
+  config.FraglenBinSize          = 10
+  config.FilterReadLengths       = [2]int{0,0}
+  config.FilterMapQ              = 0
+  config.FilterDuplicates        = false
+  config.FilterStrand            = '*'
+  config.FilterPairedEnd         = false
+  config.FilterSingleEnd         = false
+  config.LogScale                = false
+  config.Pseudocounts            = [2]float64{0.0, 0.0}
+  config.SmoothenControl         = false
+  config.SmoothenSizes           = []int{}
+  config.SmoothenMin             = 20.0
+  config.SaveFraglen             = false
+  config.SaveCrossCorr           = false
+  config.SaveCrossCorrPlot       = false
   return config
 }
 
@@ -402,7 +405,7 @@ func estimateFraglen(config Config, filename string, genome Genome) int {
     log.Fatal(err)
   } else {
     defer bam.Close()
-    reads = bam.ReadSimple(false)
+    reads = bam.ReadSimple(false, false)
   }
 
   // first round of filtering
@@ -460,7 +463,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       log.Fatal(err)
     } else {
       defer bam.Close()
-      treatment = bam.ReadSimple(!config.PairedAsSingleEnd)
+      treatment = bam.ReadSimple(!config.PairedAsSingleEnd, config.PairedEndStrandSpecific)
     }
 
     // first round of filtering
@@ -508,7 +511,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
         log.Fatal(err)
       } else {
         defer bam.Close()
-        control = bam.ReadSimple(true)
+        control = bam.ReadSimple(!config.PairedAsSingleEnd, config.PairedEndStrandSpecific)
       }
 
       // first round of filtering
@@ -598,6 +601,7 @@ func main() {
   // read options
   optShiftReads        := options. StringLong("shift-reads",                0 , "", "shift reads on the positive strand by `x' bps and those on the negative strand by `y' bps [format: x,y]")
   optPairedAsSingleEnd := options.   BoolLong("paired-as-single-end",       0 ,     "treat paired as single end reads")
+  optPairedEndStrand   := options.   BoolLong("paired-end-strand-specific", 0 , "", "strand specific paired-end sequencing")
   // options for filterering reads
   optFilterStrand      := options. StringLong("filter-strand",              0 , "", "use reads on either the forward `+' or reverse `-' strand")
   optReadLength        := options. StringLong("filter-read-lengths",        0 , "", "feasible range of read-lengths [format: min:max]")
@@ -793,14 +797,15 @@ func main() {
   if *optFilterChroms != "" {
     config.FilterChroms = strings.Split(*optFilterChroms, ",")
   }
-  config.LogScale          = *optLogScale
-  config.PairedAsSingleEnd = *optPairedAsSingleEnd
-  config.FilterDuplicates  = *optFilterDuplicates
-  config.FilterPairedEnd   = *optFilterPairedEnd
-  config.FilterSingleEnd   = *optFilterSingleEnd
-  config.SaveFraglen       = *optSaveFraglen
-  config.SaveCrossCorr     = *optSaveCrossCorr
-  config.SaveCrossCorrPlot = *optSaveCrossCorrPlot
+  config.LogScale                = *optLogScale
+  config.PairedAsSingleEnd       = *optPairedAsSingleEnd
+  config.PairedEndStrandSpecific = *optPairedEndStrand
+  config.FilterDuplicates        = *optFilterDuplicates
+  config.FilterPairedEnd         = *optFilterPairedEnd
+  config.FilterSingleEnd         = *optFilterSingleEnd
+  config.SaveFraglen             = *optSaveFraglen
+  config.SaveCrossCorr           = *optSaveCrossCorr
+  config.SaveCrossCorrPlot       = *optSaveCrossCorrPlot
 
   // parse arguments
   //////////////////////////////////////////////////////////////////////////////

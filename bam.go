@@ -773,7 +773,7 @@ func (reader *BamReader) read(channel chan *BamReaderType2) {
 // two reads is marked as duplicate, then the result is marked as duplicate.
 // The mapping quality of the result is the minimum quality of the two reads.
 // Any paired end reads that are not properly paired are ignored
-func (reader *BamReader) ReadSimple(joinPairs bool) ReadChannel {
+func (reader *BamReader) ReadSimple(joinPairs, pairedEndStrandSpecific bool) ReadChannel {
   // force parsing cigars
   reader.Options.ReadCigar = true
   channel := make(chan Read)
@@ -795,6 +795,13 @@ func (reader *BamReader) ReadSimple(joinPairs bool) ReadChannel {
         strand    := byte('*')
         mapq      := 0
         duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()
+        if pairedEndStrandSpecific {
+          if r.Block2.Flag.ReverseStrand() {
+            strand = '-'
+          } else {
+            strand = '+'
+          }
+        }
         if int(r.Block1.MapQ) < int(r.Block2.MapQ) {
           mapq = int(r.Block1.MapQ)
         } else {

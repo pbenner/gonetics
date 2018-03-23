@@ -796,10 +796,18 @@ func (reader *BamReader) ReadSimple(joinPairs, pairedEndStrandSpecific bool) Rea
         mapq      := 0
         duplicate := r.Block1.Flag.Duplicate() || r.Block2.Flag.Duplicate()
         if pairedEndStrandSpecific {
-          if r.Block2.Flag.ReverseStrand() {
-            strand = '-'
+          if r.Block1.Flag.SecondInPair() {
+            if r.Block1.Flag.ReverseStrand() {
+              strand = '-'
+            } else {
+              strand = '+'
+            }
           } else {
-            strand = '+'
+            if r.Block2.Flag.ReverseStrand() {
+              strand = '-'
+            } else {
+              strand = '+'
+            }
           }
         }
         if int(r.Block1.MapQ) < int(r.Block2.MapQ) {

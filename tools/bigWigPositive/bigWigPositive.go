@@ -113,23 +113,6 @@ func importLazyTrack(config Config, trackFilename string) (LazyTrackFile, error)
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
-/* -------------------------------------------------------------------------- */
-
 func findNearestRegions(config Config, r GRanges) GRanges {
   if config.Regions == "" {
     return r
@@ -354,7 +337,7 @@ func main() {
   config.KNearest = *optKNearest
   config.BinSize  = *optBinSize
   config.BinOver  = *optBinOver
-  config.BinStat  = getBinSummaryStatistics(*optBinStat)
+  config.BinStat  = BinSummaryStatisticsFromString(*optBinStat)
 
   filenameOut := options.Args()[0]
   filenameIn  := [] string{}

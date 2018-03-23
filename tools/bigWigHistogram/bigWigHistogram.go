@@ -46,23 +46,6 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
-/* -------------------------------------------------------------------------- */
-
 func track_histogram(config Config, filename string) {
   track := SimpleTrack{}
   PrintStderr(config, 1, "Importing track `%s'... ", filename)
@@ -115,7 +98,7 @@ func main() {
   }
   config.Bins       = *optBins
   config.BinSize    = *optBinSize
-  config.BinStat    = getBinSummaryStatistics(*optBinStat)
+  config.BinStat    = BinSummaryStatisticsFromString(*optBinStat)
   config.Cumulative = *optCumulative
   config.Verbose    = *optVerbose
 

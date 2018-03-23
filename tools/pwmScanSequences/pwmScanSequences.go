@@ -36,23 +36,6 @@ type Config struct {
   Verbose int
 }
 
-/* -------------------------------------------------------------------------- */
-
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
 /* i/o
  * -------------------------------------------------------------------------- */
 
@@ -190,7 +173,7 @@ func main() {
     os.Exit(1)
   }
   config.BinSize = *optBinSize
-  config.BinStat = getBinSummaryStatistics(*optBinStat)
+  config.BinStat = BinSummaryStatisticsFromString(*optBinStat)
   config.Threads = *optThreads
   config.Verbose = *optVerbose
   // check required arguments

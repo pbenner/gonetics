@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "log"
 import "math"
 
 /* -------------------------------------------------------------------------- */
@@ -39,6 +40,21 @@ func BinMax (sum, sumSquares, min, max, n float64) float64 {
 }
 func BinMin (sum, sumSquares, min, max, n float64) float64 {
   return min
+}
+
+func BinSummaryStatisticsFromString(str string) BinSummaryStatistics {
+  switch str {
+  case "mean":
+    return BinMean
+  case "discrete mean":
+    return BinDiscreteMean
+  case "min":
+    return BinMin
+  case "max":
+    return BinMax
+  }
+  log.Fatal("invalid bin summary statistics: %s", str)
+  return nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -164,7 +180,7 @@ func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int
       // set length to one
       read.Range.To = read.Range.From+1
       // add read
-      if err := (GenericMutableTrack{track1}).AddRead(read, 0, false); err == nil {
+      if err := (GenericMutableTrack{track1}).AddRead(read, 0); err == nil {
         readLength += uint64(read.Range.To - read.Range.From); n++
       }
     } else
@@ -175,7 +191,7 @@ func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int
       read.Range.From++
       read.Range.To  ++
       // add read
-      if err := (GenericMutableTrack{track2}).AddRead(read, 0, false); err == nil {
+      if err := (GenericMutableTrack{track2}).AddRead(read, 0); err == nil {
         readLength += uint64(read.Range.To - read.Range.From); n++
       }
     }

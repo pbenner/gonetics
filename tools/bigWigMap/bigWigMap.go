@@ -47,23 +47,6 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
-/* -------------------------------------------------------------------------- */
-
 func importTracks(config Config, filenames []string) []Track {
   tracks := make([]Track, len(filenames))
   for i, filename := range filenames {
@@ -155,7 +138,7 @@ func main() {
   config.Verbose = *optVerbose
   config.BinSize = *optBinSize
   config.BinOver = *optBinOver
-  config.BinStat = getBinSummaryStatistics(*optBinStat)
+  config.BinStat = BinSummaryStatisticsFromString(*optBinStat)
 
   filenamePlugin := options.Args()[0]
   filenameOutput := options.Args()[1]

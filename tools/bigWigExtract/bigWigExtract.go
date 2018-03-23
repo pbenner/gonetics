@@ -50,23 +50,6 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func getBinSummaryStatistics(str string) BinSummaryStatistics {
-  switch str {
-  case "mean":
-    return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
-  case "max":
-    return BinMax
-  }
-  log.Fatal("invalid bin summary statistics: %s", str)
-  return nil
-}
-
-/* -------------------------------------------------------------------------- */
-
 func importBed3(config Config, filename string) GRanges {
   granges := GRanges{}
   PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
@@ -213,7 +196,7 @@ func main() {
   config.Scientific = *optScientific
   config.BinSize    = *optBinSize
   config.BinOver    = *optBinOver
-  config.BinStat    = getBinSummaryStatistics(*optBinStat)
+  config.BinStat    = BinSummaryStatisticsFromString(*optBinStat)
 
   filenameBw  := options.Args()[0]
   filenameBed := options.Args()[1]

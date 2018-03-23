@@ -605,7 +605,7 @@ func main() {
   // read options
   optShiftReads        := options. StringLong("shift-reads",                0 , "", "shift reads on the positive strand by `x' bps and those on the negative strand by `y' bps [format: x,y]")
   optPairedAsSingleEnd := options.   BoolLong("paired-as-single-end",       0 ,     "treat paired as single end reads")
-  optPairedEndStrand   := options.   BoolLong("paired-end-strand-specific", 0 , "", "strand specific paired-end sequencing")
+  optPairedEndStrand   := options.   BoolLong("paired-end-strand-specific", 0 ,     "strand specific paired-end sequencing")
   // options for filterering reads
   optFilterStrand      := options. StringLong("filter-strand",              0 , "", "use reads on either the forward `+' or reverse `-' strand")
   optReadLength        := options. StringLong("filter-read-lengths",        0 , "", "feasible range of read-lengths [format: min:max]")

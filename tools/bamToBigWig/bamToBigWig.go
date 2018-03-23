@@ -214,7 +214,7 @@ func filterStrand(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d reads not on strand %v (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
+    PrintStderr(config, 1, "Filtered out %d reads not on strand %c (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
     close(chanOut)
   }()
   return chanOut

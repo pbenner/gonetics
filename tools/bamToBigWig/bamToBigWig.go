@@ -465,9 +465,9 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
     }
 
     // first round of filtering
-    treatment = filterPairedAsSingleEnd(config, treatment)
     treatment = filterPairedEnd(config, treatment)
     treatment = filterSingleEnd(config, false, treatment)
+    treatment = filterPairedAsSingleEnd(config, treatment)
     treatment = filterReadLength(config, treatment)
     treatment = filterDuplicates(config, treatment)
     treatment = filterMapQ(config, treatment)
@@ -516,9 +516,9 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
       }
 
       // first round of filtering
-      control = filterPairedAsSingleEnd(config, control)
       control = filterPairedEnd(config, control)
       control = filterSingleEnd(config, false, control)
+      control = filterPairedAsSingleEnd(config, control)
       control = filterReadLength(config, control)
       control = filterDuplicates(config, control)
       control = filterMapQ(config, control)

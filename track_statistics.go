@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-import "log"
 import "math"
 
 /* -------------------------------------------------------------------------- */
@@ -65,7 +64,6 @@ func BinSummaryStatisticsFromString(str string) BinSummaryStatistics {
   case "variance":
     return BinVariance
   }
-  log.Fatal("invalid bin summary statistics: %s", str)
   return nil
 }
 

@@ -154,7 +154,9 @@ func filterPairedEnd(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d unpaired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d unpaired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut
@@ -174,7 +176,9 @@ func filterSingleEnd(config Config, veto bool, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d paired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d paired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut
@@ -194,7 +198,9 @@ func filterDuplicates(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d duplicates (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d duplicates (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut
@@ -214,7 +220,9 @@ func filterStrand(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d reads not on strand %c (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d reads not on strand %c (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut
@@ -234,7 +242,9 @@ func filterMapQ(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d reads with mapping quality lower than %d (%.2f%%)\n", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d reads with mapping quality lower than %d (%.2f%%)\n", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut
@@ -256,7 +266,9 @@ func filterReadLength(config Config, chanIn ReadChannel) ReadChannel {
       }
       n++
     }
-    PrintStderr(config, 1, "Filtered out %d reads with non-admissible length (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    if n != 0 {
+      PrintStderr(config, 1, "Filtered out %d reads with non-admissible length (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+    }
     close(chanOut)
   }()
   return chanOut

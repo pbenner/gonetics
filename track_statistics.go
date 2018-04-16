@@ -29,29 +29,41 @@ type BinSummaryStatistics func(sum, sumSquares, min, max, n float64) float64
 func BinMean(sum, sumSquares, min, max, n float64) float64 {
   return sum/n
 }
-func BinDiscreteMean(sum, sumSquares, min, max, n float64) float64 {
-  return math.Floor(sum/n + 0.5)
-}
-func BinVariance(sum, sumSquares, min, max, n float64) float64 {
-  return sumSquares/n - sum/n*sum/n
-}
 func BinMax (sum, sumSquares, min, max, n float64) float64 {
   return max
 }
 func BinMin (sum, sumSquares, min, max, n float64) float64 {
   return min
 }
+func BinDiscreteMean(sum, sumSquares, min, max, n float64) float64 {
+  return math.Floor(sum/n + 0.5)
+}
+func BinDiscreteMax (sum, sumSquares, min, max, n float64) float64 {
+  return math.Floor(max)
+}
+func BinDiscreteMin (sum, sumSquares, min, max, n float64) float64 {
+  return math.Floor(min)
+}
+func BinVariance(sum, sumSquares, min, max, n float64) float64 {
+  return sumSquares/n - sum/n*sum/n
+}
 
 func BinSummaryStatisticsFromString(str string) BinSummaryStatistics {
   switch str {
   case "mean":
     return BinMean
-  case "discrete mean":
-    return BinDiscreteMean
-  case "min":
-    return BinMin
   case "max":
     return BinMax
+  case "min":
+    return BinMin
+  case "discrete mean":
+    return BinDiscreteMean
+  case "discrete max":
+    return BinDiscreteMax
+  case "discrete min":
+    return BinDiscreteMin
+  case "variance":
+    return BinVariance
   }
   log.Fatal("invalid bin summary statistics: %s", str)
   return nil

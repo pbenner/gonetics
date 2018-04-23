@@ -211,25 +211,25 @@ func (meta1 Meta) Append(meta2 Meta) Meta {
   m1 := meta1.Clone()
   m2 := meta2.Clone()
 
-  for j := 0; j < m1.MetaLength(); j++ {
+  for j := 0; j < m2.MetaLength(); j++ {
     var t interface{}
 
-    name := m1.MetaName[j]
-    dat1 := m1.MetaData[j]
-    dat2 := m2.GetMeta(name)
+    name := m2.MetaName[j]
+    dat1 := m1.GetMeta(name)
+    dat2 := m2.MetaData[j]
 
-    if dat2 != nil {
-      switch v := dat1.(type) {
-      case [][]string:  t = append(v, dat2.([][]string)...)
-      case [][]int:     t = append(v, dat2.([][]int)...)
-      case [][]float64: t = append(v, dat2.([][]float64)...)
-      case   []string:  t = append(v, dat2.(  []string)...)
-      case   []int:     t = append(v, dat2.(  []int)...)
-      case   []float64: t = append(v, dat2.(  []float64)...)
-      case   []Range:   t = append(v, dat2.(  []Range)...)
-      }
-      result.AddMeta(name, t)
+    switch v := dat1.(type) {
+    case [][]string:  t = append(v, dat2.([][]string)...)
+    case [][]int:     t = append(v, dat2.([][]int)...)
+    case [][]float64: t = append(v, dat2.([][]float64)...)
+    case   []string:  t = append(v, dat2.(  []string)...)
+    case   []int:     t = append(v, dat2.(  []int)...)
+    case   []float64: t = append(v, dat2.(  []float64)...)
+    case   []Range:   t = append(v, dat2.(  []Range)...)
+    default:
+      t = dat2
     }
+    result.AddMeta(name, t)
   }
   return result
 }

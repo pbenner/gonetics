@@ -4,6 +4,8 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 
 ### Tools
 
+Executables are available [here](https://github.com/pbenner/gonetics-tools).
+
 | Tool                    | Description                                                              |
 | ----------------------- | ------------------------------------------------------------------------ |
 | bamCheckBin             | check bin records of a bam file                                          |

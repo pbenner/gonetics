@@ -224,6 +224,10 @@ func (g *GRanges) ReadBed3(r io.Reader) error {
     if len(fields) == 0 {
       continue
     }
+    // drop any track lines
+    if fields[0] == "track" {
+      continue
+    }
     if len(fields) < 3 {
       return fmt.Errorf("ReadBed3(): Bed file must have at least 3 columns")
     }
@@ -279,6 +283,10 @@ func (g *GRanges) ReadBed6(r io.Reader) error {
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
+      continue
+    }
+    // drop any track lines
+    if fields[0] == "track" {
       continue
     }
     if len(fields) < 6 {
@@ -350,6 +358,10 @@ func (g *GRanges) ReadBed9(r io.Reader) error {
   for scanner.Scan() {
     fields := strings.Fields(scanner.Text())
     if len(fields) == 0 {
+      continue
+    }
+    // drop any track lines
+    if fields[0] == "track" {
       continue
     }
     if len(fields) < 6 {

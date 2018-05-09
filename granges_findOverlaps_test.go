@@ -64,8 +64,11 @@ func TestOverlaps1(t *testing.T) {
 
   queryHits, subjectHits := FindOverlaps(rQuery, rSubjects)
 
-  if   queryHits[0] != 1 ||   queryHits[1] != 2 ||   queryHits[2] != 3 ||   queryHits[3] != 4 ||   queryHits[4] != 5 ||
-    (subjectHits[0] != 0 || subjectHits[1] != 1 || subjectHits[2] != 2 || subjectHits[3] != 3 || subjectHits[4] != 3) {
+  if len(queryHits) != 3 {
+    t.Error("TestOverlaps1 failed!")
+  }
+  if   queryHits[0] != 1 ||   queryHits[1] != 2 ||   queryHits[2] != 3 ||
+    (subjectHits[0] != 0 || subjectHits[1] != 1 || subjectHits[2] != 2) {
     t.Error("TestOverlaps1 failed!")
   }
 }
@@ -85,8 +88,11 @@ func TestOverlaps2(t *testing.T) {
 
   queryHits, subjectHits := FindOverlaps(rQuery, rSubjects)
 
-  if   queryHits[0] != 0 ||   queryHits[1] != 0 ||   queryHits[2] != 0 ||   queryHits[3] != 0 ||   queryHits[4] != 1 ||
-    (subjectHits[0] != 0 || subjectHits[1] != 1 || subjectHits[2] != 2 || subjectHits[3] != 3 || subjectHits[4] != 0) {
+  if len(queryHits) != 4 {
+    t.Error("TestOverlaps1 failed!")
+  }
+  if   queryHits[0] != 0 ||   queryHits[1] != 0 ||   queryHits[2] != 0 ||   queryHits[3] != 1 ||
+    (subjectHits[0] != 0 || subjectHits[1] != 1 || subjectHits[2] != 2 || subjectHits[3] != 0) {
     t.Error("TestOverlaps2 failed!")
   }
 }

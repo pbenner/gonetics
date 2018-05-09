@@ -151,7 +151,7 @@ func FindOverlaps(query, subject GRanges) ([]int, []int) {
   // fill map
   for i := 0; i < n; i++ {
     start := endPoint{query.Ranges[i].From,  nil, nil, i, true}
-    end   := endPoint{query.Ranges[i].To, &start, nil, i, true}
+    end   := endPoint{query.Ranges[i].To-1, &start, nil, i, true}
     entry := rmap[query.Seqnames[i]]
     entry  = append(entry, start)
     entry  = append(entry, end)
@@ -159,7 +159,7 @@ func FindOverlaps(query, subject GRanges) ([]int, []int) {
   }
   for i := 0; i < m; i++ {
     start := endPoint{subject.Ranges[i].From,  nil, nil, i, false}
-    end   := endPoint{subject.Ranges[i].To, &start, nil, i, false}
+    end   := endPoint{subject.Ranges[i].To-1, &start, nil, i, false}
     entry := rmap[subject.Seqnames[i]]
     entry  = append(entry, start)
     entry  = append(entry, end)

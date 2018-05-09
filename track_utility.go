@@ -374,7 +374,7 @@ func (track1 GenericMutableTrack) Map(track2 Track, f func(string, int, float64)
         return err
       }
       if seq1.NBins() != seq2.NBins() {
-        return fmt.Errorf("sequence lengths do not match for `%d'", name)
+        return fmt.Errorf("sequence lengths do not match for `%s'", name)
       }
       for i := 0; i < seq2.NBins(); i++ {
         seq1.SetBin(i, f(name, i*binSize, seq2.AtBin(i)))
@@ -424,7 +424,7 @@ func (track1 GenericMutableTrack) WindowMap(track2 Track, windowSize int, f func
         return err
       }
       if seq1.NBins() != seq2.NBins() {
-        return fmt.Errorf("sequence lengths do not match for `%d'", name)
+        return fmt.Errorf("sequence lengths do not match for `%s'", name)
       }
       for i := 0; i < seq2.NBins(); i++ {
         // fill v slice

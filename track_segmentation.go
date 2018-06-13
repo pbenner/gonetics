@@ -154,17 +154,17 @@ func importSegmentation(filename string) (GRanges, error) {
   }
 }
 
-func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (Track, map[string]int, error) {
+func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (map[string]int, error) {
   var s TrackMutableSequence
   if r, err := importSegmentation(bedFilename); err != nil {
-    return nil, nil, err
+    return nil, err
   } else {
     binSize  := track.GetBinSize()
     states   := r.GetMetaStr("name")
     stateMap := make(map[string]int)
 
     if len(states) != r.Length() {
-      return nil, nil, fmt.Errorf("invalid segmentation bed file: name column is missing")
+      return nil, fmt.Errorf("invalid segmentation bed file: name column is missing")
     }
     for i := 0; i < r.Length(); i++ {
       seqname := r.Seqnames[i]
@@ -172,7 +172,7 @@ func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (Track, 
       to      := r.Ranges  [i].To
       if i == 0 || r.Seqnames[i-1] != r.Seqnames[i] {
         if s_, err := track.GetMutableSequence(seqname); err != nil {
-          return nil, nil, err
+          return nil, err
         } else {
           s = s_
         }
@@ -191,6 +191,6 @@ func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (Track, 
         s.Set(k, float64(stateIdx))
       }
     }
-    return track, stateMap, nil
+    return stateMap, nil
   }
 }

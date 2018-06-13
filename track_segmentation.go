@@ -154,7 +154,7 @@ func importSegmentation(filename string) (GRanges, error) {
   }
 }
 
-func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (map[string]int, error) {
+func (track GenericMutableTrack) ImportSegmentation(bedFilename string) ([]string, error) {
   var s TrackMutableSequence
   if r, err := importSegmentation(bedFilename); err != nil {
     return nil, err
@@ -191,6 +191,10 @@ func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (map[str
         s.Set(k, float64(stateIdx))
       }
     }
-    return stateMap, nil
+    stateNames := make([]string, len(stateMap))
+    for name, i := range stateMap {
+      stateNames[i] = name
+    }
+    return stateNames, nil
   }
 }

@@ -123,7 +123,7 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
 
 /* -------------------------------------------------------------------------- */
 
-func importTrackSegmentation(filename string) (GRanges, error) {
+func importSegmentation(filename string) (GRanges, error) {
   var r io.Reader
   var g GRanges
   // open file
@@ -154,9 +154,9 @@ func importTrackSegmentation(filename string) (GRanges, error) {
   }
 }
 
-func (track GenericMutableTrack) ImportTrackSegmentation(bedFilename string) (Track, map[string]int, error) {
+func (track GenericMutableTrack) ImportSegmentation(bedFilename string) (Track, map[string]int, error) {
   var s TrackMutableSequence
-  if r, err := importTrackSegmentation(bedFilename); err != nil {
+  if r, err := importSegmentation(bedFilename); err != nil {
     return nil, nil, err
   } else {
     binSize  := track.GetBinSize()

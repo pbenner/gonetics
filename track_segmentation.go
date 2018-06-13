@@ -26,7 +26,6 @@ import   "compress/gzip"
 import   "io"
 import   "io/ioutil"
 import   "os"
-import   "strconv"
 
 /* -------------------------------------------------------------------------- */
 
@@ -155,15 +154,17 @@ func importTrackSegmentation(filename string) (GRanges, error) {
   }
 }
 
-func (track GenericMutableTrack) ImportTrackSegmentation(bedFilename string, binSize int, stateMap map[string]int) (Track, error) {
+func (track GenericMutableTrack) ImportTrackSegmentation(bedFilename string) (Track, map[string]int, error) {
   var s TrackMutableSequence
   if r, err := importTrackSegmentation(bedFilename); err != nil {
-    return nil, err
+    return nil, nil, err
   } else {
-    states := r.GetMetaStr("name")
+    binSize  := track.GetBinSize()
+    states   := r.GetMetaStr("name")
+    stateMap := make(map[string]int)
 
     if len(states) != r.Length() {
-      return nil, fmt.Errorf("invalid segmentation bed file: name column is missing")
+      return nil, nil, fmt.Errorf("invalid segmentation bed file: name column is missing")
     }
     for i := 0; i < r.Length(); i++ {
       seqname := r.Seqnames[i]
@@ -171,31 +172,25 @@ func (track GenericMutableTrack) ImportTrackSegmentation(bedFilename string, bin
       to      := r.Ranges  [i].To
       if i == 0 || r.Seqnames[i-1] != r.Seqnames[i] {
         if s_, err := track.GetMutableSequence(seqname); err != nil {
-          return nil, err
+          return nil, nil, err
         } else {
           s = s_
         }
       }
-      if stateMap == nil {
-        for k := from; k < to; k += binSize {
-          if len(states[i]) <= 1 {
-            return nil, fmt.Errorf("invalid state at line %d", i+2)
-          }
-          value, err := strconv.ParseInt(states[i][1:], 10, 64); if err != nil {
-            return nil, err
-          }
-          s.Set(k, float64(value))
-        }
+      stateIdx := -1
+      // generate new state idx if this state name was observed
+      // for the first time
+      if i, ok := stateMap[states[i]]; ok {
+        stateIdx = i
       } else {
-        for k := from; k < to; k += binSize {
-          if value, ok := stateMap[states[i]]; !ok {
-            return nil, fmt.Errorf("state `%s' not found in state map", states[i])
-          } else {
-            s.Set(k, float64(value))
-          }
-        }
+        stateIdx = len(stateMap)
+        stateMap[states[i]] = stateIdx
+      }
+
+      for k := from; k < to; k += binSize {
+        s.Set(k, float64(stateIdx))
       }
     }
-    return track, nil
+    return track, stateMap, nil
   }
 }

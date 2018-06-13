@@ -180,8 +180,8 @@ func (track GenericMutableTrack) ImportSegmentation(bedFilename string) ([]strin
       stateIdx := -1
       // generate new state idx if this state name was observed
       // for the first time
-      if i, ok := stateMap[states[i]]; ok {
-        stateIdx = i
+      if k, ok := stateMap[states[i]]; ok {
+        stateIdx = k
       } else {
         stateIdx = len(stateMap)
         stateMap[states[i]] = stateIdx

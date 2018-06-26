@@ -9,6 +9,7 @@ SUBDIRS = \
 	tools/bigWigExtract \
 	tools/bigWigExtractChroms \
 	tools/bigWigGenome \
+	tools/bigWigHistogram \
 	tools/bigWigMap \
 	tools/bigWigNil \
 	tools/bigWigPositive \

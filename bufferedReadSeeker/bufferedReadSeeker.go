@@ -64,7 +64,7 @@ func (reader *BufferedReadSeeker) Read(p []byte) (n int, err error) {
     reader.offset    = 0
     return reader.reader.Read(p)
   } else {
-    if k := int64(len(p)); k < reader.bufsize - reader.offset {
+    if k := int64(len(p)); k <= reader.bufsize - reader.offset {
       // buffer contains requested bytes
       copy(p, reader.buffer[reader.offset:reader.offset+k])
       reader.offset += k
@@ -106,4 +106,18 @@ func (reader *BufferedReadSeeker) Seek(offset int64, whence int) (int64, error) 
     }
     return reader.position+reader.offset, err
   }
+}
+
+func (reader *BufferedReadSeeker) SetBufSize(n int) error {
+  if n <= 0 {
+    return fmt.Errorf("invalid buffer size")
+  }
+  if n <= len(reader.buffer) {
+    reader.buffer = reader.buffer[0:n]
+  } else {
+    reader.buffer = make([]byte, n)
+  }
+  reader.bufsize = 0
+  reader.offset  = 0
+  return nil
 }

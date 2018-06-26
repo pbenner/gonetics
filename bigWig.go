@@ -27,6 +27,8 @@ import "regexp"
 import "sort"
 import "strings"
 
+import . "github.com/pbenner/gonetics/bufferedReadSeeker"
+
 /* -------------------------------------------------------------------------- */
 
 const BIGWIG_MAGIC = 0x888FFC26
@@ -58,7 +60,10 @@ func NewBigWigFile() *BigWigFile {
   return &BigWigFile{bbiFile}
 }
 
-func (bwf *BigWigFile) Open(reader io.ReadSeeker) error {
+func (bwf *BigWigFile) Open(reader_ io.ReadSeeker) error {
+  reader, err := NewBufferedReadSeeker(reader_, 1024); if err != nil {
+    return err
+  }
   // parse header
   if order, err := bwf.Header.Read(reader, BIGWIG_MAGIC); err != nil {
     return err
@@ -75,23 +80,7 @@ func (bwf *BigWigFile) Open(reader io.ReadSeeker) error {
   if err := bwf.ChromData.Read(reader, bwf.Order); err != nil {
     return err
   }
-  // parse data index
-  if _, err := reader.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
-    return err
-  }
-  if err := bwf.Index.Read(reader, bwf.Order); err != nil {
-    return err
-  }
-  // parse zoom level indices
   bwf.IndexZoom = make([]RTree, bwf.Header.ZoomLevels)
-  for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
-    if _, err := reader.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
-      return err
-    }
-    if err := bwf.IndexZoom[i].Read(reader, bwf.Order); err != nil {
-      return err
-    }
-  }
   return nil
 }
 

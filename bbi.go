@@ -31,6 +31,8 @@ import "encoding/binary"
 import "io"
 import "io/ioutil"
 
+import . "github.com/pbenner/gonetics/bufferedReadSeeker"
+
 /* -------------------------------------------------------------------------- */
 
 const CIRTREE_MAGIC = 0x78ca8c91
@@ -1109,6 +1111,10 @@ func NewRTree() *RTree {
   return &tree
 }
 
+func (tree *RTree) IsNil() bool {
+  return tree.BlockSize == 0
+}
+
 func (tree *RTree) Read(file io.ReadSeeker, order binary.ByteOrder) error {
 
   var magic uint32
@@ -2133,10 +2139,79 @@ func NewBbiFile() *BbiFile {
   return bwf
 }
 
+/* -------------------------------------------------------------------------- */
+
+func (bwf *BbiFile) estimateSize(offset int64, init int) int {
+  // initial guess
+  n := int64(^uint64(0) >> 1)
+  // compare with ct offset
+  if k := int64(bwf.Header.CtOffset); offset < k && k < n {
+    n = k
+  }
+  // compare with data offset
+  if k := int64(bwf.Header.DataOffset); offset < k && k < n {
+    n = k
+  }
+  // compare with index offset
+  if k := int64(bwf.Header.IndexOffset); offset < k && k < n {
+    n = k
+  }
+  // compare with zoom index offset
+  for i := 0; i < int(bwf.Header.ZoomLevels); i++ {
+    if k := int64(bwf.Header.ZoomHeaders[i].IndexOffset); offset < k && k < n {
+      n = k
+    }
+    if k := int64(bwf.Header.ZoomHeaders[i].DataOffset); offset < k && k < n {
+      n = k
+    }
+  }
+  if n == int64(^uint64(0) >> 1) {
+    return init
+  } else {
+    return int(n - offset)
+  }
+}
+
+func (bwf *BbiFile) ReadIndex(reader_ io.ReadSeeker) error {
+  n := bwf.estimateSize(int64(bwf.Header.IndexOffset), 1024)
+
+  reader, err := NewBufferedReadSeeker(reader_, n); if err != nil {
+    return err
+  }
+  if _, err := reader.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
+    return err
+  }
+  if err := bwf.Index.Read(reader, bwf.Order); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BbiFile) ReadZoomIndex(reader_ io.ReadSeeker, i int) error {
+  n := bwf.estimateSize(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 1024)
+
+  reader, err := NewBufferedReadSeeker(reader_, n); if err != nil {
+    return err
+  }
+  if _, err := reader.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
+    return err
+  }
+  if err := bwf.IndexZoom[i].Read(reader, bwf.Order); err != nil {
+    return err
+  }
+  return nil
+}
+
 /* query interface
  * -------------------------------------------------------------------------- */
 
 func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, done chan bool, zoomIdx, chromId, from, to, binSize int) bool {
+  if bwf.IndexZoom[zoomIdx].IsNil() {
+    if err := bwf.ReadZoomIndex(reader, zoomIdx); err != nil {
+      channel <- BbiQueryType{Error: err}
+      return false
+    }
+  }
   traverser := NewRTreeTraverser(&bwf.IndexZoom[zoomIdx], chromId, from, to)
   result    := NewBbiQueryType(func() {
     done <- true
@@ -2191,6 +2266,12 @@ func (bwf *BbiFile) queryZoom(reader io.ReadSeeker, channel chan BbiQueryType, d
 }
 
 func (bwf *BbiFile) queryRaw(reader io.ReadSeeker, channel chan BbiQueryType, done chan bool, chromId, from, to, binSize int) bool {
+  if bwf.Index.IsNil() {
+    if err := bwf.ReadIndex(reader); err != nil {
+      channel <- BbiQueryType{Error: err}
+      return false
+    }
+  }
   // no zoom level found, try raw data
   traverser := NewRTreeTraverser(&bwf.Index, chromId, from, to)
   result    := NewBbiQueryType(func() {

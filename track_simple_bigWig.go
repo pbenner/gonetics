@@ -53,7 +53,7 @@ func (track *SimpleTrack) ReadBigWig(reader io.ReadSeeker, name string, f BinSum
 }
 
 func (track *SimpleTrack) ImportBigWig(filename string, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
-  f, err := os.Open(filename)
+  f, err := OpenBigWigFile(filename)
   if err != nil {
     return err
   }

@@ -89,10 +89,12 @@ func extractTable(config Config, granges GRanges, filenameBw, filenameOut string
 
 func extractBigWig(config Config, granges GRanges, filenameBw, filenameOut string) {
   PrintStderr(config, 1, "Reading bigWig file `%s'... ", filenameBw)
-  f, err := os.Open(filenameBw)
+  f, err := OpenBigWigFile(filenameBw)
   if err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)
+  } else {
+    defer f.Close()
   }
   r, err := NewBigWigReader(f)
   if err != nil {

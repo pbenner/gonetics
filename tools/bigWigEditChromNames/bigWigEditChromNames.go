@@ -32,7 +32,7 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 func editChromNames(filename, regex, repl string, dryRun, verbose bool) {
-  bwf := new(BigWigFile)
+  bwf := new(BbiFile)
   {
     f, err := os.Open(filename); if err != nil {
       log.Fatal(err)
@@ -69,7 +69,7 @@ func editChromNames(filename, regex, repl string, dryRun, verbose bool) {
       if _, err := fptr.Seek(bwf.ChromData.PtrKeys[i], 0); err != nil {
         log.Fatal(err)
       }
-      if err := binary.Write(fptr, bwf.BbiFile.Order, bwf.ChromData.Keys[i]); err != nil {
+      if err := binary.Write(fptr, bwf.Order, bwf.ChromData.Keys[i]); err != nil {
         log.Fatal("writing new seqname failed:", err)
       }
     }

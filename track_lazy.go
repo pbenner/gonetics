@@ -126,7 +126,7 @@ type LazyTrackFile struct {
 }
 
 func (obj *LazyTrackFile) ImportBigWig(filename, name string, s BinSummaryStatistics, binSize, binOverlap int, init float64) error {
-  f, err := os.Open(filename)
+  f, err := OpenBigWigFile(filename)
   if err != nil {
     return err
   }

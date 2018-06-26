@@ -1,0 +1,3 @@
+[submodule "lib/seekinghttp"]
+	path = lib/seekinghttp
+	url = https://github.com/jeffallen/seekinghttp

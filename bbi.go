@@ -31,7 +31,7 @@ import "encoding/binary"
 import "io"
 import "io/ioutil"
 
-import . "github.com/pbenner/gonetics/bufferedReadSeeker"
+import "github.com/pbenner/gonetics/lib/bufferedReadSeeker"
 
 /* -------------------------------------------------------------------------- */
 
@@ -2175,7 +2175,7 @@ func (bwf *BbiFile) estimateSize(offset int64, init int) int {
 func (bwf *BbiFile) ReadIndex(reader_ io.ReadSeeker) error {
   n := bwf.estimateSize(int64(bwf.Header.IndexOffset), 1024)
 
-  reader, err := NewBufferedReadSeeker(reader_, n); if err != nil {
+  reader, err := bufferedReadSeeker.New(reader_, n); if err != nil {
     return err
   }
   if _, err := reader.Seek(int64(bwf.Header.IndexOffset), 0); err != nil {
@@ -2190,7 +2190,7 @@ func (bwf *BbiFile) ReadIndex(reader_ io.ReadSeeker) error {
 func (bwf *BbiFile) ReadZoomIndex(reader_ io.ReadSeeker, i int) error {
   n := bwf.estimateSize(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 1024)
 
-  reader, err := NewBufferedReadSeeker(reader_, n); if err != nil {
+  reader, err := bufferedReadSeeker.New(reader_, n); if err != nil {
     return err
   }
   if _, err := reader.Seek(int64(bwf.Header.ZoomHeaders[i].IndexOffset), 0); err != nil {
@@ -2360,4 +2360,105 @@ func (bwf *BbiFile) Query(reader io.ReadSeeker, chromId, from, to, binSize int) 
     bwf.query(reader, channel, done, chromId, from, to, binSize)
   }()
   return channel
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (bwf *BbiFile) Open(reader_ io.ReadSeeker) error {
+  reader, err := bufferedReadSeeker.New(reader_, 1024); if err != nil {
+    return err
+  }
+  // parse header
+  if order, err := bwf.Header.Read(reader, BIGWIG_MAGIC); err != nil {
+    return err
+  } else {
+    bwf.Order = order
+  }
+  if bwf.Header.Magic != BIGWIG_MAGIC {
+    return fmt.Errorf("not a BigWig file")
+  }
+  // parse chromosome list, which is represented as a tree
+  if _, err := reader.Seek(int64(bwf.Header.CtOffset), 0); err != nil {
+    return err
+  }
+  if err := bwf.ChromData.Read(reader, bwf.Order); err != nil {
+    return err
+  }
+  bwf.IndexZoom = make([]RTree, bwf.Header.ZoomLevels)
+  return nil
+}
+
+func (bwf *BbiFile) Create(writer io.WriteSeeker) error {
+  // write header
+  if err := bwf.Header.Write(writer, bwf.Order); err != nil {
+    return err
+  }
+  // data starts here
+  if offset, err := writer.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.DataOffset = uint64(offset)
+  }
+  // update offsets
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
+    return err
+  }
+  // write number of blocks (zero at the moment)
+  if err := binary.Write(writer, binary.LittleEndian, uint64(0)); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BbiFile) WriteChromList(writer io.WriteSeeker) error {
+  // write chromosome list
+  if offset, err := writer.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.CtOffset = uint64(offset)
+  }
+  if err := bwf.ChromData.Write(writer, bwf.Order); err != nil {
+    return err
+  }
+  // update offsets
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BbiFile) WriteIndex(writer io.WriteSeeker) error {
+  // write data index offset
+  if offset, err := writer.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.IndexOffset = uint64(offset)
+  }
+  // write data index
+  if err := bwf.Index.Write(writer, bwf.Order); err != nil {
+    return err
+  }
+  // update offsets
+  if err := bwf.Header.WriteOffsets(writer, bwf.Order); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (bwf *BbiFile) WriteIndexZoom(writer io.WriteSeeker, i int) error {
+  // write data index offset
+  if offset, err := writer.Seek(0, 1); err != nil {
+    return err
+  } else {
+    bwf.Header.ZoomHeaders[i].IndexOffset = uint64(offset)
+  }
+  // write data index
+  if err := bwf.IndexZoom[i].Write(writer, bwf.Order); err != nil {
+    return err
+  }
+  // update offsets
+  if err := bwf.Header.ZoomHeaders[i].WriteOffsets(writer, bwf.Order); err != nil {
+    return err
+  }
+  return nil
 }

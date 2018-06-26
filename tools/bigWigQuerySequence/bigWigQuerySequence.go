@@ -31,7 +31,7 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 func query(filenameIn, chrom string, from, to, binSize, binOverlap int, summary BinSummaryStatistics, verbose bool) {
-  f, err := os.Open(filenameIn); if err != nil {
+  f, err := OpenBigWigFile(filenameIn); if err != nil {
     log.Fatal(err)
   }
   defer f.Close()

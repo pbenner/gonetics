@@ -33,7 +33,7 @@ type BufferedReadSeeker struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewBufferedReadSeeker(reader io.ReadSeeker, bufsize int) (*BufferedReadSeeker, error) {
+func New(reader io.ReadSeeker, bufsize int) (*BufferedReadSeeker, error) {
   if bufsize <= 0 {
     return nil, fmt.Errorf("invalid buffer size")
   }

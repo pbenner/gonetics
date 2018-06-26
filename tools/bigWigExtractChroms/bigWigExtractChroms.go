@@ -35,7 +35,7 @@ func divIntUp(a, b int) int {
 }
 
 func extract(chromNames []string, filenameIn, filenameOut string, verbose bool) {
-  f, err := os.Open(filenameIn); if err != nil {
+  f, err := OpenBigWigFile(filenameIn); if err != nil {
     log.Fatal(err)
   }
   defer f.Close()

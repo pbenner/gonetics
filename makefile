@@ -10,6 +10,7 @@ SUBDIRS = \
 	tools/bigWigExtractChroms \
 	tools/bigWigGenome \
 	tools/bigWigMap \
+	tools/bigWigNil \
 	tools/bigWigPositive \
 	tools/bigWigQuantileNormalize \
 	tools/bigWigQuery \

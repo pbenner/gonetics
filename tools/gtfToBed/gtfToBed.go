@@ -21,7 +21,6 @@ package main
 import   "fmt"
 import   "log"
 import   "os"
-//import   "strconv"
 
 import   "github.com/pborman/getopt"
 
@@ -130,9 +129,16 @@ func gtfToBed(filenameIn, filenameOut, mergeBy string, verbose bool) {
 
   g := GRanges{}
   printMsg(verbose, "Reading gtf from file `%s'... ", filenameIn)
-  if err := g.ImportGTF(filenameIn, attrNames, attrTypes, attrDef); err != nil {
-    printMsg(verbose, "failed\n")
-    log.Fatal(err)
+  if filenameIn == "" {
+    if err := g.ReadGTF(os.Stdin, attrNames, attrTypes, attrDef); err != nil {
+      printMsg(verbose, "failed\n")
+      log.Fatal(err)
+    }
+  } else {
+    if err := g.ImportGTF(filenameIn, attrNames, attrTypes, attrDef); err != nil {
+      printMsg(verbose, "failed\n")
+      log.Fatal(err)
+    }
   }
   printMsg(verbose, "done\n")
 
@@ -149,9 +155,16 @@ func gtfToBed(filenameIn, filenameOut, mergeBy string, verbose bool) {
   }
 
   printMsg(verbose, "Writing result to file `%s'... ", filenameOut)
-  if err := g.ExportBed6(filenameOut, false); err != nil {
-    printMsg(verbose, "failed\n")
-    log.Fatal(err)
+  if filenameOut == "" {
+    if err := g.WriteBed6(os.Stdout); err != nil {
+      printMsg(verbose, "failed\n")
+      log.Fatal(err)
+    }
+  } else {
+    if err := g.ExportBed6(filenameOut, false); err != nil {
+      printMsg(verbose, "failed\n")
+      log.Fatal(err)
+    }
   }
   printMsg(verbose, "done\n")
 }
@@ -162,23 +175,26 @@ func main() {
   options := getopt.New()
   options.SetProgram(fmt.Sprintf("%s", os.Args[0]))
 
-  optHelp       := options.  BoolLong("help",        'h',     "print help")
-  optVerbose    := options.  BoolLong("verbose",     'v',     "be verbose")
-  optMergeBy    := options.StringLong("merge-by",     0 , "", "merge rows by optional attribut [e.g. transcript_id, gene_id, gene_name]")
+  optInput    := options.StringLong("input",        0 , "", "read input from file")
+  optOutput   := options.StringLong("output",       0 , "", "write output to file")
+  optMergeBy  := options.StringLong("merge-by",     0 , "", "merge rows by optional attribut [e.g. transcript_id, gene_id, gene_name]")
 
-  options.SetParameters("<input.gtf> <output.bed>")
+  optHelp     := options.  BoolLong("help",        'h',     "print help")
+  optVerbose  := options.  BoolLong("verbose",     'v',     "be verbose")
+
+  options.SetParameters("")
   options.Parse(os.Args)
 
   if *optHelp {
     options.PrintUsage(os.Stdout)
     os.Exit(0)
   }
-  if len(options.Args()) != 2 {
+  if len(options.Args()) != 0 {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  filenameIn  := options.Args()[0]
-  filenameOut := options.Args()[1]
+  filenameIn  := *optInput
+  filenameOut := *optOutput
 
   gtfToBed(filenameIn, filenameOut, *optMergeBy, *optVerbose)
 }

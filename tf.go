@@ -18,14 +18,16 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
-import "bufio"
-import "compress/gzip"
-import "math"
-import "io"
-import "os"
-import "strconv"
-import "strings"
+import   "fmt"
+import   "bufio"
+import   "compress/gzip"
+import   "math"
+import   "io"
+import   "os"
+import   "strconv"
+import   "strings"
+
+import . "github.com/pbenner/gonetics/lib/logarithmetic"
 
 /* -------------------------------------------------------------------------- */
 
@@ -194,5 +196,22 @@ func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
       result = tmp
     }
   }
+  return result
+}
+
+func (t PWM) MeanScore(sequence []byte, revcomp bool) float64 {
+  // number of positions where the pwm could fit
+  n := len(sequence)-t.Length()+1
+  // function for adding scanning results
+  f := func(a, b float64) float64 { return a+b }
+  // maximum score
+  result := math.Inf(-1)
+  // loop over sequence
+  for i := 0; i < n; i++ {
+    tmp, _ := t.TFMatrix.Score(sequence[i:i+t.Length()], revcomp, 0.0, f)
+    result  = LogAdd(result, tmp)
+  }
+  result -= math.Log(float64(n))
+
   return result
 }

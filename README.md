@@ -27,7 +27,8 @@ Executables are available [here](https://github.com/pbenner/gonetics-tools).
 | chromHmmTablesToBigWig  | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
 | drawGenomicRegions      | draw random genomic regions                                              |
 | gtfToBed                | convert GTF files to Bed6 format                                         |
-| pwmScanSequences        | scan sequences for pwm hits                                              |
+| pwmScanSequences        | scan sequences for PWM hits                                              |
+| pwmScanRegions          | scan regions for multiple PWMs                                           |
 
 ### GRanges
 

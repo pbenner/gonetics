@@ -21,7 +21,7 @@ SUBDIRS = \
 	tools/drawGenomicRegions \
 	tools/gtfToBed \
 	tools/pwmScanSequences \
-	tools/tfbsScan
+	tools/pwmScanRegions
 
 all:
 

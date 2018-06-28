@@ -131,9 +131,9 @@ func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, 
       // take the maximum
       counts[j] = math.Max(tmp1, tmp2)
     case "mean":
-      tmp1 := pwmList[j].MaxScore(sequence, true)
+      tmp1 := pwmList[j].MeanScore(sequence, true)
       // reverse complement
-      tmp2 := pwmList[j].MaxScore(sequence, false)
+      tmp2 := pwmList[j].MeanScore(sequence, false)
       // take the maximum
       counts[j] = math.Max(tmp1, tmp2)
     default:

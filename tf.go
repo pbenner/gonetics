@@ -203,7 +203,7 @@ func (t PWM) MeanScore(sequence []byte, revcomp bool) float64 {
   // function for adding scanning results
   f := func(a, b float64) float64 { return a+b }
   // maximum score
-  result := math.Inf(-1)
+  result := 0.0
   // loop over sequence
   for i := 0; i < n; i++ {
     tmp, _ := t.TFMatrix.Score(sequence[i:i+t.Length()], revcomp, 0.0, f)

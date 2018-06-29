@@ -103,6 +103,7 @@ func (t TFMatrix) Score(sequence []byte, revcomp bool, x0 float64, f func(float6
 
 /* -------------------------------------------------------------------------- */
 
+// Read a PWM matrix.
 func (t *TFMatrix) ReadMatrix(reader io.Reader) error {
 
   scanner := bufio.NewScanner(reader)
@@ -145,6 +146,7 @@ func (t *TFMatrix) ReadMatrix(reader io.Reader) error {
   return nil
 }
 
+// Read a PWM matrix from file.
 func (t *TFMatrix) ImportMatrix(filename string) error {
   var reader io.Reader
   // open file
@@ -175,12 +177,22 @@ type PWM struct {
   TFMatrix
 }
 
-func (t PWM) Score(sequence []byte, revcomp bool) (float64, error) {
+// Compute the PWM score for every position in the sequence.
+func (t PWM) Scores(sequence []byte, revcomp bool) []float64 {
+  // number of positions where the pwm could fit
+  n := len(sequence)-t.Length()+1; if n < 0 { n = 0 }
   // function for adding scanning results
   f := func(a, b float64) float64 { return a+b }
-  return t.TFMatrix.Score(sequence, revcomp, 0.0, f)
+  // maximum score
+  result := make([]float64, n)
+  // loop over sequence
+  for i := 0; i < n; i++ {
+    result[i], _ = t.TFMatrix.Score(sequence[i:i+t.Length()], revcomp, 0.0, f)
+  }
+  return result
 }
 
+// Compute the maximum PWM score in the sequence.
 func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1
@@ -197,6 +209,7 @@ func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
   return result
 }
 
+// Compute the mean of PWM scores along the sequence.
 func (t PWM) MeanScore(sequence []byte, revcomp bool) float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1

@@ -1,4 +1,4 @@
-/* Copyright (C) 2016-2017 Philipp Benner
+/* Copyright (C) 2016-2018 Philipp Benner
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ package main
 import   "fmt"
 import   "bufio"
 import   "log"
-import   "math"
 import   "path/filepath"
 import   "strconv"
 import   "strings"
@@ -38,66 +37,17 @@ import   "gonum.org/v1/plot/vg"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Verbose                 int
-  BWZoomLevels          []int
-  BinningMethod           string
-  BinSize                 int
-  BinOverlap              int
-  NormalizeTrack          string
-  ShiftReads           [2]int
-  PairedAsSingleEnd       bool
-  PairedEndStrandSpecific bool
-  LogScale                bool
-  Pseudocounts         [2]float64
-  FraglenRange         [2]int
-  FraglenBinSize          int
-  FilterChroms          []string
-  FilterMapQ              int
-  FilterReadLengths    [2]int
-  FilterDuplicates        bool
-  FilterStrand            byte
-  FilterPairedEnd         bool
-  FilterSingleEnd         bool
-  SmoothenControl         bool
-  SmoothenSizes         []int
-  SmoothenMin             float64
-  SaveFraglen             bool
-  SaveCrossCorr           bool
-  SaveCrossCorrPlot       bool
-}
-
-func DefaultConfig() Config {
-  config := Config{}
-  // set default values
-  config.BWZoomLevels            = nil   // zoom levels are determined automatically
-  config.BinningMethod           = "simple"
-  config.BinSize                 = 10
-  config.BinOverlap              = 0
-  config.PairedAsSingleEnd       = false
-  config.PairedEndStrandSpecific = false
-  config.FraglenRange            = [2]int{-1, -1}
-  config.FraglenBinSize          = 10
-  config.FilterReadLengths       = [2]int{0,0}
-  config.FilterMapQ              = 0
-  config.FilterDuplicates        = false
-  config.FilterStrand            = '*'
-  config.FilterPairedEnd         = false
-  config.FilterSingleEnd         = false
-  config.LogScale                = false
-  config.Pseudocounts            = [2]float64{0.0, 0.0}
-  config.SmoothenControl         = false
-  config.SmoothenSizes           = []int{}
-  config.SmoothenMin             = 20.0
-  config.SaveFraglen             = false
-  config.SaveCrossCorr           = false
-  config.SaveCrossCorrPlot       = false
-  return config
+  BWZoomLevels     []int
+  SaveFraglen        bool
+  SaveCrossCorr      bool
+  SaveCrossCorrPlot  bool
+  Verbose            int
 }
 
 /* i/o
  * -------------------------------------------------------------------------- */
 
-func PrintStderr(config Config, level int, format string, args ...interface{}) {
+func printStderr(config Config, level int, format string, args ...interface{}) {
   if config.Verbose >= level {
     fmt.Fprintf(os.Stderr, format, args...)
   }
@@ -120,187 +70,6 @@ func parseFilename(filename string) (string, int) {
   return filename, 0
 }
 
-/* read filters
- * -------------------------------------------------------------------------- */
-
-// treat all paired end reads as single end reads, this allows
-// to extend/crop paired end reads when adding them to the track
-// with AddReads()
-func filterPairedAsSingleEnd(config Config, chanIn ReadChannel) ReadChannel {
-  if config.PairedAsSingleEnd == false {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    for r := range chanIn {
-      r.PairedEnd = false; chanOut <- r
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterPairedEnd(config Config, chanIn ReadChannel) ReadChannel {
-  if config.FilterPairedEnd == false {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      if r.PairedEnd {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d unpaired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterSingleEnd(config Config, veto bool, chanIn ReadChannel) ReadChannel {
-  if config.FilterSingleEnd == false && !veto {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      if !r.PairedEnd {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d paired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterDuplicates(config Config, chanIn ReadChannel) ReadChannel {
-  if config.FilterDuplicates == false {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      if !r.Duplicate {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d duplicates (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterStrand(config Config, chanIn ReadChannel) ReadChannel {
-  if config.FilterStrand == '*' {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      if r.Strand == config.FilterStrand {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d reads not on strand %c (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterMapQ(config Config, chanIn ReadChannel) ReadChannel {
-  if config.FilterMapQ <= 0 {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      if r.MapQ >= config.FilterMapQ {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d reads with mapping quality lower than %d (%.2f%%)\n", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func filterReadLength(config Config, chanIn ReadChannel) ReadChannel {
-  if config.FilterReadLengths[0] == 0 && config.FilterReadLengths[1] == 0 {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    n := 0
-    m := 0
-    for r := range chanIn {
-      len := r.Range.To - r.Range.From
-      if len >= config.FilterReadLengths[0] &&
-        (len <= config.FilterReadLengths[1] || config.FilterReadLengths[1] == 0) {
-        chanOut <- r; m++
-      }
-      n++
-    }
-    if n != 0 {
-      PrintStderr(config, 1, "Filtered out %d reads with non-admissible length (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
-    }
-    close(chanOut)
-  }()
-  return chanOut
-}
-
-func shiftReads(config Config, chanIn ReadChannel) ReadChannel {
-  if config.ShiftReads[0] == 0 && config.ShiftReads[1] == 0 {
-    return chanIn
-  }
-  chanOut := make(chan Read)
-  go func() {
-    for r := range chanIn {
-      if r.Strand == '+' {
-        r.Range.From += config.ShiftReads[0]
-        r.Range.To   += config.ShiftReads[0]
-      } else
-      if r.Strand == '-' {
-        r.Range.From += config.ShiftReads[1]
-        r.Range.To   += config.ShiftReads[1]
-      }
-      if r.Range.From < 0 {
-        r.Range.To   -= r.Range.From
-        r.Range.From  = 0
-      }
-      chanOut <- r
-    }
-    PrintStderr(config, 1, "Shifted reads (forward strand: %d, reverse strand: %d)\n",
-      config.ShiftReads[0], config.ShiftReads[1])
-    close(chanOut)
-  }()
-  return chanOut
-}
 
 /* fragment length estimation
  * -------------------------------------------------------------------------- */
@@ -317,7 +86,7 @@ func saveFraglen(config Config, filename string, fraglen int) {
 
   fmt.Fprintf(f, "%d\n", fraglen)
 
-  PrintStderr(config, 1, "Wrote fragment length estimate to `%s'\n", filename)
+  printStderr(config, 1, "Wrote fragment length estimate to `%s'\n", filename)
 }
 
 func saveCrossCorr(config Config, filename string, x []int, y []float64) {
@@ -333,7 +102,7 @@ func saveCrossCorr(config Config, filename string, x []int, y []float64) {
   for i := 0; i < len(x); i++ {
     fmt.Fprintf(f, "%d %f\n", x[i], y[i])
   }
-  PrintStderr(config, 1, "Wrote crosscorrelation to `%s'\n", filename)
+  printStderr(config, 1, "Wrote crosscorrelation to `%s'\n", filename)
 }
 
 func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y []float64) {
@@ -382,225 +151,27 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
   if err := p.Save(8*vg.Inch, 4*vg.Inch, filename); err != nil {
     log.Fatal(err)
   }
-  PrintStderr(config, 1, "Wrote cross-correlation plot to `%s'\n", filename)
+  printStderr(config, 1, "Wrote cross-correlation plot to `%s'\n", filename)
 }
 
-func importFraglen(config Config, filename string, genome Genome) int {
+func importFraglen(config Config, filename string) int {
   // try reading the fragment length from file
   basename := strings.TrimRight(filename, filepath.Ext(filename))
   filename  = fmt.Sprintf("%s.fraglen.txt", basename)
   if f, err := os.Open(filename); err != nil {
-    return -1
+    return 0
   } else {
     defer f.Close()
-    PrintStderr(config, 1, "Reading fragment length from `%s'... ", filename)
+    printStderr(config, 1, "Reading fragment length from `%s'... ", filename)
     scanner := bufio.NewScanner(f)
     if scanner.Scan() {
       if fraglen, err := strconv.ParseInt(scanner.Text(), 10, 64); err == nil {
-        PrintStderr(config, 1, "done\n")
+        printStderr(config, 1, "done\n")
         return int(fraglen)
       }
     }
-    PrintStderr(config, 1, "failed\n")
-    return -1
-  }
-}
-
-func estimateFraglen(config Config, filename string, genome Genome) int {
-  var reads ReadChannel
-
-  PrintStderr(config, 1, "Reading tags from `%s'...\n", filename)
-  if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
-  } else {
-    defer bam.Close()
-    reads = bam.ReadSimple(false, false)
-  }
-
-  // first round of filtering
-  reads = filterSingleEnd(config, true, reads)
-  reads = filterReadLength(config, reads)
-  reads = filterDuplicates(config, reads)
-  reads = filterMapQ(config, reads)
-
-  // estimate fragment length
-  PrintStderr(config, 1, "Estimating mean fragment length...\n")
-  if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    if x != nil && y != nil && config.SaveCrossCorr {
-      saveCrossCorr(config, filename, x, y)
-    }
-    if x != nil && y != nil && config.SaveCrossCorrPlot {
-      saveCrossCorrPlot(config, filename, -1, x, y)
-    }
-    log.Fatalf("Estimating read length failed: %v", err)
+    printStderr(config, 1, "failed\n")
     return 0
-  } else {
-    PrintStderr(config, 1, "Estimated mean fragment length: %d\n", fraglen)
-
-    if config.SaveFraglen {
-      saveFraglen(config, filename, fraglen)
-    }
-    if config.SaveCrossCorr {
-      saveCrossCorr(config, filename, x, y)
-    }
-    if config.SaveCrossCorrPlot {
-      saveCrossCorrPlot(config, filename, fraglen, x, y)
-    }
-    return fraglen
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-
-func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, genome Genome) {
-
-  // treatment data
-  track1 := AllocSimpleTrack("treatment", genome, config.BinSize)
-
-  // number of reads
-  n_treatment := 0
-  n_control   := 0
-
-  for i, filename := range filenamesTreatment {
-    fraglen := fraglenTreatment[i]
-
-    var treatment ReadChannel
-    PrintStderr(config, 1, "Reading treatment tags from `%s'...\n", filename)
-    if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-      PrintStderr(config, 1, "failed\n")
-      log.Fatal(err)
-    } else {
-      defer bam.Close()
-      treatment = bam.ReadSimple(!config.PairedAsSingleEnd, config.PairedEndStrandSpecific)
-    }
-
-    // first round of filtering
-    treatment = filterPairedEnd(config, treatment)
-    treatment = filterSingleEnd(config, false, treatment)
-    treatment = filterPairedAsSingleEnd(config, treatment)
-    treatment = filterReadLength(config, treatment)
-    treatment = filterDuplicates(config, treatment)
-    treatment = filterMapQ(config, treatment)
-    // second round of filtering
-    treatment = filterStrand(config, treatment)
-    treatment = shiftReads(config, treatment)
-
-    n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, config.BinningMethod)
-  }
-  if config.NormalizeTrack == "rpkm" {
-    PrintStderr(config, 1, "Normalizing treatment track (rpkm)... ")
-    c := float64(1000000)/(float64(n_treatment)*float64(config.BinSize))
-    GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
-      return c*x
-    })
-    // adapt pseudocounts!
-    config.Pseudocounts[0] *= c
-    PrintStderr(config, 1, "done\n")
-  }
-  if config.NormalizeTrack == "cpm" {
-    PrintStderr(config, 1, "Normalizing treatment track (cpm)... ")
-    c := float64(1000000)/float64(n_treatment)
-    GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
-      return c*x
-    })
-    // adapt pseudocounts!
-    config.Pseudocounts[0] *= c
-    PrintStderr(config, 1, "done\n")
-  }
-
-  if len(filenamesControl) > 0 {
-    // control data
-    track2 := AllocSimpleTrack("control", genome, config.BinSize)
-
-    for i, filename := range filenamesControl {
-      fraglen  := fraglenControl[i]
-
-      var control ReadChannel
-      PrintStderr(config, 1, "Reading treatment tags from `%s'...\n", filename)
-      if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-        PrintStderr(config, 1, "failed\n")
-        log.Fatal(err)
-      } else {
-        defer bam.Close()
-        control = bam.ReadSimple(!config.PairedAsSingleEnd, config.PairedEndStrandSpecific)
-      }
-
-      // first round of filtering
-      control = filterPairedEnd(config, control)
-      control = filterSingleEnd(config, false, control)
-      control = filterPairedAsSingleEnd(config, control)
-      control = filterReadLength(config, control)
-      control = filterDuplicates(config, control)
-      control = filterMapQ(config, control)
-      // second round of filtering
-      control = filterStrand(config, control)
-      control = shiftReads(config, control)
-
-      n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, config.BinningMethod)
-    }
-    if config.NormalizeTrack == "rpkm" {
-      PrintStderr(config, 1, "Normalizing control track (rpkm)... ")
-      c := float64(1000000)/(float64(n_control)*float64(config.BinSize))
-      GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
-        return c*x
-      })
-      // adapt pseudocounts!
-      config.Pseudocounts[1] *= c
-      PrintStderr(config, 1, "done\n")
-    }
-    if config.NormalizeTrack == "cpm" {
-      PrintStderr(config, 1, "Normalizing control track (cpm)... ")
-      c := float64(1000000)/float64(n_control)
-      GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
-        return c*x
-      })
-      // adapt pseudocounts!
-      config.Pseudocounts[1] *= c
-      PrintStderr(config, 1, "done\n")
-    }
-    if config.SmoothenControl {
-      GenericMutableTrack{track2}.Smoothen(config.SmoothenMin, config.SmoothenSizes)
-    }
-    PrintStderr(config, 1, "Combining treatment and control tracks... ")
-    if err := (GenericMutableTrack{track1}).Normalize(track1, track2, config.Pseudocounts[0], config.Pseudocounts[1], config.LogScale); err != nil {
-      PrintStderr(config, 1, "failed\n")
-      log.Fatalf("normalizing track failed: %v", err)
-    }
-    PrintStderr(config, 1, "done\n")
-  } else {
-    // no control data
-    if config.Pseudocounts[0] != 0.0 {
-      PrintStderr(config, 1, "Adding pseudocount `%f'... ", config.Pseudocounts[0])
-      GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 { return x+config.Pseudocounts[0] })
-      PrintStderr(config, 1, "done\n")
-    }
-    if config.LogScale {
-      PrintStderr(config, 1, "Log-transforming data... ")
-      GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 { return math.Log(x) })
-      PrintStderr(config, 1, "done\n")
-    }
-  }
-  if len(config.FilterChroms) != 0 {
-    PrintStderr(config, 1, "Removing all reads from `%v'... ", config.FilterChroms)
-    for _, chr := range config.FilterChroms {
-      if s, err := track1.GetMutableSequence(chr); err == nil {
-        for i := 0; i < s.NBins(); i++ {
-          s.SetBin(i, 0.0)
-        }
-      }
-    }
-    PrintStderr(config, 1, "done\n")
-  }
-  PrintStderr(config, 1, "Writing track `%s'... ", filenameTrack)
-  parameters := DefaultBigWigParameters()
-  parameters.ReductionLevels = config.BWZoomLevels
-  if err := (GenericTrack{track1}).ExportBigWig(filenameTrack, parameters); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
-  } else {
-    PrintStderr(config, 1, "done\n")
   }
 }
 
@@ -608,8 +179,7 @@ func bamToBigWig(config Config, filenameTrack string, filenamesTreatment, filena
 
 func main() {
 
-  config := DefaultConfig()
-
+  config  := Config{}
   options := getopt.New()
 
   // bigWig options
@@ -655,6 +225,8 @@ func main() {
   options.SetParameters("<TREATMENT1.bam[:FRAGLEN],TREATMENT2.bam[:FRAGLEN],...> [<CONTROL1.bam[:FRAGLEN],CONTROL2.bam[:FRAGLEN],...>] <RESULT.bw>")
   options.Parse(os.Args)
 
+  optionsList := []interface{}{}
+
   // parse options
   //////////////////////////////////////////////////////////////////////////////
   if *optHelp {
@@ -663,6 +235,7 @@ func main() {
   }
   if *optVerbose != 0 {
     config.Verbose = *optVerbose
+    optionsList = append(optionsList, OptionLogger{log.New(os.Stderr, "", 0)})
   }
   if len(options.Args()) != 2 && len(options.Args()) != 3 {
     options.PrintUsage(os.Stderr)
@@ -673,7 +246,7 @@ func main() {
       options.PrintUsage(os.Stderr)
       os.Exit(1)
     } else {
-      config.BinSize = *optBinSize
+      optionsList = append(optionsList, OptionBinSize{*optBinSize})
     }
   }
   if *optBinningMethod != "" {
@@ -685,7 +258,7 @@ func main() {
     default:
       log.Fatal("invalid binning method `%s'", *optBinningMethod)
     }
-    config.BinningMethod = *optBinningMethod
+    optionsList = append(optionsList, OptionBinningMethod{*optBinningMethod})
   }
   if *optPseudocounts != "" {
     tmp := strings.Split(*optPseudocounts, ",")
@@ -701,8 +274,7 @@ func main() {
     if err != nil {
       log.Fatal(err)
     }
-    config.Pseudocounts[0] = t1
-    config.Pseudocounts[1] = t2
+    optionsList = append(optionsList, OptionPseudocounts{[2]float64{t1, t2}})
   }
   if *optReadLength != "" {
     tmp := strings.Split(*optReadLength, ":")
@@ -722,19 +294,20 @@ func main() {
       options.PrintUsage(os.Stderr)
       os.Exit(1)
     }
-    config.FilterReadLengths[0] = int(t1)
-    config.FilterReadLengths[1] = int(t2)
+    optionsList = append(optionsList, OptionFilterReadLengths{[2]int{int(t1), int(t2)}})
   }
   if *optFilterMapQ < 0 {
       options.PrintUsage(os.Stderr)
       os.Exit(1)
   } else {
-    config.FilterMapQ = *optFilterMapQ
+    optionsList = append(optionsList, OptionFilterMapQ{*optFilterMapQ})
   }
   if *optFilterStrand != "" {
     switch *optFilterStrand {
-    case "+": config.FilterStrand = '+'
-    case "-": config.FilterStrand = '-'
+    case "+":
+      optionsList = append(optionsList, OptionFilterStrand{'+'})
+    case "-":
+      optionsList = append(optionsList, OptionFilterStrand{'-'})
     default:
       options.PrintUsage(os.Stderr)
       os.Exit(1)
@@ -754,40 +327,41 @@ func main() {
     if err != nil {
       log.Fatal(err)
     }
-    config.ShiftReads[0] = int(t1)
-    config.ShiftReads[1] = int(t2)
+    optionsList = append(optionsList, OptionShiftReads{[2]int{int(t1), int(t2)}})
   }
   if *optSmoothenControl {
-    config.SmoothenControl = true
+    optionsList = append(optionsList, OptionSmoothenControl{true})
   }
   if *optSmoothenSizes != "" {
-    config.SmoothenSizes = []int{}
+    smoothenSizes := []int{}
     tmp := strings.Split(*optSmoothenSizes, ",")
     for i := 0; i < len(tmp); i++ {
       t, err := strconv.ParseInt(tmp[i], 10, 64)
       if err != nil {
         log.Fatal(err)
       }
-      config.SmoothenSizes = append(config.SmoothenSizes, int(t))
+      smoothenSizes = append(smoothenSizes, int(t))
     }
+    optionsList = append(optionsList, OptionSmoothenSizes{smoothenSizes})
   }
   if *optSmoothenMin != "" {
     t, err := strconv.ParseFloat(*optSmoothenMin, 64)
     if err != nil {
       log.Fatal(err)
     }
-    config.SmoothenMin = t
+    optionsList = append(optionsList, OptionSmoothenMin{t})
   }
   if *optBWZoomLevels != "" {
     tmp := strings.Split(*optBWZoomLevels, ",")
-    config.BWZoomLevels = []int{}
+    bwZoomLevels := []int{}
     for i := 0; i < len(tmp); i++ {
       if t, err := strconv.ParseInt(tmp[i], 10, 64); err != nil {
         log.Fatal(err)
       } else {
-        config.BWZoomLevels = append(config.BWZoomLevels, int(t))
+        bwZoomLevels = append(bwZoomLevels, int(t))
       }
     }
+    config.BWZoomLevels = bwZoomLevels
   }
   if *optNormalizeTrack != "" {
     switch strings.ToLower(*optNormalizeTrack) {
@@ -796,7 +370,7 @@ func main() {
     default:
       log.Fatal("invalid normalization method `%s'", *optNormalizeTrack)
     }
-    config.NormalizeTrack = strings.ToLower(*optNormalizeTrack)
+    optionsList = append(optionsList, OptionNormalizeTrack{strings.ToLower(*optNormalizeTrack)})
   }
   if *optFraglenRange != "" {
     tmp := strings.Split(*optFraglenRange, ":")
@@ -812,11 +386,10 @@ func main() {
     if err != nil {
       log.Fatalf("parsing fragment length range failed: %v", err)
     }
-    config.FraglenRange[0] = int(t1)
-    config.FraglenRange[1] = int(t2)
+    optionsList = append(optionsList, OptionFraglenRange{[2]int{int(t1), int(t2)}})
   }
   if *optFraglenBinSize > 0 {
-    config.FraglenBinSize = *optFraglenBinSize
+    optionsList = append(optionsList, OptionFraglenBinSize{*optFraglenBinSize})
   }
   if *optFilterPairedEnd && *optEstimateFraglen {
     log.Fatal("cannot estimate fragment length for paired end reads")
@@ -825,17 +398,18 @@ func main() {
     log.Fatal("cannot filter for paired and single end reads")
   }
   if *optFilterChroms != "" {
-    config.FilterChroms = strings.Split(*optFilterChroms, ",")
+    optionsList = append(optionsList, OptionFilterChroms{strings.Split(*optFilterChroms, ",")})
   }
-  config.LogScale                = *optLogScale
-  config.PairedAsSingleEnd       = *optPairedAsSingleEnd
-  config.PairedEndStrandSpecific = *optPairedEndStrand
-  config.FilterDuplicates        = *optFilterDuplicates
-  config.FilterPairedEnd         = *optFilterPairedEnd
-  config.FilterSingleEnd         = *optFilterSingleEnd
-  config.SaveFraglen             = *optSaveFraglen
-  config.SaveCrossCorr           = *optSaveCrossCorr
-  config.SaveCrossCorrPlot       = *optSaveCrossCorrPlot
+  optionsList = append(optionsList, OptionEstimateFraglen{*optEstimateFraglen})
+  optionsList = append(optionsList, OptionLogScale{*optLogScale})
+  optionsList = append(optionsList, OptionPairedAsSingleEnd{*optPairedAsSingleEnd})
+  optionsList = append(optionsList, OptionPairedEndStrandSpecific{*optPairedEndStrand})
+  optionsList = append(optionsList, OptionFilterDuplicates{*optFilterDuplicates})
+  optionsList = append(optionsList, OptionFilterPairedEnd{*optFilterPairedEnd})
+  optionsList = append(optionsList, OptionFilterSingleEnd{*optFilterSingleEnd})
+  config.SaveFraglen       = *optSaveFraglen
+  config.SaveCrossCorr     = *optSaveCrossCorr
+  config.SaveCrossCorrPlot = *optSaveCrossCorrPlot
 
   // parse arguments
   //////////////////////////////////////////////////////////////////////////////
@@ -867,49 +441,64 @@ func main() {
     }
   }
 
-  // read genome
+  // import fragment length
   //////////////////////////////////////////////////////////////////////////////
-  var genome Genome
-
-  for _, filename := range append(filenamesTreatment, filenamesControl...) {
-    g, err := BamImportGenome(filename); if err != nil {
-      log.Fatal(err)
+  for i, filename := range filenamesTreatment {
+    if fraglenTreatment[i] == 0 {
+      fraglenTreatment[i] = importFraglen(config, filename)
     }
-    if genome.Length() == 0 {
-      genome = g
-    } else {
-      if !genome.Equals(g) {
-        log.Fatal("bam genomes are not equal")
-      }
+  }
+  for i, filename := range filenamesControl {
+    if fraglenControl[i] == 0 {
+      fraglenControl[i] = importFraglen(config, filename)
     }
   }
 
-  // fragment length estimation
+  //////////////////////////////////////////////////////////////////////////////
+  result, fraglenTreatmentEstimate, fraglenControlEstimate, err := BamCoverage(filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, optionsList...)
+
+  // save fraglen estimates
   //////////////////////////////////////////////////////////////////////////////
   if *optEstimateFraglen {
-    for i, filename := range filenamesTreatment {
-      if fraglenTreatment[i] != 0 {
-        continue
+    for i, estimate := range fraglenTreatmentEstimate {
+      filename := filenamesTreatment[i]
+      if config.SaveFraglen && err == nil {
+        saveFraglen(config, filename, estimate.Fraglen)
       }
-      if fraglen := importFraglen(config, filename, genome); fraglen != -1 {
-        fraglenTreatment[i] = fraglen
-      } else {
-        fraglenTreatment[i] = estimateFraglen(config, filename, genome)
+      if config.SaveCrossCorr && estimate.X != nil && estimate.Y != nil {
+        saveCrossCorr(config, filename, estimate.X, estimate.Y)
+      }
+      if config.SaveCrossCorrPlot && estimate.X != nil && estimate.Y != nil {
+        saveCrossCorrPlot(config, filename, estimate.Fraglen, estimate.X, estimate.Y)
       }
     }
-    for i, filename := range filenamesControl {
-      if fraglenControl[i] != 0 {
-        continue
+    for i, estimate := range fraglenControlEstimate {
+      filename := filenamesControl[i]
+      if config.SaveFraglen && err == nil {
+        saveFraglen(config, filename, estimate.Fraglen)
       }
-      if fraglen := importFraglen(config, filename, genome); fraglen != -1 {
-        fraglenControl[i] = fraglen
-      } else {
-        fraglenControl[i] = estimateFraglen(config, filename, genome)
+      if config.SaveCrossCorr && estimate.X != nil && estimate.Y != nil {
+        saveCrossCorr(config, filename, estimate.X, estimate.Y)
+      }
+      if config.SaveCrossCorrPlot && estimate.X != nil && estimate.Y != nil {
+        saveCrossCorrPlot(config, filename, estimate.Fraglen, estimate.X, estimate.Y)
       }
     }
   }
 
-  // bam -> bigWig
+  // process result
   //////////////////////////////////////////////////////////////////////////////
-  bamToBigWig(config, filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, genome)
+  if err != nil {
+    log.Fatal(err)
+  } else {
+    printStderr(config, 1, "Writing track `%s'... ", filenameTrack)
+    parameters := DefaultBigWigParameters()
+    parameters.ReductionLevels = config.BWZoomLevels
+    if err := (GenericTrack{result}).ExportBigWig(filenameTrack, parameters); err != nil {
+      printStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      printStderr(config, 1, "done\n")
+    }
+  }
 }

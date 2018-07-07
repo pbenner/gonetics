@@ -48,8 +48,8 @@ func TestTF2(t *testing.T) {
 
   seq := []byte("cacgtg")
 
-  score1, _ := PWM{tf}.Score(seq, false)
-  score2, _ := PWM{tf}.Score(seq, true)
+  score1 := PWM{tf}.Scores(seq, false)[0]
+  score2 := PWM{tf}.Scores(seq, true )[0]
 
   if score1 != score2 {
     t.Error("TestTF2 failed")

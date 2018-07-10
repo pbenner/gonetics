@@ -235,7 +235,7 @@ func main() {
   }
   if *optVerbose != 0 {
     config.Verbose = *optVerbose
-    optionsList = append(optionsList, OptionLogger{os.Stderr})
+    optionsList = append(optionsList, OptionLogger{log.New(os.Stderr, "", 0)})
   }
   if len(options.Args()) != 2 && len(options.Args()) != 3 {
     options.PrintUsage(os.Stderr)

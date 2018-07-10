@@ -19,14 +19,14 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import   "fmt"
-import   "io"
+import   "log"
 import   "io/ioutil"
 import   "math"
 
 /* -------------------------------------------------------------------------- */
 
 type OptionLogger struct {
-  Value io.Writer
+  Value *log.Logger
 }
 
 type OptionBinningMethod struct {
@@ -120,7 +120,7 @@ type OptionSmoothenMin struct {
 /* -------------------------------------------------------------------------- */
 
 type BamCoverageConfig struct {
-  Logger               io.Writer
+  Logger                 *log.Logger
   BinningMethod           string
   BinSize                 int
   BinOverlap              int
@@ -148,7 +148,7 @@ type BamCoverageConfig struct {
 func BamCoverageDefaultConfig() BamCoverageConfig {
   config := BamCoverageConfig{}
   // set default values
-  config.Logger                  = ioutil.Discard
+  config.Logger                  = log.New(ioutil.Discard, "", 0)
   config.BinningMethod           = "simple"
   config.BinSize                 = 10
   config.BinOverlap              = 0
@@ -214,7 +214,7 @@ func filterPairedEnd(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d unpaired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d unpaired reads (%.2f%%)", n-m, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -236,7 +236,7 @@ func filterSingleEnd(config BamCoverageConfig, veto bool, chanIn ReadChannel) Re
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d paired reads (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d paired reads (%.2f%%)", n-m, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -258,7 +258,7 @@ func filterDuplicates(config BamCoverageConfig, chanIn ReadChannel) ReadChannel 
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d duplicates (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d duplicates (%.2f%%)", n-m, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -280,7 +280,7 @@ func filterStrand(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d reads not on strand %c (%.2f%%)\n", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d reads not on strand %c (%.2f%%)", n-m, config.FilterStrand, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -302,7 +302,7 @@ func filterMapQ(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d reads with mapping quality lower than %d (%.2f%%)\n", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d reads with mapping quality lower than %d (%.2f%%)", n-m, config.FilterMapQ, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -326,7 +326,7 @@ func filterReadLength(config BamCoverageConfig, chanIn ReadChannel) ReadChannel 
       n++
     }
     if n != 0 {
-      fmt.Fprintf(config.Logger, "Filtered out %d reads with non-admissible length (%.2f%%)\n", n-m, 100.0*float64(n-m)/float64(n))
+      config.Logger.Printf("Filtered out %d reads with non-admissible length (%.2f%%)", n-m, 100.0*float64(n-m)/float64(n))
     }
     close(chanOut)
   }()
@@ -354,7 +354,7 @@ func shiftReads(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
       }
       chanOut <- r
     }
-    fmt.Fprintf(config.Logger, "Shifted reads (forward strand: %d, reverse strand: %d)\n",
+    config.Logger.Printf("Shifted reads (forward strand: %d, reverse strand: %d)",
       config.ShiftReads[0], config.ShiftReads[1])
     close(chanOut)
   }()
@@ -367,9 +367,8 @@ func shiftReads(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
 func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) (fraglenEstimate, error) {
   var reads ReadChannel
 
-  fmt.Fprintf(config.Logger, "Reading tags from `%s'...\n", filename)
+  config.Logger.Printf("Reading tags from `%s'", filename)
   if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-    fmt.Fprintf(config.Logger, "failed\n")
     return fraglenEstimate{}, err
   } else {
     defer bam.Close()
@@ -383,12 +382,11 @@ func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) (
   reads = filterMapQ(config, reads)
 
   // estimate fragment length
-  fmt.Fprintf(config.Logger, "Estimating mean fragment length...\n")
+  config.Logger.Printf("Estimating mean fragment length")
   if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
-    fmt.Fprintf(config.Logger, "failed\n")
     return fraglenEstimate{0, x, y}, err
   } else {
-    fmt.Fprintf(config.Logger, "Estimated mean fragment length: %d\n", fraglen)
+    config.Logger.Printf("Estimated mean fragment length: %d", fraglen)
     return fraglenEstimate{fraglen, x, y}, nil
   }
 }
@@ -408,9 +406,8 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
     fraglen := fraglenTreatment[i]
 
     var treatment ReadChannel
-    fmt.Fprintf(config.Logger, "Reading treatment tags from `%s'...\n", filename)
+    config.Logger.Printf("Reading treatment tags from `%s'", filename)
     if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-      fmt.Fprintf(config.Logger, "failed\n")
       return SimpleTrack{}, err
     } else {
       defer bam.Close()
@@ -431,24 +428,22 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
     n_treatment += GenericMutableTrack{track1}.AddReads(treatment, fraglen, config.BinningMethod)
   }
   if config.NormalizeTrack == "rpkm" {
-    fmt.Fprintf(config.Logger, "Normalizing treatment track (rpkm)... ")
+    config.Logger.Printf("Normalizing treatment track (rpkm)")
     c := float64(1000000)/(float64(n_treatment)*float64(config.BinSize))
     GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
       return c*x
     })
     // adapt pseudocounts!
     config.Pseudocounts[0] *= c
-    fmt.Fprintf(config.Logger, "done\n")
   }
   if config.NormalizeTrack == "cpm" {
-    fmt.Fprintf(config.Logger, "Normalizing treatment track (cpm)... ")
+    config.Logger.Printf("Normalizing treatment track (cpm)")
     c := float64(1000000)/float64(n_treatment)
     GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 {
       return c*x
     })
     // adapt pseudocounts!
     config.Pseudocounts[0] *= c
-    fmt.Fprintf(config.Logger, "done\n")
   }
 
   if len(filenamesControl) > 0 {
@@ -459,9 +454,8 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
       fraglen  := fraglenControl[i]
 
       var control ReadChannel
-      fmt.Fprintf(config.Logger, "Reading treatment tags from `%s'...\n", filename)
+      config.Logger.Printf("Reading treatment tags from `%s'", filename)
       if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-        fmt.Fprintf(config.Logger, "failed\n")
         return SimpleTrack{}, err
       } else {
         defer bam.Close()
@@ -482,49 +476,43 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
       n_control += GenericMutableTrack{track2}.AddReads(control, fraglen, config.BinningMethod)
     }
     if config.NormalizeTrack == "rpkm" {
-      fmt.Fprintf(config.Logger, "Normalizing control track (rpkm)... ")
+      config.Logger.Printf("Normalizing control track (rpkm)")
       c := float64(1000000)/(float64(n_control)*float64(config.BinSize))
       GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
         return c*x
       })
       // adapt pseudocounts!
       config.Pseudocounts[1] *= c
-      fmt.Fprintf(config.Logger, "done\n")
     }
     if config.NormalizeTrack == "cpm" {
-      fmt.Fprintf(config.Logger, "Normalizing control track (cpm)... ")
+      config.Logger.Printf("Normalizing control track (cpm)")
       c := float64(1000000)/float64(n_control)
       GenericMutableTrack{track2}.Map(track2, func(name string, i int, x float64) float64 {
         return c*x
       })
       // adapt pseudocounts!
       config.Pseudocounts[1] *= c
-      fmt.Fprintf(config.Logger, "done\n")
     }
     if config.SmoothenControl {
       GenericMutableTrack{track2}.Smoothen(config.SmoothenMin, config.SmoothenSizes)
     }
-    fmt.Fprintf(config.Logger, "Combining treatment and control tracks... ")
+    config.Logger.Printf("Combining treatment and control tracks... ")
     if err := (GenericMutableTrack{track1}).Normalize(track1, track2, config.Pseudocounts[0], config.Pseudocounts[1], config.LogScale); err != nil {
-      fmt.Fprintf(config.Logger, "failed\n")
       return SimpleTrack{}, err
     }
-    fmt.Fprintf(config.Logger, "done\n")
   } else {
     // no control data
     if config.Pseudocounts[0] != 0.0 {
-      fmt.Fprintf(config.Logger, "Adding pseudocount `%f'... ", config.Pseudocounts[0])
+      config.Logger.Printf("Adding pseudocount `%f'", config.Pseudocounts[0])
       GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 { return x+config.Pseudocounts[0] })
-      fmt.Fprintf(config.Logger, "done\n")
     }
     if config.LogScale {
-      fmt.Fprintf(config.Logger, "Log-transforming data... ")
+      config.Logger.Printf("Log-transforming data")
       GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 { return math.Log(x) })
-      fmt.Fprintf(config.Logger, "done\n")
     }
   }
   if len(config.FilterChroms) != 0 {
-    fmt.Fprintf(config.Logger, "Removing all reads from `%v'... ", config.FilterChroms)
+    config.Logger.Printf("Removing all reads from `%v'", config.FilterChroms)
     for _, chr := range config.FilterChroms {
       if s, err := track1.GetMutableSequence(chr); err == nil {
         for i := 0; i < s.NBins(); i++ {
@@ -532,7 +520,6 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
         }
       }
     }
-    fmt.Fprintf(config.Logger, "done\n")
   }
   return track1, nil
 }

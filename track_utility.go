@@ -18,11 +18,9 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import   "fmt"
-import   "math"
-import   "sort"
-
-import . "github.com/pbenner/gonetics/lib/logarithmetic"
+import "fmt"
+import "math"
+import "sort"
 
 /* -------------------------------------------------------------------------- */
 
@@ -45,15 +43,7 @@ func (obj cumDist) Swap(i, j int) {
   obj.y[i], obj.y[j] = obj.y[j], obj.y[i]
 }
 
-func newCumDist(m map[float64]int) cumDist {
-  x := make([]float64, len(m))
-  y := make([]int,     len(m))
-  i := 0
-  for k, v := range m {
-    x[i] = k
-    y[i] = v
-    i++
-  }
+func newCumDistFromCounts(x []float64, y []int) cumDist {
   c := cumDist{x, y, 0}
   sort.Sort(c)
 
@@ -65,6 +55,18 @@ func newCumDist(m map[float64]int) cumDist {
   c.n = n
 
   return c
+}
+
+func newCumDist(m map[float64]int) cumDist {
+  x := make([]float64, len(m))
+  y := make([]int,     len(m))
+  i := 0
+  for k, v := range m {
+    x[i] = k
+    y[i] = v
+    i++
+  }
+  return newCumDistFromCounts(x, y)
 }
 
 /* add read counts to the track
@@ -240,10 +242,7 @@ func (track GenericMutableTrack) Normalize(treatment, control Track, c1, c2 floa
   return nil
 }
 
-// Quantile normalize counts to a reference distribution given as a
-// log probability function [p]. The minimum number of counts is
-// assumed to be zero.
-func (track GenericMutableTrack) QuantileNormalizeCounts(p func(x int) float64) error {
+func (track GenericMutableTrack) QuantileNormalizeToCounts(x []float64, y []int) error {
   mapIn := make(map[float64]int)
   mapTr := make(map[float64]float64)
 
@@ -255,23 +254,24 @@ func (track GenericMutableTrack) QuantileNormalizeCounts(p func(x int) float64) 
   }); err != nil {
     return err
   }
-  distIn := newCumDist(mapIn)
+  distRef := newCumDistFromCounts(x, y)
+  distIn  := newCumDist(mapIn)
 
+  if len(distRef.x) == 0 {
+    return nil
+  }
   // set first value to keep data on the same range
-  mapTr[distIn.x[0]] = 0.0
-  // pRef is the cumulative probability of the reference distribution
-  pRefLog := p(0.0)
+  mapTr[distIn.x[0]] = distRef.x[0]
 
-  for i, j := 1, 1; i < len(distIn.x); i++ {
-    pRefLog = LogAdd(pRefLog, p(i))
-    pRef   := math.Exp(pRefLog)
+  for i, j := 1, 1; i < len(distRef.x); i++ {
+    pRef := float64(distRef.y[i])/float64(distRef.n)
     for ; j < len(distIn.x); j++ {
       pIn := float64(distIn.y[j])/float64(distIn.n)
       if pIn > pRef {
         break
       }
       // map input x_j to reference x_i
-      mapTr[distIn.x[j]] = float64(i)
+      mapTr[distIn.x[j]] = distRef.x[i]
     }
   }
 

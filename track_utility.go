@@ -18,9 +18,11 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
-import "math"
-import "sort"
+import   "fmt"
+import   "math"
+import   "sort"
+
+import . "github.com/pbenner/gonetics/lib/logarithmetic"
 
 /* -------------------------------------------------------------------------- */
 
@@ -234,6 +236,53 @@ func (track GenericMutableTrack) Normalize(treatment, control Track, c1, c2 floa
         seq.SetBin(i, (seq1.AtBin(i)+c1)/(seq2.AtBin(i)+c2)*c2/c1)
       }
     }
+  }
+  return nil
+}
+
+// Quantile normalize counts to a reference distribution given as a
+// log probability function [p]. The minimum number of counts is
+// assumed to be zero.
+func (track GenericMutableTrack) QuantileNormalizeCounts(p func(x int) float64) error {
+  mapIn := make(map[float64]int)
+  mapTr := make(map[float64]float64)
+
+  if err := (GenericMutableTrack{}).Map(track, func(seqname string, position int, value float64) float64 {
+    if !math.IsNaN(value) {
+      mapIn[value] += 1
+    }
+    return 0.0
+  }); err != nil {
+    return err
+  }
+  distIn := newCumDist(mapIn)
+
+  // set first value to keep data on the same range
+  mapTr[distIn.x[0]] = 0.0
+  // pRef is the cumulative probability of the reference distribution
+  pRefLog := p(0.0)
+
+  for i, j := 1, 1; i < len(distIn.x); i++ {
+    pRefLog = LogAdd(pRefLog, p(i))
+    pRef   := math.Exp(pRefLog)
+    for ; j < len(distIn.x); j++ {
+      pIn := float64(distIn.y[j])/float64(distIn.n)
+      if pIn > pRef {
+        break
+      }
+      // map input x_j to reference x_i
+      mapTr[distIn.x[j]] = float64(i)
+    }
+  }
+
+  if err := track.Map(track, func(seqname string, position int, value float64) float64 {
+    if math.IsNaN(value) {
+      return value
+    } else {
+      return mapTr[value]
+    }
+  }); err != nil {
+    return err
   }
   return nil
 }

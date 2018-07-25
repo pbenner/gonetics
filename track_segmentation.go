@@ -78,31 +78,45 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
   thickStart := make([]int,    len(state))
   thickEnd   := make([]int,    len(state))
   itemRgb    := make([]string, len(state))
+  rgbMap     := make(map[string]string)
 
-  if rgbChart == nil || stateNames == nil {
+  if len(stateNames) == 0 {
+    // determine number of states
     sMax := 0
     for i := 0; i < r.Length(); i++ {
       if s := int(state[i]); s > sMax {
         sMax = s
       }
     }
-    if rgbChart == nil {
-      rgbChart = getNColors(sMax+1)
-    }
-    if stateNames == nil {
-      stateNames = make([]string, sMax+1)
-      for i := 0; i < len(stateNames); i++ {
-        stateNames[i] = fmt.Sprintf("s%d", i)
-      }
+    // generate state names
+    stateNames = make([]string, sMax+1)
+    for i := 0; i < len(stateNames); i++ {
+      stateNames[i] = fmt.Sprintf("s%d", i)
     }
   }
+  { // determine number of distinct state names
+    for i := 0; i < len(stateNames); i++ {
+      rgbMap[stateNames[i]] = ""
+    }
+  }
+  if len(rgbChart) == 0 {
+    // get a color for each distinct state name
+    rgbChart = getNColors(len(rgbMap))
+  }
+  if len(rgbMap) > len(rgbChart) {
+    return fmt.Errorf("insufficient number of RGB colors")
+  }
+  { // fill rgbMap (stateName -> rgb color)
+    k := 0
+    for state, _ := range rgbMap {
+      rgbMap[state] = rgbChart[k]; k++
+    }
+  }
+
   for i := 0; i < r.Length(); i++ {
     s := int(state[i])
     if s < 0 || math.Floor(state[i]) != state[i] {
       return fmt.Errorf("invalid state `%f' at `%s:%d-%d", state[i], r.Seqnames[i], r.Ranges[i].From, r.Ranges[i].To)
-    }
-    if s >= len(rgbChart) {
-      return fmt.Errorf("rgbChart has not enough colors")
     }
     if s >= len(stateNames) {
       return fmt.Errorf("insufficient number of state names")
@@ -111,7 +125,7 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     score     [i] = 0
     thickStart[i] = r.Ranges[i].From
     thickEnd  [i] = r.Ranges[i].To
-    itemRgb   [i] = rgbChart[s]
+    itemRgb   [i] = rgbMap[stateNames[s]]
   }
   r.AddMeta("name",       name)
   r.AddMeta("thickStart", thickStart)

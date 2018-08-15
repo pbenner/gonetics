@@ -94,9 +94,9 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
       stateNames[i] = fmt.Sprintf("s%d", i)
     }
   }
-  { // determine number of distinct state names
-    for i := 0; i < len(stateNames); i++ {
-      rgbMap[stateNames[i]] = ""
+  {
+    for _, state := range stateNames {
+      rgbMap[state] = ""
     }
   }
   if len(rgbChart) == 0 {
@@ -107,9 +107,8 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     return fmt.Errorf("insufficient number of RGB colors")
   }
   { // fill rgbMap (stateName -> rgb color)
-    k := 0
-    for state, _ := range rgbMap {
-      rgbMap[state] = rgbChart[k]; k++
+    for k, state := range stateNames {
+      rgbMap[state] = rgbChart[k]
     }
   }
 

@@ -26,6 +26,7 @@ import   "compress/gzip"
 import   "io"
 import   "io/ioutil"
 import   "os"
+import   "sort"
 
 /* -------------------------------------------------------------------------- */
 
@@ -42,6 +43,20 @@ func getNColors(n int) []string {
     s  = append(s, fmt.Sprintf("%d,%d,%d", r,g,b))
   }
   return s
+}
+
+func uniqueStrings(ss []string) []string {
+  m := make(map[string]struct{})
+  for _, s := range ss {
+    m[s] = struct{}{}
+  }
+  r := make([]string, len(m))
+  k := 0
+  for s, _ := range m {
+    r[k] = s; k++
+  }
+  sort.Strings(r)
+  return r
 }
 
 /* -------------------------------------------------------------------------- */
@@ -94,21 +109,17 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
       stateNames[i] = fmt.Sprintf("s%d", i)
     }
   }
-  {
-    for _, state := range stateNames {
-      rgbMap[state] = ""
-    }
-  }
+  stateNamesUnique := uniqueStrings(stateNames)
   if len(rgbChart) == 0 {
     // get a color for each distinct state name
-    rgbChart = getNColors(len(rgbMap))
+    rgbChart = getNColors(len(stateNamesUnique))
   }
-  if len(rgbMap) > len(rgbChart) {
+  if len(stateNamesUnique) > len(rgbChart) {
     return fmt.Errorf("insufficient number of RGB colors")
   }
   { // fill rgbMap (stateName -> rgb color)
-    for k, state := range stateNames {
-      rgbMap[state] = rgbChart[k]
+    for i, state := range stateNamesUnique {
+      rgbMap[state] = rgbChart[i]
     }
   }
 

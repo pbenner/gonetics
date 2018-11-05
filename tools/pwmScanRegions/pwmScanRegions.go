@@ -26,7 +26,7 @@ import   "os"
 import . "github.com/pbenner/gonetics"
 import   "github.com/pbenner/gonetics/lib/progress"
 
-import . "github.com/pbenner/threadpool"
+import   "github.com/pbenner/threadpool"
 import   "github.com/pborman/getopt"
 
 /* -------------------------------------------------------------------------- */
@@ -146,7 +146,7 @@ func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, 
 
 func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSequence StringSet) GRanges {
 
-  pool   := NewThreadPool(config.Threads, 100*config.Threads)
+  pool   := threadpool.New(config.Threads, 100*config.Threads)
   counts := make([][]float64, granges.Length())
   
   if !config.Status {
@@ -158,7 +158,7 @@ func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSe
     // make a thread safe copy of i
     j := i
     // add task to the thread pool
-    pool.AddJob(g, func(pool ThreadPool, erf func() error) error {
+    pool.AddJob(g, func(pool threadpool.ThreadPool, erf func() error) error {
       counts[j] = scanRegion(config, pwmList, genomicSequence, granges.Row(j))
       return nil
     })

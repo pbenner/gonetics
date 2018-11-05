@@ -25,7 +25,7 @@ import   "os"
 import   "github.com/pborman/getopt"
 
 import . "github.com/pbenner/gonetics"
-import . "github.com/pbenner/threadpool"
+import   "github.com/pbenner/threadpool"
 
 /* -------------------------------------------------------------------------- */
 
@@ -83,11 +83,11 @@ func genomeFromStringSet(ss StringSet) Genome {
 
 /* -------------------------------------------------------------------------- */
 
-func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequence, pool ThreadPool) error {
+func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequence, pool threadpool.ThreadPool) error {
 
   jobGroup := pool.NewJobGroup()
 
-  if err := pool.AddRangeJob(0, r.NBins(), jobGroup, func(i int, pool ThreadPool, erf func() error) error {
+  if err := pool.AddRangeJob(0, r.NBins(), jobGroup, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     j_from := (i+0)*config.BinSize
     j_to   := (i+1)*config.BinSize
     // trim range
@@ -95,12 +95,14 @@ func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequ
       j_to = len(sequence)-pwm.Length()
     }
     s := BbiSummaryStatistics{}
+    // function for adding scanning results
+    f := func(a, b float64) float64 { return a+b }
     // scan subsequence
     for j := j_from; j < j_to; j++ {
-      v1, err := pwm.Score(sequence[j:j+pwm.Length()], false); if err != nil {
+      v1, err := pwm.Score(sequence[j:j+pwm.Length()], false, 0.0, f); if err != nil {
         panic(err)
       }
-      v2, err := pwm.Score(sequence[j:j+pwm.Length()], true); if err != nil {
+      v2, err := pwm.Score(sequence[j:j+pwm.Length()], true , 0.0, f); if err != nil {
         panic(err)
       }
       s.AddValue(v1)
@@ -120,7 +122,7 @@ func pwmScanSequence(config Config, pwm PWM, sequence []byte, r TrackMutableSequ
 /* -------------------------------------------------------------------------- */
 
 func pwmScanSequences(config Config, filenamePWM, filenameFasta, filenameOut string) {
-  pool:= NewThreadPool(config.Threads, 100*config.Threads)
+  pool:= threadpool.New(config.Threads, 100*config.Threads)
   pwm := ImportPWM(config, filenamePWM)
   genomicSequences := ImportFasta(config, filenameFasta)
   genome := genomeFromStringSet(genomicSequences)

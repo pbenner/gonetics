@@ -24,6 +24,7 @@ import   "math"
 import   "os"
 
 import . "github.com/pbenner/gonetics"
+import . "github.com/pbenner/gonetics/lib/logarithmetic"
 import   "github.com/pbenner/gonetics/lib/progress"
 
 import   "github.com/pbenner/threadpool"
@@ -136,7 +137,7 @@ func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, 
       // reverse complement
       tmp2 := pwmList[j].MeanScore(sequence, false)
       // take the maximum
-      counts[j] = math.Max(tmp1, tmp2)
+      counts[j] = LogAdd(tmp1, tmp2) - math.Log(2.0)
     default:
       log.Fatalf("invalid summary statistic: %s", config.Summary)
     }

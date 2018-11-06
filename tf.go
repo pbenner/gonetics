@@ -18,14 +18,16 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
-import "bufio"
-import "compress/gzip"
-import "math"
-import "io"
-import "os"
-import "strconv"
-import "strings"
+import   "fmt"
+import   "bufio"
+import   "compress/gzip"
+import   "math"
+import   "io"
+import   "os"
+import   "strconv"
+import   "strings"
+
+import . "github.com/pbenner/gonetics/lib/logarithmetic"
 
 /* -------------------------------------------------------------------------- */
 
@@ -79,10 +81,9 @@ func (t TFMatrix) Score(sequence []byte, revcomp bool, x0 float64, f func(float6
   if len(sequence) != t.Length() {
     return math.NaN(), fmt.Errorf("TFMatrix.Score(): sequence has invalid length")
   }
-  alphabet := NucleotideAlphabet{}
-  // number of positions where the pwm could fit
   x := x0
   if revcomp {
+    alphabet := NucleotideAlphabet{}
     // loop over pwm
     for j := 0; j < t.Length(); j++ {
       if a := sequence[t.Length()-j-1]; a != 'N' && a != 'n' {
@@ -213,14 +214,16 @@ func (t PWM) MaxScore(sequence []byte, revcomp bool) float64 {
 func (t PWM) MeanScore(sequence []byte, revcomp bool) float64 {
   // number of positions where the pwm could fit
   n := len(sequence)-t.Length()+1
+  // motif length
+  m := t.Length()
   // function for adding scanning results
   f := func(a, b float64) float64 { return a+b }
   // maximum score
   result := 0.0
   // loop over sequence
   for i := 0; i < n; i++ {
-    tmp, _ := t.TFMatrix.Score(sequence[i:i+t.Length()], revcomp, 0.0, f)
-    result += tmp
+    tmp, _ := t.TFMatrix.Score(sequence[i:i+m], revcomp, 0.0, f)
+    result  = LogAdd(result, tmp)
   }
-  return result/float64(n)
+  return result - math.Log(float64(n))
 }

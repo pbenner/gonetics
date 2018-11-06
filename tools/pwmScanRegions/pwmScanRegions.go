@@ -32,6 +32,7 @@ import   "github.com/pborman/getopt"
 /* -------------------------------------------------------------------------- */
 
 type SessionConfig struct {
+  Columns int
   Status  bool
   Summary string
   Threads int
@@ -63,15 +64,15 @@ func importPWMList(config SessionConfig, filenames []string) []PWM {
   return result
 }
 
-func importBed3(config SessionConfig, filename string) GRanges {
+func importBed(config SessionConfig, filename string) GRanges {
   granges := GRanges{}
   if filename == "" {
-    if err := granges.ReadBed3(os.Stdin); err != nil {
+    if err := granges.ReadBed(os.Stdin, config.Columns); err != nil {
       log.Fatal(err)
     }
   } else {
     PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
-    if err := granges.ImportBed3(filename); err != nil {
+    if err := granges.ImportBed(filename, config.Columns); err != nil {
       PrintStderr(config, 1, "failed\n")
       log.Fatal(err)
     }
@@ -179,7 +180,7 @@ func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSe
 
 func tfbsScan(config SessionConfig, filenameGRanges, filenameOut, filenameFasta string, filenamesPWM []string) {
   pwmList := importPWMList(config, filenamesPWM)
-  granges := importBed3(config, filenameGRanges)
+  granges := importBed(config, filenameGRanges)
   genomicSequence := importFasta(config, filenameFasta)
 
   granges = scanRegions(config, granges, pwmList, genomicSequence)
@@ -193,11 +194,12 @@ func main() {
   config  := SessionConfig{}
   options := getopt.New()
 
-  optInput    := options. StringLong("input",        0 , "",    "read regions from file")
-  optOutput   := options. StringLong("output",       0 , "",    "write results to file")
-  optStatus   := options.   BoolLong("status",       0 ,        "show status bar")
-  optSummary  := options. StringLong("summary",      0 , "max", "summary statistics [mean, max]")
-  optThreads  := options.    IntLong("threads",      0 ,  1,    "number of threads")
+  optInput    := options. StringLong("input",         0 , "",    "read regions from file")
+  optColumns  := options.    IntLong("input-columns", 0 ,  3,    "number of bed input columns [3 (default), 6, 9]")
+  optOutput   := options. StringLong("output",        0 , "",    "write results to file")
+  optStatus   := options.   BoolLong("status",        0 ,        "show status bar")
+  optSummary  := options. StringLong("summary",       0 , "max", "summary statistics [mean, max]")
+  optThreads  := options.    IntLong("threads",       0 ,  1,    "number of threads")
 
   optVerbose  := options.CounterLong("verbose",    'v',         "verbose level [-v or -vv]")
   optHelp     := options.   BoolLong("help",       'h',         "print help")
@@ -217,6 +219,7 @@ func main() {
   filenameFasta   := options.Args()[0]
   filenamesPWM    := options.Args()[1:n]
 
+  config.Columns = *optColumns
   config.Status  = *optStatus
   config.Summary = *optSummary
   config.Threads = *optThreads

@@ -427,3 +427,40 @@ func (g *GRanges) ImportBed9(filename string) error {
   }
   return g.ReadBed9(r)
 }
+
+/* -------------------------------------------------------------------------- */
+
+func (g *GRanges) ReadBed(reader io.Reader, columns int) error {
+  switch columns {
+  case 3:
+    return g.ReadBed3(reader)
+  case 6:
+    return g.ReadBed6(reader)
+  case 9:
+    return g.ReadBed9(reader)
+  default:
+    return fmt.Errorf("readBed(): invalid number of columns")
+  }
+}
+
+func (g *GRanges) ImportBed(filename string, columns int) error {
+  var r io.Reader
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  // check if file is gzipped
+  if isGzip(filename) {
+    g, err := gzip.NewReader(f)
+    if err != nil {
+      return err
+    }
+    defer g.Close()
+    r = g
+  } else {
+    r = f
+  }
+  return g.ReadBed(r, columns)
+}

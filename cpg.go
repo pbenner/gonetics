@@ -44,7 +44,9 @@ func ObservedOverExpectedCpG(genomicSequence StringSet, regions GRanges) ([]floa
           n_cpg += 1
         }
       }
-      r[i] = float64(n_cpg*len(sequence))/float64(n_c*n_g)
+      if n_cpg != 0 {
+        r[i] = float64(n_cpg*len(sequence))/float64(n_c*n_g)
+      }
     }
   }
   return r, nil

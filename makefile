@@ -20,6 +20,7 @@ SUBDIRS = \
 	tools/chromHmmTablesToBigWig \
 	tools/drawGenomicRegions \
 	tools/gtfToBed \
+	tools/observedOverExpectedCpG \
 	tools/pwmScanSequences \
 	tools/pwmScanRegions
 

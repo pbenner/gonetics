@@ -105,3 +105,21 @@ func ImportCpGIslandsFromTable(filename string) (GRanges, error) {
     []string{"[]int", "[]int", "[]int", "[]float64", "[]float64", "[]float64"})
   return cpg, err
 }
+
+/* -------------------------------------------------------------------------- */
+
+func (regions GRanges) ObservedOverExpectedCpG(genomicSequence StringSet) ([]float64, error) {
+  r := make([]float64, regions.Length())
+  for i := 0; i < regions.Length(); i++ {
+    if sequence, err := genomicSequence.GetSlice(regions.Seqnames[i], regions.Ranges[i]); err != nil {
+      return nil, err
+    } else {
+      // if sequence is nil, it means the fasta file is missing a chromosome
+      if sequence == nil {
+        continue
+      }
+      r[i] = ObservedOverExpectedCpG(sequence)
+    }
+  }
+  return r, nil
+}

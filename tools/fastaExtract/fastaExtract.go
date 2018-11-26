@@ -46,12 +46,18 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 func importBed3(config Config, filename string) GRanges {
   granges := GRanges{}
-  PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
-  if err := granges.ImportBed3(filename); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
+  if filename == "" {
+    if err := granges.ReadBed3(os.Stdin); err != nil {
+      log.Fatal(err)
+    }
   } else {
-    PrintStderr(config, 1, "done\n")
+    PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
+    if err := granges.ImportBed3(filename); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      PrintStderr(config, 1, "done\n")
+    }
   }
   return granges
 }

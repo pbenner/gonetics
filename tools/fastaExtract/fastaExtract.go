@@ -79,6 +79,8 @@ func exportFasta(config Config, genomicSequences StringSet, filename string) {
   if filename == "" {
     if err := genomicSequences.WriteFasta(os.Stdout); err != nil {
       log.Fatal(err)
+    } else {
+      fmt.Fprintf(os.Stdout, "\n")
     }
   } else {
     PrintStderr(config, 1, "Writing table `%s'... ", filename)
@@ -95,6 +97,8 @@ func exportTable(config Config, granges GRanges, filename string) {
   if filename == "" {
     if err := granges.WriteTable(os.Stdout, true, false); err != nil {
       log.Fatal(err)
+    } else {
+      fmt.Fprintf(os.Stdout, "\n")
     }
   } else {
     PrintStderr(config, 1, "Writing table `%s'... ", filename)

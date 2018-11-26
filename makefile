@@ -19,6 +19,7 @@ SUBDIRS = \
 	tools/bigWigStatistics \
 	tools/chromHmmTablesToBigWig \
 	tools/drawGenomicRegions \
+	tools/fastaExtract \
 	tools/gtfToBed \
 	tools/observedOverExpectedCpG \
 	tools/pwmScanSequences \

@@ -116,12 +116,12 @@ func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, 
   sequence, err := genomicSequence.GetSlice(r.Seqname, r.Range)
   // if sequence is nil, it means the fasta file is missing a chromosome
   if sequence == nil {
-    log.Fatal(err)
+    log.Fatalf("sequence `%s' not found in fasta file", r.Seqname)
   }
   // if squence is not nil but there is an error then the region is out of bounds,
   // GetSlice() then returns only that part which actually exists
   if err != nil {
-    PrintStderr(config, 0, "%s\n", err.Error())
+    log.Fatal(err.Error())
   }
   // loop over pwm list and scan the ith region
   for j := 0; j < len(pwmList); j++ {

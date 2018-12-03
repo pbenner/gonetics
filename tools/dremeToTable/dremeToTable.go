@@ -24,12 +24,28 @@ import   "io/ioutil"
 import   "log"
 import   "math"
 import   "strconv"
+import   "strings"
 import   "os"
 import   "unicode"
 
 import   "github.com/pborman/getopt"
 
 import . "github.com/pbenner/gonetics"
+
+/* -------------------------------------------------------------------------- */
+
+type Config struct {
+  Verbose  int
+  Format   string
+}
+
+/* -------------------------------------------------------------------------- */
+
+func PrintStderr(config Config, level int, format string, args ...interface{}) {
+  if config.Verbose >= level {
+    fmt.Fprintf(os.Stderr, format, args...)
+  }
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -107,9 +123,9 @@ func (obj Background) GetValue(letter byte) (float64, error) {
 
 /* ------------------------------------------------------------------------- */
 
-func (obj Motif) AsPWM(model Model) (PWM, error) {
+func (obj Motif) AsPPM(model Model) (TFMatrix, error) {
   alphabet, err := model.GetAlphabet(); if err != nil {
-    return PWM{}, err
+    return TFMatrix{}, err
   }
   // allocate values matrix
   values := make([][]float64, alphabet.Length())
@@ -124,46 +140,88 @@ func (obj Motif) AsPWM(model Model) (PWM, error) {
     for j, pos := range obj.Pos {
       x, err := pos.GetValue(c)
       if err != nil {
-        return PWM{}, err
+        return TFMatrix{}, err
+      }
+      values[i][j] = x
+    }
+  }
+  return TFMatrix{values}, nil
+}
+
+func (obj Motif) AsPWM(model Model) (TFMatrix, error) {
+  alphabet, err := model.GetAlphabet(); if err != nil {
+    return TFMatrix{}, err
+  }
+  // allocate values matrix
+  values := make([][]float64, alphabet.Length())
+  for i := 0; i < alphabet.Length(); i++ {
+    values[i] = make([]float64, len(obj.Pos))
+  }
+  for i := 0; i < alphabet.Length(); i++ {
+    c, err := alphabet.Decode(byte(i))
+    if err != nil {
+      panic("internal error")
+    }
+    for j, pos := range obj.Pos {
+      x, err := pos.GetValue(c)
+      if err != nil {
+        return TFMatrix{}, err
       }
       y, err := model.Background.GetValue(c)
       if err != nil {
-        return PWM{}, err
+        return TFMatrix{}, err
       }
       values[i][j] = math.Log(x/y)
     }
   }
-  return PWM{TFMatrix{values}}, nil
+  return TFMatrix{values}, nil
 }
 
 /* ------------------------------------------------------------------------- */
 
-func dremeToJaspar(filename string, basename string, verbose bool) {
-  xmlFile, err := os.Open(filename)
-	if err != nil {
+func convert(config Config, dreme Dreme, basename string) {
+}
+
+func dremeToTable(config Config, filename string, basename string) {
+  xmlFile, err := os.Open(filename); if err != nil {
 		log.Fatal(err)
 	}
-  defer xmlFile.Close()
+  byteValue, err := ioutil.ReadAll(xmlFile); if err != nil {
+    log.Fatal(err)
+  }
+  xmlFile.Close()
 
-  byteValue, _ := ioutil.ReadAll(xmlFile)
-
-  dreme := Dreme{}
+  dreme    := Dreme{}
+  tfmatrix := TFMatrix{}
 
   if err := xml.Unmarshal(byteValue, &dreme); err != nil {
     panic(err)
   }
   for i := 0; i < len(dreme.Motifs); i++ {
-    if verbose {
-      fmt.Fprintf(os.Stderr, "Parsing motif %d...\n", i+1)
+    PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+    
+    switch config.Format {
+    case "pwm":
+      if pwm, err := dreme.Motifs[i].AsPWM(dreme.Model); err != nil {
+        log.Fatal(err)
+      } else {
+        tfmatrix = pwm
+      }
+      case "ppm":
+      if ppm, err := dreme.Motifs[i].AsPPM(dreme.Model); err != nil {
+        panic(err)
+      } else {
+        tfmatrix = ppm
+      }
+    default:
+      panic("internal error")
     }
-    pwm, err := dreme.Motifs[i].AsPWM(dreme.Model); if err != nil {
-      panic(err)
-    }
-    file, err := os.Create(fmt.Sprintf("%s-%04d.table", basename, i)); if err != nil {
+    if file, err := os.Create(fmt.Sprintf("%s-%04d.table", basename, i)); err != nil {
       log.Fatal(err)
-    }
-    if err := pwm.WriteMatrix(file); err != nil {
-      log.Fatal(err)
+    } else {
+      if err := tfmatrix.WriteMatrix(file); err != nil {
+        log.Fatal(err)
+      }
     }
   }
 }
@@ -172,10 +230,12 @@ func dremeToJaspar(filename string, basename string, verbose bool) {
 
 func main() {
 
+  config  := Config{}
   options := getopt.New()
 
-  optHelp       := options.  BoolLong("help",        'h',     "print help")
-  optVerbose    := options.  BoolLong("verbose",     'v',     "be verbose")
+  optHelp       := options.   BoolLong("help",        'h',        "print help")
+  optVerbose    := options.CounterLong("verbose",     'v',        "be verbose")
+  optFormat     := options. StringLong("format",       0 , "pwm", "output format [PWM (default), PPM]")
 
   options.SetParameters("<INPUT.bw> <BASENAME>")
   options.Parse(os.Args)
@@ -188,8 +248,18 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  config.Format  = strings.ToLower(*optFormat)
+  config.Verbose = *optVerbose
+
+  switch config.Format {
+  case "pwm":
+  case "ppm":
+  default:
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
   filename := options.Args()[0]
   basename := options.Args()[1]
 
-  dremeToJaspar(filename, basename, *optVerbose)
+  dremeToTable(config, filename, basename)
 }

@@ -35,8 +35,9 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Verbose  int
+  Alpha    float64
   Format   string
+  Verbose  int
 }
 
 /* -------------------------------------------------------------------------- */
@@ -123,7 +124,7 @@ func (obj Background) GetValue(letter byte) (float64, error) {
 
 /* ------------------------------------------------------------------------- */
 
-func (obj Motif) AsPPM(model Model) (TFMatrix, error) {
+func (obj Motif) AsPPM(model Model, alpha float64) (TFMatrix, error) {
   alphabet, err := model.GetAlphabet(); if err != nil {
     return TFMatrix{}, err
   }
@@ -142,13 +143,13 @@ func (obj Motif) AsPPM(model Model) (TFMatrix, error) {
       if err != nil {
         return TFMatrix{}, err
       }
-      values[i][j] = x
+      values[i][j] = (x + alpha)/(1.0 + float64(alphabet.Length())*alpha)
     }
   }
   return TFMatrix{values}, nil
 }
 
-func (obj Motif) AsPWM(model Model) (TFMatrix, error) {
+func (obj Motif) AsPWM(model Model, alpha float64) (TFMatrix, error) {
   alphabet, err := model.GetAlphabet(); if err != nil {
     return TFMatrix{}, err
   }
@@ -171,6 +172,8 @@ func (obj Motif) AsPWM(model Model) (TFMatrix, error) {
       if err != nil {
         return TFMatrix{}, err
       }
+      // normalize x
+      x = (x + alpha)/(1.0 + float64(alphabet.Length())*alpha)
       values[i][j] = math.Log(x/y)
     }
   }
@@ -199,13 +202,13 @@ func dremeToTable(config Config, filename string, basename string) {
     
     switch config.Format {
     case "pwm":
-      if pwm, err := dreme.Motifs[i].AsPWM(dreme.Model); err != nil {
+      if pwm, err := dreme.Motifs[i].AsPWM(dreme.Model, config.Alpha); err != nil {
         log.Fatal(err)
       } else {
         tfmatrix = pwm
       }
       case "ppm":
-      if ppm, err := dreme.Motifs[i].AsPPM(dreme.Model); err != nil {
+      if ppm, err := dreme.Motifs[i].AsPPM(dreme.Model, config.Alpha); err != nil {
         panic(err)
       } else {
         tfmatrix = ppm
@@ -230,9 +233,10 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optHelp       := options.   BoolLong("help",        'h',        "print help")
-  optVerbose    := options.CounterLong("verbose",     'v',        "be verbose")
-  optFormat     := options. StringLong("format",       0 , "pwm", "output format [PWM (default), PPM]")
+  optHelp     := options.   BoolLong("help",              'h',        "print help")
+  optVerbose  := options.CounterLong("verbose",           'v',        "be verbose")
+  optAlpha    := options. StringLong("pseudo-probability", 0 , "0.0", "pseudo probability mass added to the PPM")
+  optFormat   := options. StringLong("format",             0 , "pwm", "output format [PWM (default), PPM]")
 
   options.SetParameters("<INPUT.bw> <BASENAME>")
   options.Parse(os.Args)
@@ -244,6 +248,11 @@ func main() {
   if len(options.Args()) != 2 {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
+  } 
+  if v, err := strconv.ParseFloat(*optAlpha, 64); err != nil {
+    log.Fatal(err)
+  } else {
+    config.Alpha = v
   }
   config.Format  = strings.ToLower(*optFormat)
   config.Verbose = *optVerbose

@@ -26,6 +26,7 @@ import   "io"
 import   "os"
 import   "strconv"
 import   "strings"
+import   "unicode"
 
 import . "github.com/pbenner/gonetics/lib/logarithmetic"
 
@@ -36,6 +37,10 @@ type TFMatrix struct {
 }
 
 /* -------------------------------------------------------------------------- */
+
+func NewTFMatrix(values [][]float64, alphabet Alphabet) TFMatrix {
+  return TFMatrix{values}
+}
 
 func EmptyTFMatrix() TFMatrix {
   return TFMatrix{}
@@ -169,6 +174,21 @@ func (t *TFMatrix) ImportMatrix(filename string) error {
     reader = f
   }
   return t.ReadMatrix(reader)
+}
+
+func (t *TFMatrix) WriteMatrix(writer io.Writer) error {
+  for i := 0; i < len(t.Values); i++ {
+    c, err := NucleotideAlphabet{}.Decode(byte(i))
+    if err != nil {
+      return err
+    }
+    fmt.Fprintf(writer, "%c ", unicode.ToUpper(rune(c)))
+    for j := 0; j < len(t.Values[i]); j++ {
+      fmt.Fprintf(writer, "%f ", t.Values[i][j])
+    }
+    fmt.Fprintf(writer, "\n")
+  }
+  return nil
 }
 
 /* scanning

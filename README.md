@@ -26,6 +26,7 @@ Executables are available [here](https://github.com/pbenner/gonetics-tools).
 | bigWigStatistics        | compute summary statistics of a bigWig file                              |
 | chromHmmTablesToBigWig  | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
 | drawGenomicRegions      | draw random genomic regions                                              |
+| dremeToJaspar           | convert DREME xml file to Jaspar pwm tables                              |
 | fastaExtract            | extract regions from a fasta file                                        |
 | gtfToBed                | convert GTF files to Bed6 format                                         |
 | observedOverExpectedCpG | compute CpG scores as defined by Gardiner-Garden and Frommer (1987)      |

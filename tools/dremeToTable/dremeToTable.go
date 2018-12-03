@@ -179,9 +179,6 @@ func (obj Motif) AsPWM(model Model) (TFMatrix, error) {
 
 /* ------------------------------------------------------------------------- */
 
-func convert(config Config, dreme Dreme, basename string) {
-}
-
 func dremeToTable(config Config, filename string, basename string) {
   xmlFile, err := os.Open(filename); if err != nil {
 		log.Fatal(err)

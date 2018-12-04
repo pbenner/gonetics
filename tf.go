@@ -191,6 +191,21 @@ func (t *TFMatrix) WriteMatrix(writer io.Writer) error {
   return nil
 }
 
+func (t *TFMatrix) WriteJaspar(writer io.Writer) error {
+  for i := 0; i < len(t.Values); i++ {
+    c, err := NucleotideAlphabet{}.Decode(byte(i))
+    if err != nil {
+      return err
+    }
+    fmt.Fprintf(writer, "%c [ ", unicode.ToUpper(rune(c)))
+    for j := 0; j < len(t.Values[i]); j++ {
+      fmt.Fprintf(writer, "%f ", t.Values[i][j])
+    }
+    fmt.Fprintf(writer, "]\n")
+  }
+  return nil
+}
+
 /* scanning
  * -------------------------------------------------------------------------- */
 

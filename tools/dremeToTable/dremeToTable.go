@@ -35,9 +35,10 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Alpha    float64
-  Format   string
-  Verbose  int
+  Alpha        float64
+  OutputType   string
+  OutputFormat string
+  Verbose      int
 }
 
 /* -------------------------------------------------------------------------- */
@@ -182,6 +183,51 @@ func (obj Motif) AsPWM(model Model, alpha float64) (TFMatrix, error) {
 
 /* ------------------------------------------------------------------------- */
 
+func writeTFMatrix(config Config, tfmatrix TFMatrix, filename string) {
+  f, err := os.Create(filename)
+  if err != nil {
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  switch config.OutputFormat {
+  case "table":
+    if err := tfmatrix.WriteMatrix(f); err != nil {
+      log.Fatal(err)
+    }
+  case "jaspar":
+    if err := tfmatrix.WriteJaspar(f); err != nil {
+      log.Fatal(err)
+    }
+  default:
+    panic("internal error")
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+
+func getTFMatrix(config Config, motif Motif, model Model) TFMatrix {
+  switch config.OutputType {
+  case "pwm":
+    if pwm, err := motif.AsPWM(model, config.Alpha); err != nil {
+      log.Fatal(err)
+    } else {
+      return pwm
+    }
+  case "ppm":
+    if ppm, err := motif.AsPPM(model, config.Alpha); err != nil {
+      panic(err)
+    } else {
+      return ppm
+    }
+  default:
+    panic("internal error")
+  }
+  return TFMatrix{}
+}
+
+/* ------------------------------------------------------------------------- */
+
 func dremeToTable(config Config, filename string, basename string) {
   xmlFile, err := os.Open(filename); if err != nil {
 		log.Fatal(err)
@@ -191,38 +237,18 @@ func dremeToTable(config Config, filename string, basename string) {
   }
   xmlFile.Close()
 
-  dreme    := Dreme{}
-  tfmatrix := TFMatrix{}
+  dreme := Dreme{}
 
   if err := xml.Unmarshal(byteValue, &dreme); err != nil {
     panic(err)
   }
   for i := 0; i < len(dreme.Motifs); i++ {
     PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
-    
-    switch config.Format {
-    case "pwm":
-      if pwm, err := dreme.Motifs[i].AsPWM(dreme.Model, config.Alpha); err != nil {
-        log.Fatal(err)
-      } else {
-        tfmatrix = pwm
-      }
-      case "ppm":
-      if ppm, err := dreme.Motifs[i].AsPPM(dreme.Model, config.Alpha); err != nil {
-        panic(err)
-      } else {
-        tfmatrix = ppm
-      }
-    default:
-      panic("internal error")
-    }
-    if file, err := os.Create(fmt.Sprintf("%s-%04d.table", basename, i)); err != nil {
-      log.Fatal(err)
-    } else {
-      if err := tfmatrix.WriteMatrix(file); err != nil {
-        log.Fatal(err)
-      }
-    }
+
+    tfmatrix := getTFMatrix(config, dreme.Motifs[i], dreme.Model)
+    filename := fmt.Sprintf("%s-%04d.table", basename, i)
+
+    writeTFMatrix(config, tfmatrix, filename)
   }
 }
 
@@ -233,10 +259,11 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optHelp     := options.   BoolLong("help",              'h',        "print help")
-  optVerbose  := options.CounterLong("verbose",           'v',        "be verbose")
-  optAlpha    := options. StringLong("pseudo-probability", 0 , "0.0", "pseudo probability mass added to the PPM")
-  optFormat   := options. StringLong("format",             0 , "pwm", "output format [PWM (default), PPM]")
+  optHelp         := options.   BoolLong("help",              'h',          "print help")
+  optVerbose      := options.CounterLong("verbose",           'v',          "be verbose")
+  optAlpha        := options. StringLong("pseudo-probability", 0 , "0.0",   "pseudo probability mass added to the PPM")
+  optOutputFormat := options. StringLong("output-format",      0 , "table", "output format [table (default), jaspar]")
+  optOutputType   := options. StringLong("output-type",        0 , "pwm",   "output type   [PWM   (default), PPM]")
 
   options.SetParameters("<INPUT.bw> <BASENAME>")
   options.Parse(os.Args)
@@ -254,12 +281,20 @@ func main() {
   } else {
     config.Alpha = v
   }
-  config.Format  = strings.ToLower(*optFormat)
-  config.Verbose = *optVerbose
+  config.OutputFormat = strings.ToLower(*optOutputFormat)
+  config.OutputType   = strings.ToLower(*optOutputType)
+  config.Verbose      = *optVerbose
 
-  switch config.Format {
+  switch config.OutputType {
   case "pwm":
   case "ppm":
+  default:
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
+  switch config.OutputFormat {
+  case "table":
+  case "jaspar":
   default:
     options.PrintUsage(os.Stderr)
     os.Exit(1)

@@ -174,8 +174,13 @@ func (obj Motif) AsPWM(model Model, alpha float64) (TFMatrix, error) {
         return TFMatrix{}, err
       }
       // normalize x
-      x = (x + alpha)/(1.0 + float64(alphabet.Length())*alpha)
-      values[i][j] = math.Log(x/y)
+      if alpha < 0.0 {
+        // add pseudoprobability mass as computed by meme
+        x = x - y*alpha
+      } else {
+        x = (x + alpha)/(1.0 + float64(alphabet.Length())*alpha)
+      }
+      values[i][j] = math.Log2(x/y)
     }
   }
   return TFMatrix{values}, nil
@@ -216,7 +221,7 @@ func getTFMatrix(config Config, motif Motif, model Model) TFMatrix {
     }
   case "ppm":
     if ppm, err := motif.AsPPM(model, config.Alpha); err != nil {
-      panic(err)
+      log.Fatal(err)
     } else {
       return ppm
     }
@@ -240,7 +245,7 @@ func dremeToTable(config Config, filename string, basename string) {
   dreme := Dreme{}
 
   if err := xml.Unmarshal(byteValue, &dreme); err != nil {
-    panic(err)
+    log.Fatalf("parsing file `%s' failed: %v", filename, err)
   }
   for i := 0; i < len(dreme.Motifs); i++ {
     PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
@@ -259,11 +264,11 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optHelp         := options.   BoolLong("help",              'h',          "print help")
-  optVerbose      := options.CounterLong("verbose",           'v',          "be verbose")
-  optAlpha        := options. StringLong("pseudo-probability", 0 , "0.0",   "pseudo probability mass added to the PPM")
-  optOutputFormat := options. StringLong("output-format",      0 , "table", "output format [table (default), jaspar]")
-  optOutputType   := options. StringLong("output-type",        0 , "pwm",   "output type   [PWM   (default), PPM]")
+  optHelp         := options.   BoolLong("help",              'h',             "print help")
+  optVerbose      := options.CounterLong("verbose",           'v',             "be verbose")
+  optAlpha        := options. StringLong("pseudo-probability", 0 , "-0.00001", "pseudo probability mass added to the PPM (default: 10^-5 times background probability)")
+  optOutputFormat := options. StringLong("output-format",      0 , "table",    "output format [table (default), jaspar]")
+  optOutputType   := options. StringLong("output-type",        0 , "pwm",      "output type   [PWM   (default), PPM]")
 
   options.SetParameters("<INPUT.bw> <BASENAME>")
   options.Parse(os.Args)

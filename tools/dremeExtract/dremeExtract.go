@@ -156,7 +156,7 @@ func (obj MemeAlphabetMatrix) GetValues(alphabet Alphabet) ([][]float64, error) 
 }
 
 func (obj MemeMotif) AsPPM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error) {
-  v, err := obj.Probabilities.GetValues()
+  v, err := obj.Probabilities.GetValues(alphabet)
   if err != nil {
     return TFMatrix{}, err
   }

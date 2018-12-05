@@ -36,8 +36,9 @@ import . "github.com/pbenner/gonetics"
 
 type Config struct {
   Alpha        float64
-  OutputType   string
+   InputFormat string
   OutputFormat string
+  OutputType   string
   Verbose      int
 }
 
@@ -52,33 +53,33 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 /* ------------------------------------------------------------------------- */
 
 type Dreme struct {
-  XMLName xml.Name   `xml:"dreme"`
-  Model       Model  `xml:"model"`
-  Motifs    []Motif  `xml:"motifs>motif"`
+  XMLName xml.Name        `xml:"dreme"`
+  Model       DremeModel  `xml:"model"`
+  Motifs    []DremeMotif  `xml:"motifs>motif"`
 }
 
-type Model struct {
-  XMLName xml.Name        `xml:"model"`
-  Alphabet   AlphabetType `xml:"alphabet"`
-  Background Background   `xml:"background"`
+type DremeModel struct {
+  XMLName xml.Name           `xml:"model"`
+  Alphabet   DremeAlphabet   `xml:"alphabet"`
+  Background DremeBackground `xml:"background"`
 }
 
-type AlphabetType struct {
+type DremeAlphabet struct {
   XMLName xml.Name   `xml:"alphabet"`
   Name        string `xml:"name,attr"`
 }
 
-type Background struct {
+type DremeBackground struct {
   XMLName xml.Name    `xml:"background"`
   Attrs   []xml.Attr  `xml:",any,attr"`
 }
 
-type Motif struct {
-  XMLName xml.Name `xml:"motif"`
-  Pos       []Pos  `xml:"pos"`
+type DremeMotif struct {
+  XMLName xml.Name     `xml:"motif"`
+  Pos       []DremePos `xml:"pos"`
 }
 
-type Pos struct {
+type DremePos struct {
   XMLName   xml.Name    `xml:"pos"`
   Attrs   []xml.Attr    `xml:",any,attr"`
 }
@@ -86,7 +87,7 @@ type Pos struct {
 
 /* ------------------------------------------------------------------------- */
 
-func (obj Model) GetAlphabet() (Alphabet, error) {
+func (obj DremeModel) GetAlphabet() (Alphabet, error) {
   switch obj.Alphabet.Name {
   case "DNA":
     return NucleotideAlphabet{}, nil
@@ -97,7 +98,7 @@ func (obj Model) GetAlphabet() (Alphabet, error) {
 
 /* ------------------------------------------------------------------------- */
 
-func (obj Pos) GetValue(letter byte) (float64, error) {
+func (obj DremePos) GetValue(letter byte) (float64, error) {
   for k := 0; k < len(obj.Attrs); k++ {
     if len(obj.Attrs[k].Name.Local) != 1 || unicode.ToLower(rune(letter)) != unicode.ToLower(rune(obj.Attrs[k].Name.Local[0])) {
       continue
@@ -110,7 +111,7 @@ func (obj Pos) GetValue(letter byte) (float64, error) {
   return 0.0, fmt.Errorf("invalid letter `%c'", letter)
 }
 
-func (obj Background) GetValue(letter byte) (float64, error) {
+func (obj DremeBackground) GetValue(letter byte) (float64, error) {
   for k := 0; k < len(obj.Attrs); k++ {
     if len(obj.Attrs[k].Name.Local) != 1 || unicode.ToLower(rune(letter)) != unicode.ToLower(rune(obj.Attrs[k].Name.Local[0])) {
       continue
@@ -125,7 +126,7 @@ func (obj Background) GetValue(letter byte) (float64, error) {
 
 /* ------------------------------------------------------------------------- */
 
-func (obj Motif) AsPPM(model Model, alpha float64) (TFMatrix, error) {
+func (obj DremeMotif) AsPPM(model DremeModel, alpha float64) (TFMatrix, error) {
   alphabet, err := model.GetAlphabet(); if err != nil {
     return TFMatrix{}, err
   }
@@ -150,7 +151,7 @@ func (obj Motif) AsPPM(model Model, alpha float64) (TFMatrix, error) {
   return TFMatrix{values}, nil
 }
 
-func (obj Motif) AsPWM(model Model, alpha float64) (TFMatrix, error) {
+func (obj DremeMotif) AsPWM(model DremeModel, alpha float64) (TFMatrix, error) {
   alphabet, err := model.GetAlphabet(); if err != nil {
     return TFMatrix{}, err
   }
@@ -211,7 +212,7 @@ func writeTFMatrix(config Config, tfmatrix TFMatrix, filename string) {
 
 /* ------------------------------------------------------------------------- */
 
-func getTFMatrix(config Config, motif Motif, model Model) TFMatrix {
+func getTFMatrix(config Config, motif DremeMotif, model DremeModel) TFMatrix {
   switch config.OutputType {
   case "pwm":
     if pwm, err := motif.AsPWM(model, config.Alpha); err != nil {
@@ -233,7 +234,7 @@ func getTFMatrix(config Config, motif Motif, model Model) TFMatrix {
 
 /* ------------------------------------------------------------------------- */
 
-func dremeToTable(config Config, filename string, basename string) {
+func dremeExtract(config Config, filename string, basename string) {
   xmlFile, err := os.Open(filename); if err != nil {
 		log.Fatal(err)
 	}
@@ -267,6 +268,7 @@ func main() {
   optHelp         := options.   BoolLong("help",              'h',             "print help")
   optVerbose      := options.CounterLong("verbose",           'v',             "be verbose")
   optAlpha        := options. StringLong("pseudo-probability", 0 , "-0.00001", "pseudo probability mass added to the PPM (default: 10^-5 times background probability)")
+  optInputFormat  := options. StringLong( "input-format",      0 , "meme",     " input format [meme  (default), dreme]")
   optOutputFormat := options. StringLong("output-format",      0 , "table",    "output format [table (default), jaspar]")
   optOutputType   := options. StringLong("output-type",        0 , "pwm",      "output type   [PWM   (default), PPM]")
 
@@ -286,13 +288,14 @@ func main() {
   } else {
     config.Alpha = v
   }
+  config.InputFormat  = strings.ToLower(*optInputFormat)
   config.OutputFormat = strings.ToLower(*optOutputFormat)
   config.OutputType   = strings.ToLower(*optOutputType)
   config.Verbose      = *optVerbose
 
-  switch config.OutputType {
-  case "pwm":
-  case "ppm":
+  switch config.InputFormat {
+  case "meme":
+  case "dreme":
   default:
     options.PrintUsage(os.Stderr)
     os.Exit(1)
@@ -304,8 +307,15 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  switch config.OutputType {
+  case "pwm":
+  case "ppm":
+  default:
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
   filename := options.Args()[0]
   basename := options.Args()[1]
 
-  dremeToTable(config, filename, basename)
+  dremeExtract(config, filename, basename)
 }

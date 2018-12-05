@@ -88,11 +88,9 @@ type MemeAlphabetValue struct {
   Value       string  `xml:",innerxml"`
 }
 
-type MemeBackground MemeAlphabetArray
-
 type MemeModel struct {
-  XMLName    xml.Name           `xml:"model"`
-  Background     MemeBackground `xml:"background_frequencies>alphabet_array"`
+  XMLName    xml.Name              `xml:"model"`
+  Background     MemeAlphabetArray `xml:"background_frequencies>alphabet_array"`
 }
 
 type MemeMotif struct {
@@ -170,6 +168,25 @@ func (obj MemeMotif) AsPPM(alphabet Alphabet, background []float64, alpha float6
   return TFMatrix{v}, nil
 }
 
+func (obj MemeMotif) AsPWM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error) {
+  v, err := obj.Probabilities.GetValues(alphabet)
+  if err != nil {
+    return TFMatrix{}, err
+  }
+  for i := 0; i < len(v); i++ {
+    for j := 0; j < len(v[i]); j++ {
+      // normalize x
+      if alpha < 0.0 {
+        // add pseudoprobability mass as computed by meme
+        v[i][j] = v[i][j] - background[i]*alpha
+      } else {
+        v[i][j] = (v[i][j] + alpha)/(1.0 + float64(alphabet.Length())*alpha)
+      }
+      v[i][j] = math.Log2(v[i][j]/background[i])
+    }
+  }
+  return TFMatrix{v}, nil
+}
 
 /* dreme xml format
  * ------------------------------------------------------------------------- */
@@ -367,19 +384,18 @@ func memeExtract(config Config, filename string, basename string) {
     if err := xml.Unmarshal(byteValue, &meme); err != nil {
       log.Fatalf("parsing file `%s' failed: %v", filename, err)
     }
-    fmt.Printf("%+v\n", meme)
-    // alphabet, err := meme.Model.GetAlphabet(); if err != nil {
-    //   log.Fatal(err)
-    // }
-    // background, err := meme.Model.Background.GetValues(alphabet); if err != nil {
-    //   log.Fatal(err)
-    // }
-    // tfmatrices = make([]TFMatrix, len(meme.Motifs))
+    alphabet, err := meme.GetAlphabet(); if err != nil {
+      log.Fatal(err)
+    }
+    background, err := meme.Model.Background.GetValues(alphabet); if err != nil {
+      log.Fatal(err)
+    }
+    tfmatrices = make([]TFMatrix, len(meme.Motifs))
 
-    // for i := 0; i < len(meme.Motifs); i++ {
-    //   PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
-    //   tfmatrices[i] = getTFMatrix(config, meme.Motifs[i], background, alphabet)
-    // }
+    for i := 0; i < len(meme.Motifs); i++ {
+      PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+      tfmatrices[i] = getTFMatrix(config, meme.Motifs[i], background, alphabet)
+    }
   }
   if config.InputFormat == "dreme" {
     dreme := Dreme{}

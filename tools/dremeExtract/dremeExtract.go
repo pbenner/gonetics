@@ -155,6 +155,22 @@ func (obj MemeAlphabetMatrix) GetValues(alphabet Alphabet) ([][]float64, error) 
   return r, nil
 }
 
+func (obj MemeMotif) AsPPM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error) {
+  v, err := obj.Probabilities.GetValues()
+  if err != nil {
+    return TFMatrix{}, err
+  }
+  if alpha != 0.0 {
+    for i := 0; i < len(v); i++ {
+      for j := 0; j < len(v[i]); j++ {
+        v[i][j] = (v[i][j] + alpha)/(1.0 + float64(alphabet.Length())*alpha)
+      }
+    }
+  }
+  return TFMatrix{v}, nil
+}
+
+
 /* dreme xml format
  * ------------------------------------------------------------------------- */
 

@@ -18,7 +18,7 @@ SUBDIRS = \
 	tools/bigWigQuerySequence \
 	tools/bigWigStatistics \
 	tools/chromHmmTablesToBigWig \
-	tools/dremeExtract \
+	tools/memeExtract \
 	tools/drawGenomicRegions \
 	tools/fastaExtract \
 	tools/gtfToBed \

@@ -26,9 +26,9 @@ Executables are available [here](https://github.com/pbenner/gonetics-tools).
 | bigWigStatistics        | compute summary statistics of a bigWig file                              |
 | chromHmmTablesToBigWig  | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
 | drawGenomicRegions      | draw random genomic regions                                              |
-| dremeExtract            | extract PWM/PPM motifs from DREME xml files                              |
 | fastaExtract            | extract regions from a fasta file                                        |
 | gtfToBed                | convert GTF files to Bed6 format                                         |
+| memeExtract             | extract PWM/PPM motifs from MEME/DREME xml files                         |
 | observedOverExpectedCpG | compute CpG scores as defined by Gardiner-Garden and Frommer (1987)      |
 | pwmScanSequences        | scan sequences for PWM hits                                              |
 | pwmScanRegions          | scan regions for multiple PWMs                                           |

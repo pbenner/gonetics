@@ -52,6 +52,112 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
 
 /* ------------------------------------------------------------------------- */
 
+type Motif interface {
+  AsPWM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error)
+  AsPPM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error)
+}
+
+/* meme xml format
+ * ------------------------------------------------------------------------- */
+
+type Meme struct {
+  XMLName xml.Name           `xml:"MEME"`
+  Alphabet    MemeAlphabet   `xml:"training_set>alphabet"`
+  Model       MemeModel      `xml:"model"`
+  Motifs    []MemeMotif      `xml:"motifs>motif"`
+}
+
+type MemeAlphabet struct {
+  XMLName xml.Name   `xml:"alphabet"`
+  Name        string `xml:"name,attr"`
+}
+
+type MemeAlphabetMatrix struct {
+  XMLName xml.Name              `xml:"alphabet_matrix"`
+  Arrays    []MemeAlphabetArray `xml:"alphabet_array"`
+}
+
+type MemeAlphabetArray struct {
+  XMLName xml.Name              `xml:"alphabet_array"`
+  Values    []MemeAlphabetValue `xml:"value"`
+}
+
+type MemeAlphabetValue struct {
+  XMLName xml.Name    `xml:"value"`
+  Letter      string  `xml:"letter_id,attr"`
+  Value       string  `xml:",innerxml"`
+}
+
+type MemeBackground MemeAlphabetArray
+
+type MemeModel struct {
+  XMLName    xml.Name           `xml:"model"`
+  Background     MemeBackground `xml:"background_frequencies>alphabet_array"`
+}
+
+type MemeMotif struct {
+  XMLName       xml.Name               `xml:"motif"`
+  Scores            MemeAlphabetMatrix `xml:"scores>alphabet_matrix"`
+  Probabilities     MemeAlphabetMatrix `xml:"probabilities>alphabet_matrix"`
+}
+
+/* ------------------------------------------------------------------------- */
+
+func (obj Meme) GetAlphabet() (Alphabet, error) {
+  switch strings.ToUpper(obj.Alphabet.Name) {
+  case "DNA":
+    return NucleotideAlphabet{}, nil
+  default:
+    return nil, fmt.Errorf("invalid alphabet `%s'", obj.Alphabet.Name)
+  }
+}
+
+func (obj MemeAlphabetArray) GetValues(alphabet Alphabet) ([]float64, error) {
+  r := make([]float64, alphabet.Length())
+  for _, value := range obj.Values {
+    if len(value.Letter) != 1 {
+      return nil, fmt.Errorf("background has invalid letter")
+    }
+    i, err := alphabet.Code(byte(value.Letter[0]))
+    if err != nil {
+      return nil, fmt.Errorf("background has invalid letter")
+    }
+    v, err := strconv.ParseFloat(value.Value, 64)
+    if err != nil {
+      return nil, fmt.Errorf("background has invalid value: %v", err)
+    }
+    r[i] = v
+  }
+  return r, nil
+}
+
+func (obj MemeAlphabetMatrix) GetValues(alphabet Alphabet) ([][]float64, error) {
+  r := make([][]float64, alphabet.Length())
+  for k := 0; k < alphabet.Length(); k++ {
+    r[k] = make([]float64, len(obj.Arrays))
+  }
+  for j, array := range obj.Arrays {
+    for _, value := range array.Values {
+      if len(value.Letter) != 1 {
+        return nil, fmt.Errorf("background has invalid letter")
+      }
+      i, err := alphabet.Code(byte(value.Letter[0]))
+      if err != nil {
+        return nil, fmt.Errorf("background has invalid letter")
+      }
+      v, err := strconv.ParseFloat(value.Value, 64)
+      if err != nil {
+        return nil, fmt.Errorf("background has invalid value: %v", err)
+      }
+      r[i][j] = v
+    }
+  }
+  return r, nil
+}
+
+/* dreme xml format
+ * ------------------------------------------------------------------------- */
+
 type Dreme struct {
   XMLName xml.Name        `xml:"dreme"`
   Model       DremeModel  `xml:"model"`
@@ -88,7 +194,7 @@ type DremePos struct {
 /* ------------------------------------------------------------------------- */
 
 func (obj DremeModel) GetAlphabet() (Alphabet, error) {
-  switch obj.Alphabet.Name {
+  switch strings.ToUpper(obj.Alphabet.Name) {
   case "DNA":
     return NucleotideAlphabet{}, nil
   default:
@@ -96,7 +202,6 @@ func (obj DremeModel) GetAlphabet() (Alphabet, error) {
   }
 }
 
-/* ------------------------------------------------------------------------- */
 
 func (obj DremePos) GetValue(letter byte) (float64, error) {
   for k := 0; k < len(obj.Attrs); k++ {
@@ -111,25 +216,26 @@ func (obj DremePos) GetValue(letter byte) (float64, error) {
   return 0.0, fmt.Errorf("invalid letter `%c'", letter)
 }
 
-func (obj DremeBackground) GetValue(letter byte) (float64, error) {
+func (obj DremeBackground) GetValues(alphabet Alphabet) ([]float64, error) {
+  r := make([]float64, alphabet.Length())
   for k := 0; k < len(obj.Attrs); k++ {
-    if len(obj.Attrs[k].Name.Local) != 1 || unicode.ToLower(rune(letter)) != unicode.ToLower(rune(obj.Attrs[k].Name.Local[0])) {
-      continue
+    if len(obj.Attrs[k].Name.Local) != 1 {
+      return nil, fmt.Errorf("background has invalid letter")
     }
-    v, err := strconv.ParseFloat(obj.Attrs[k].Value, 64); if err != nil {
-      return 0.0, err
+    i, err := alphabet.Code(byte(obj.Attrs[k].Name.Local[0]))
+    if err != nil {
+      return nil, fmt.Errorf("background has invalid letter")
     }
-    return v, nil
+    v, err := strconv.ParseFloat(obj.Attrs[k].Value, 64)
+    if err != nil {
+      return nil, fmt.Errorf("background has invalid value: %v", err)
+    }
+    r[i] = v
   }
-  return 0.0, fmt.Errorf("invalid background letter `%c'", letter)
+  return r, nil
 }
 
-/* ------------------------------------------------------------------------- */
-
-func (obj DremeMotif) AsPPM(model DremeModel, alpha float64) (TFMatrix, error) {
-  alphabet, err := model.GetAlphabet(); if err != nil {
-    return TFMatrix{}, err
-  }
+func (obj DremeMotif) AsPPM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error) {
   // allocate values matrix
   values := make([][]float64, alphabet.Length())
   for i := 0; i < alphabet.Length(); i++ {
@@ -151,10 +257,7 @@ func (obj DremeMotif) AsPPM(model DremeModel, alpha float64) (TFMatrix, error) {
   return TFMatrix{values}, nil
 }
 
-func (obj DremeMotif) AsPWM(model DremeModel, alpha float64) (TFMatrix, error) {
-  alphabet, err := model.GetAlphabet(); if err != nil {
-    return TFMatrix{}, err
-  }
+func (obj DremeMotif) AsPWM(alphabet Alphabet, background []float64, alpha float64) (TFMatrix, error) {
   // allocate values matrix
   values := make([][]float64, alphabet.Length())
   for i := 0; i < alphabet.Length(); i++ {
@@ -167,10 +270,7 @@ func (obj DremeMotif) AsPWM(model DremeModel, alpha float64) (TFMatrix, error) {
     }
     for j, pos := range obj.Pos {
       x, err := pos.GetValue(c)
-      if err != nil {
-        return TFMatrix{}, err
-      }
-      y, err := model.Background.GetValue(c)
+      y      := background[i]
       if err != nil {
         return TFMatrix{}, err
       }
@@ -212,16 +312,16 @@ func writeTFMatrix(config Config, tfmatrix TFMatrix, filename string) {
 
 /* ------------------------------------------------------------------------- */
 
-func getTFMatrix(config Config, motif DremeMotif, model DremeModel) TFMatrix {
+func getTFMatrix(config Config, motif Motif, background []float64, alphabet Alphabet) TFMatrix {
   switch config.OutputType {
   case "pwm":
-    if pwm, err := motif.AsPWM(model, config.Alpha); err != nil {
+    if pwm, err := motif.AsPWM(alphabet, background, config.Alpha); err != nil {
       log.Fatal(err)
     } else {
       return pwm
     }
   case "ppm":
-    if ppm, err := motif.AsPPM(model, config.Alpha); err != nil {
+    if ppm, err := motif.AsPPM(alphabet, background, config.Alpha); err != nil {
       log.Fatal(err)
     } else {
       return ppm
@@ -234,7 +334,7 @@ func getTFMatrix(config Config, motif DremeMotif, model DremeModel) TFMatrix {
 
 /* ------------------------------------------------------------------------- */
 
-func dremeExtract(config Config, filename string, basename string) {
+func memeExtract(config Config, filename string, basename string) {
   xmlFile, err := os.Open(filename); if err != nil {
 		log.Fatal(err)
 	}
@@ -243,18 +343,50 @@ func dremeExtract(config Config, filename string, basename string) {
   }
   xmlFile.Close()
 
-  dreme := Dreme{}
+  tfmatrices := []TFMatrix{}
 
-  if err := xml.Unmarshal(byteValue, &dreme); err != nil {
-    log.Fatalf("parsing file `%s' failed: %v", filename, err)
+  if config.InputFormat == "meme" {
+    meme := Meme{}
+
+    if err := xml.Unmarshal(byteValue, &meme); err != nil {
+      log.Fatalf("parsing file `%s' failed: %v", filename, err)
+    }
+    fmt.Printf("%+v\n", meme)
+    // alphabet, err := meme.Model.GetAlphabet(); if err != nil {
+    //   log.Fatal(err)
+    // }
+    // background, err := meme.Model.Background.GetValues(alphabet); if err != nil {
+    //   log.Fatal(err)
+    // }
+    // tfmatrices = make([]TFMatrix, len(meme.Motifs))
+
+    // for i := 0; i < len(meme.Motifs); i++ {
+    //   PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+    //   tfmatrices[i] = getTFMatrix(config, meme.Motifs[i], background, alphabet)
+    // }
   }
-  for i := 0; i < len(dreme.Motifs); i++ {
-    PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+  if config.InputFormat == "dreme" {
+    dreme := Dreme{}
 
-    tfmatrix := getTFMatrix(config, dreme.Motifs[i], dreme.Model)
+    if err := xml.Unmarshal(byteValue, &dreme); err != nil {
+      log.Fatalf("parsing file `%s' failed: %v", filename, err)
+    }
+    alphabet, err := dreme.Model.GetAlphabet(); if err != nil {
+      log.Fatal(err)
+    }
+    background, err := dreme.Model.Background.GetValues(alphabet); if err != nil {
+      log.Fatal(err)
+    }
+    tfmatrices := make([]TFMatrix, len(dreme.Motifs))
+
+    for i := 0; i < len(dreme.Motifs); i++ {
+      PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+      tfmatrices[i] = getTFMatrix(config, dreme.Motifs[i], background, alphabet)
+    }
+  }
+  for i := 0; i < len(tfmatrices); i++ {
     filename := fmt.Sprintf("%s-%04d.table", basename, i)
-
-    writeTFMatrix(config, tfmatrix, filename)
+    writeTFMatrix(config, tfmatrices[i], filename)
   }
 }
 
@@ -317,5 +449,5 @@ func main() {
   filename := options.Args()[0]
   basename := options.Args()[1]
 
-  dremeExtract(config, filename, basename)
+  memeExtract(config, filename, basename)
 }

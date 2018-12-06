@@ -427,6 +427,9 @@ func memeExtract(config Config, filename string, basename string) {
     }
   }
   for i := 0; i < len(tfmatrices); i++ {
+    if tfmatrices[i].Values == nil {
+      continue
+    }
     filename := fmt.Sprintf("%s-%04d.table", basename, i)
     writeTFMatrix(config, tfmatrices[i], filename)
   }

@@ -36,6 +36,7 @@ import . "github.com/pbenner/gonetics"
 
 type Config struct {
   Alpha        float64
+  FilterEValue float64
    InputFormat string
   OutputFormat string
   OutputType   string
@@ -95,6 +96,8 @@ type MemeModel struct {
 
 type MemeMotif struct {
   XMLName       xml.Name               `xml:"motif"`
+  PValue            string             `xml:"p_value,attr"`
+  EValue            string             `xml:"e_value,attr"`
   Scores            MemeAlphabetMatrix `xml:"scores>alphabet_matrix"`
   Probabilities     MemeAlphabetMatrix `xml:"probabilities>alphabet_matrix"`
 }
@@ -393,8 +396,15 @@ func memeExtract(config Config, filename string, basename string) {
     tfmatrices = make([]TFMatrix, len(meme.Motifs))
 
     for i := 0; i < len(meme.Motifs); i++ {
-      PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
-      tfmatrices[i] = getTFMatrix(config, meme.Motifs[i], background, alphabet)
+      v, err := strconv.ParseFloat(meme.Motifs[i].EValue, 64); if err != nil {
+        log.Fatalf("Parsing motif `%d' failed: %v", i, err)
+      }
+      if v > config.FilterEValue {
+        PrintStderr(config, 1, "Skipping motif %d...\n", i+1)
+      } else {
+        PrintStderr(config, 1, "Parsing motif %d...\n", i+1)
+        tfmatrices[i] = getTFMatrix(config, meme.Motifs[i], background, alphabet)
+      }
     }
   }
   if config.InputFormat == "dreme" {
@@ -432,6 +442,7 @@ func main() {
   optHelp         := options.   BoolLong("help",              'h',             "print help")
   optVerbose      := options.CounterLong("verbose",           'v',             "be verbose")
   optAlpha        := options. StringLong("pseudo-probability", 0 , "-0.00001", "pseudo probability mass added to the PPM (default: 10^-5 times background probability)")
+  optFilterEValue := options. StringLong("filter-e-value",     0 , "0.05",     "filter motifs by their e-value")
   optInputFormat  := options. StringLong( "input-format",      0 , "meme",     " input format [meme  (default), dreme]")
   optOutputFormat := options. StringLong("output-format",      0 , "table",    "output format [table (default), jaspar]")
   optOutputType   := options. StringLong("output-type",        0 , "pwm",      "output type   [PWM   (default), PPM]")
@@ -451,6 +462,15 @@ func main() {
     log.Fatal(err)
   } else {
     config.Alpha = v
+  }
+  if v, err := strconv.ParseFloat(*optFilterEValue, 64); err != nil {
+    log.Fatal(err)
+  } else {
+    if v < 0.0 {
+      options.PrintUsage(os.Stderr)
+      os.Exit(1)
+    }
+    config.FilterEValue = v
   }
   config.InputFormat  = strings.ToLower(*optInputFormat)
   config.OutputFormat = strings.ToLower(*optOutputFormat)

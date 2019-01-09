@@ -177,6 +177,7 @@ type fraglenEstimate struct {
   Fraglen   int
   X       []int
   Y       []float64
+  Error     error
 }
 
 /* read filters
@@ -364,12 +365,12 @@ func shiftReads(config BamCoverageConfig, chanIn ReadChannel) ReadChannel {
 /* fragment length estimation
  * -------------------------------------------------------------------------- */
 
-func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) (fraglenEstimate, error) {
+func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) fraglenEstimate {
   var reads ReadChannel
 
   config.Logger.Printf("Reading tags from `%s'", filename)
   if bam, err := OpenBamFile(filename, BamReaderOptions{}); err != nil {
-    return fraglenEstimate{}, err
+    return fraglenEstimate{0, nil, nil, err}
   } else {
     defer bam.Close()
     reads = bam.ReadSimple(false, false)
@@ -384,10 +385,10 @@ func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) (
   // estimate fragment length
   config.Logger.Printf("Estimating mean fragment length")
   if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
-    return fraglenEstimate{0, x, y}, err
+    return fraglenEstimate{0, x, y, err}
   } else {
     config.Logger.Printf("Estimated mean fragment length: %d", fraglen)
-    return fraglenEstimate{fraglen, x, y}, nil
+    return fraglenEstimate{fraglen, x, y, err}
   }
 }
 
@@ -622,10 +623,13 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       if fraglenTreatment[i] != 0 {
         continue
       }
-      if estimate, err := estimateFraglen(config, filename, genome); err != nil {
-        return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, err)
+      estimate := estimateFraglen(config, filename, genome)
+      // save cross-correlation data
+      treatmentFraglenEstimates = append(treatmentFraglenEstimates, estimate)
+      // exit on error
+      if estimate.Error != nil {
+        return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)
       } else {
-        treatmentFraglenEstimates = append(treatmentFraglenEstimates, estimate)
         fraglenTreatment[i] = estimate.Fraglen
       }
     }
@@ -633,10 +637,13 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       if fraglenControl[i] != 0 {
         continue
       }
-      if estimate, err := estimateFraglen(config, filename, genome); err != nil {
-        return SimpleTrack{}, controlFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, err)
+      estimate := estimateFraglen(config, filename, genome)
+      // save cross-correlation data
+      controlFraglenEstimates = append(controlFraglenEstimates, estimate)
+      // exit on error
+      if estimate.Error != nil {
+        return SimpleTrack{}, controlFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)
       } else {
-        controlFraglenEstimates = append(controlFraglenEstimates, estimate)
         fraglenControl[i] = estimate.Fraglen
       }
     }

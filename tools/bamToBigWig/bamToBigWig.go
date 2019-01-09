@@ -462,7 +462,7 @@ func main() {
   if *optEstimateFraglen {
     for i, estimate := range fraglenTreatmentEstimate {
       filename := filenamesTreatment[i]
-      if config.SaveFraglen && err == nil {
+      if config.SaveFraglen && estimate.Error == nil {
         saveFraglen(config, filename, estimate.Fraglen)
       }
       if config.SaveCrossCorr && estimate.X != nil && estimate.Y != nil {
@@ -474,7 +474,7 @@ func main() {
     }
     for i, estimate := range fraglenControlEstimate {
       filename := filenamesControl[i]
-      if config.SaveFraglen && err == nil {
+      if config.SaveFraglen && estimate.Error == nil {
         saveFraglen(config, filename, estimate.Fraglen)
       }
       if config.SaveCrossCorr && estimate.X != nil && estimate.Y != nil {

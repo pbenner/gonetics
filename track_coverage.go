@@ -604,8 +604,8 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
     }
   }
 
-  treatmentFraglenEstimates := []fraglenEstimate{}
-    controlFraglenEstimates := []fraglenEstimate{}
+  treatmentFraglenEstimates := make([]fraglenEstimate, len(filenamesTreatment))
+    controlFraglenEstimates := make([]fraglenEstimate, len(filenamesControl))
 
   // check fraglen arguments
   //////////////////////////////////////////////////////////////////////////////
@@ -621,11 +621,12 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
   if config.EstimateFraglen {
     for i, filename := range filenamesTreatment {
       if fraglenTreatment[i] != 0 {
+        treatmentFraglenEstimates[i].Error = fmt.Errorf("estimate provided")
         continue
       }
       estimate := estimateFraglen(config, filename, genome)
       // save cross-correlation data
-      treatmentFraglenEstimates = append(treatmentFraglenEstimates, estimate)
+      treatmentFraglenEstimates[i] = estimate
       // exit on error
       if estimate.Error != nil {
         return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)
@@ -635,11 +636,12 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
     }
     for i, filename := range filenamesControl {
       if fraglenControl[i] != 0 {
+        controlFraglenEstimates[i].Error = fmt.Errorf("estimate provided")
         continue
       }
       estimate := estimateFraglen(config, filename, genome)
       // save cross-correlation data
-      controlFraglenEstimates = append(controlFraglenEstimates, estimate)
+      controlFraglenEstimates[i] = estimate
       // exit on error
       if estimate.Error != nil {
         return SimpleTrack{}, controlFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)

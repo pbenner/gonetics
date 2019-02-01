@@ -6,32 +6,33 @@ Gonetics is a bioinformatics library for the Go programming language (golang). I
 
 Executables are available [here](https://github.com/pbenner/gonetics-tools).
 
-| Tool                    | Description                                                              |
-| ----------------------- | ------------------------------------------------------------------------ |
-| bamCheckBin             | check bin records of a bam file                                          |
-| bamGenome               | print the genome (sequence table) of a bam file                          |
-| bamToBigWig             | convert bam to bigWig (estimate fragment length if required)             |
-| bamView                 | print contents of a bam file                                             |
-| bigWigEditChromNames    | edit chromosome names of a bigWig file (i.e. replace `chr1` by just `1`) |
-| bigWigExtract           | extract regions from a bigWig file and save them as table or bigWig file |
-| bigWigExtractChroms     | extract a subset of the chromosomes from a bigWig file                   |
-| bigWigGenome            | print the genome (sequence table) of a bigWig file                       |
-| bigWigHistogram         | compute a histogram of the values in a bigWig file                       |
-| bigWigNil               | read bigWig and output it to a new file                                  |
-| bigWigMap               | apply a function to a set of bigWig files                                |
-| bigWigPositive          | simple peak finding (i.e. every region with a value above a threshold)   |
-| bigWigQuantileNormalize | quantile normalize a bigWig file to a reference                          |
-| bigWigQuery             | retrieve data from a bigWig file                                         |
-| bigWigQuerySequence     | retrieve sequences from a bigWig file                                    |
-| bigWigStatistics        | compute summary statistics of a bigWig file                              |
-| chromHmmTablesToBigWig  | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
-| drawGenomicRegions      | draw random genomic regions                                              |
-| fastaExtract            | extract regions from a fasta file                                        |
-| gtfToBed                | convert GTF files to Bed6 format                                         |
-| memeExtract             | extract PWM/PPM motifs from MEME/DREME xml files                         |
-| observedOverExpectedCpG | compute CpG scores as defined by Gardiner-Garden and Frommer (1987)      |
-| pwmScanSequences        | scan sequences for PWM hits                                              |
-| pwmScanRegions          | scan regions for multiple PWMs                                           |
+| Tool                     | Description                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| bamCheckBin              | check bin records of a bam file                                          |
+| bamGenome                | print the genome (sequence table) of a bam file                          |
+| bamToBigWig              | convert bam to bigWig (estimate fragment length if required)             |
+| bamView                  | print contents of a bam file                                             |
+| bigWigEditChromNames     | edit chromosome names of a bigWig file (i.e. replace `chr1` by just `1`) |
+| bigWigExtract            | extract regions from a bigWig file and save them as table or bigWig file |
+| bigWigExtractChroms      | extract a subset of the chromosomes from a bigWig file                   |
+| bigWigGenome             | print the genome (sequence table) of a bigWig file                       |
+| bigWigHistogram          | compute a histogram of the values in a bigWig file                       |
+| bigWigNil                | read bigWig and output it to a new file                                  |
+| bigWigMap                | apply a function to a set of bigWig files                                |
+| bigWigPositive           | simple peak finding (i.e. every region with a value above a threshold)   |
+| bigWigQuantileNormalize  | quantile normalize a bigWig file to a reference                          |
+| bigWigQuery              | retrieve data from a bigWig file                                         |
+| bigWigQuerySequence      | retrieve sequences from a bigWig file                                    |
+| bigWigStatistics         | compute summary statistics of a bigWig file                              |
+| chromHmmTablesToBigWig   | convert chromHmm output (posteriors / binariezed bams) to bigWig         |
+| drawGenomicRegions       | draw random genomic regions                                              |
+| fastaExtract             | extract regions from a fasta file                                        |
+| gtfToBed                 | convert GTF files to Bed6 format                                         |
+| memeExtract              | extract PWM/PPM motifs from MEME/DREME xml files                         |
+| observedOverExpectedCpG  | compute CpG scores as defined by Gardiner-Garden and Frommer (1987)      |
+| pwmScanSequences         | scan sequences for PWM hits                                              |
+| pwmScanRegions           | scan regions for multiple PWMs                                           |
+| segmentationDifferential | extract differential regions from multiple chromatin segmentations       |
 
 ### GRanges
 

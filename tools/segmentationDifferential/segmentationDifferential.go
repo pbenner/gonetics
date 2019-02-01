@@ -30,7 +30,8 @@ import . "github.com/pbenner/gonetics"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Verbose int
+  RegionSize int
+  Verbose    int
 }
 
 /* i/o
@@ -97,6 +98,13 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   for i := 0; i < len(names); i++ {
     names[i] = states
   }
+  if config.RegionSize != 0 {
+    for i := 0; i < r.Length(); i++ {
+      x := (r.Ranges[i].From + r.Ranges[i].To)/2
+      r.Ranges[i].From = x - config.RegionSize/2
+      r.Ranges[i].To   = r.Ranges[i].From + config.RegionSize
+    }
+  }
   r.AddMeta("name", names)
   r.AddMeta("occurrence", occursIn)
   r.WriteTable(os.Stdout, true, false)
@@ -109,8 +117,9 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optVerbose           := options.CounterLong("verbose",   'v',     "verbose level [-v or -vv]")
-  optHelp              := options.   BoolLong("help",      'h',     "print help")
+  optRegionSize  := options.    IntLong("region-size",  0 , 0,  "if not zero, all regions are resized to the given length")
+  optVerbose     := options.CounterLong("verbose",     'v',     "verbose level [-v or -vv]")
+  optHelp        := options.   BoolLong("help",        'h',     "print help")
 
   options.SetParameters("<STATE_1,STATE_2,...> <SEGMENTATION_1.bed> <SEGMENTATION_2.bed> [SEGMENTATION_3.bed]...")
   options.Parse(os.Args)
@@ -128,5 +137,7 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  config.RegionSize = *optRegionSize
+
   callDifferentialRegions(config, options.Args()[0], options.Args()[1:])
 }

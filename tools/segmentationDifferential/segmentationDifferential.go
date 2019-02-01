@@ -108,6 +108,7 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   r.AddMeta("name", names)
   r.AddMeta("occurrence", occursIn)
   r.WriteTable(os.Stdout, true, false)
+  fmt.Fprintf(os.Stdout, "\n")
 }
 
 /* -------------------------------------------------------------------------- */

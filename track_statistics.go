@@ -20,6 +20,7 @@ package gonetics
 
 import "fmt"
 import "math"
+import "sort"
 
 /* -------------------------------------------------------------------------- */
 
@@ -352,11 +353,38 @@ func (histogram TrackHistogram) String() string {
   return fmt.Sprintf(s, histogram.Name, histogram.X, histogram.Y)
 }
 
-func (track GenericTrack) Histogram(from, to float64, bins int) TrackHistogram {
+func (track GenericTrack) histogramNoBinning() TrackHistogram {
+  histogram := TrackHistogram{}
+  m := make(map[float64]int)
+  for _, name := range track.GetSeqNames() {
+    sequence, err := track.GetSequence(name); if err != nil {
+      continue
+    }
+    for i := 0; i < sequence.NBins(); i++ {
+      m[sequence.AtBin(i)]++
+    }
+  }
+  histogram.X = make([]float64, len(m))
+  histogram.Y = make([]float64, len(m))
+  { i := 0
+    for x, _ := range m {
+      histogram.X[i] = x; i++
+    }
+  }
+  sort.Float64s(histogram.X)
+  for i := 0; i < len(histogram.X); i++ {
+    histogram.Y[i] = float64(m[histogram.X[i]])
+  }
+  return histogram
+}
 
+func (track GenericTrack) Histogram(from, to float64, bins int) TrackHistogram {
+  if bins == 0 {
+    return track.histogramNoBinning()
+  }
   histogram := TrackHistogram{}
 
-  if from >= to || bins <= 0 {
+  if from >= to {
     return histogram
   }
   // allocate memory

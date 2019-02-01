@@ -78,7 +78,7 @@ func main() {
 
   options := getopt.New()
 
-  optBins       := options.    IntLong("bins",         'b',    100, "number of histogram bins")
+  optBins       := options.    IntLong("bins",         'b',    100, "number of histogram bins (if zero then data is not binned)")
   optBinSize    := options.    IntLong("bin-size",      0 ,      0, "bin size")
   optBinStat    := options. StringLong("bin-summary",   0 , "mean", "bin summary statistic [mean (default), max, min, discrete mean]")
   optCumulative := options.   BoolLong("cumulative",   'c',         "compute cumulative histogram")

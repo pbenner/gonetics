@@ -44,6 +44,20 @@ func printStderr(config Config, level int, format string, args ...interface{}) {
 
 /* -------------------------------------------------------------------------- */
 
+func importBed6(config Config, filename string) GRanges {
+  granges := GRanges{}
+  printStderr(config, 1, "Reading bed file `%s'... ", filename)
+  if err := granges.ImportBed6(filename); err != nil {
+    printStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  } else {
+    printStderr(config, 1, "done\n")
+  }
+  return granges
+}
+
+/* -------------------------------------------------------------------------- */
+
 func filterRegions(states []string, s GRanges) GRanges {
   idx  := []int{}
   name := s.GetMetaStr("name")
@@ -60,12 +74,10 @@ func filterRegions(states []string, s GRanges) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func callDifferentialRegions(states string, segmentationFilenames []string) {
+func callDifferentialRegions(config Config, states string, segmentationFilenames []string) {
   regions := make([]GRanges, len(segmentationFilenames))
   for i, filename := range segmentationFilenames {
-    if err := regions[i].ImportBed6(filename); err != nil {
-      log.Fatal(err)
-    }
+    regions[i] = importBed6(config, filename)
     regions[i] = filterRegions(strings.Split(states, ","), regions[i])
   }
   r := GRanges{}
@@ -116,5 +128,5 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  callDifferentialRegions(options.Args()[0], options.Args()[1:])
+  callDifferentialRegions(config, options.Args()[0], options.Args()[1:])
 }

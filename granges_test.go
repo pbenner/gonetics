@@ -75,6 +75,32 @@ func TestGRanges3(t *testing.T) {
   }
 }
 
+func TestGRanges4(t *testing.T) {
+  seqnames := []string{"chr1", "chr1", "chr1", "chr2", "chr2"}
+  from     := []int{ 6, 10, 24,  6, 10}
+  to       := []int{21, 31, 81, 21, 31}
+  strand   := []byte{}
+
+  granges  := NewGRanges(seqnames, from, to, strand)
+  granges   = granges.Merge()
+
+  if granges.Length() != 2 {
+    t.Error("TestGRanges4 failed!")
+  }
+  if granges.Ranges[0].From != 6 {
+    t.Error("TestGRanges4 failed!")
+  }
+  if granges.Ranges[0].To != 81 {
+    t.Error("TestGRanges4 failed!")
+  }
+  if granges.Ranges[1].From != 6 {
+    t.Error("TestGRanges4 failed!")
+  }
+  if granges.Ranges[1].To != 31 {
+    t.Error("TestGRanges4 failed!")
+  }
+}
+
 func TestGRangesRandom(t *testing.T) {
   genome  := Genome{}
   genome.Import("Data/hg19.genome")

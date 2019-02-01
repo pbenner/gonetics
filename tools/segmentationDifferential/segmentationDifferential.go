@@ -88,8 +88,8 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
     for j := 0; j < len(queryIdx); j++ {
       qj := queryIdx[j]
       // append j if it was not already appended before
-      if n := len(occursIn[qj]); n == 0 || occursIn[qj][n-1] != j {
-        occursIn[qj] = append(occursIn[qj], j)
+      if n := len(occursIn[qj]); n == 0 || occursIn[qj][n-1] != i {
+        occursIn[qj] = append(occursIn[qj], i)
       }
     }
   }
@@ -99,7 +99,7 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   }
   r.AddMeta("name", names)
   r.AddMeta("occurrence", occursIn)
-  r.WriteBed6(os.Stdout)
+  r.WriteTable(os.Stdout, true, false)
 }
 
 /* -------------------------------------------------------------------------- */

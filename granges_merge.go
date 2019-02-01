@@ -34,10 +34,10 @@ func (obj GRanges) merge(seqname string, entry endPointList) GRanges {
     }
     r_from := entry[i].position
     r_to   := entry[i].position+1
-    // go to next item
-    i += 1
     // k: number open intervals
-    for k := 1; k > 0; i++ {
+    for k := 1; k > 0; {
+      // go to next item
+      i += 1
       if entry[i].start == nil {
         // start of an interval
         k   += 1
@@ -60,7 +60,7 @@ func (obj GRanges) Merge(granges ...GRanges) GRanges {
   rmap := make(map[string]endPointList)
   // fill map
   for _, g := range append(granges, obj) {
-    for i := 0; i < obj.Length(); i++ {
+    for i := 0; i < g.Length(); i++ {
       start := endPoint{g.Ranges[i].From,  nil, nil, i, true}
       end   := endPoint{g.Ranges[i].To-1, &start, nil, i, true}
       entry := rmap[g.Seqnames[i]]

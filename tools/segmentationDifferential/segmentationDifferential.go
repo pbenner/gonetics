@@ -86,7 +86,7 @@ func callDifferentialRegions(states string, segmentationFilenames []string) {
     names[i] = states
   }
   r.AddMeta("name", names)
-  r.AddMeta("occurrence", r)
+  r.AddMeta("occurrence", occursIn)
   r.WriteBed6(os.Stdout)
 }
 

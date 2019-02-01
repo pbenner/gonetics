@@ -24,7 +24,8 @@ SUBDIRS = \
 	tools/gtfToBed \
 	tools/observedOverExpectedCpG \
 	tools/pwmScanSequences \
-	tools/pwmScanRegions
+	tools/pwmScanRegions \
+	tools/segmentationDifferential
 
 all:
 

@@ -21,6 +21,7 @@ SUBDIRS = \
 	tools/memeExtract \
 	tools/drawGenomicRegions \
 	tools/fastaExtract \
+	tools/fastaUnresolvedRegions \
 	tools/gtfToBed \
 	tools/observedOverExpectedCpG \
 	tools/pwmScanSequences \

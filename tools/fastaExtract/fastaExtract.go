@@ -201,7 +201,7 @@ func main() {
     filenameInput  = options.Args()[1]
   }
   if len(options.Args()) > 2 {
-    filenameOutput = options.Args()[1]
+    filenameOutput = options.Args()[2]
   }
   extract(config, filenameFasta, filenameInput, filenameOutput)
 }

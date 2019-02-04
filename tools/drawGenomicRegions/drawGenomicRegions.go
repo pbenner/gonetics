@@ -69,12 +69,18 @@ func importBed3(config Config, filename string) GRanges {
 }
 
 func exportBed3(config Config, granges GRanges, filename string) {
-  PrintStderr(config, 1, "Writing bed file `%s'... ", filename)
-  if err := granges.ExportBed3(filename, false); err != nil {
-    PrintStderr(config, 1, "failed\n")
-    log.Fatal(err)
+  if filename == "" {
+    if err := granges.WriteBed3(os.Stdout); err != nil {
+      log.Fatal(err)
+    }
+  } else {
+    PrintStderr(config, 1, "Writing bed file `%s'... ", filename)
+    if err := granges.ExportBed3(filename, false); err != nil {
+      PrintStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    }
+    PrintStderr(config, 1, "done\n")
   }
-  PrintStderr(config, 1, "done\n")
 }
 
 /* -------------------------------------------------------------------------- */
@@ -127,14 +133,14 @@ func main() {
   optVerbose := options.CounterLong("verbose", 'v',     "verbose level [-v or -vv]")
   optHelp    := options.   BoolLong("help",    'h',     "print help")
 
-  options.SetParameters("<GENOME> <N> <LENGTH> <OUTPUT.bed>")
+  options.SetParameters("<GENOME> <N> <LENGTH> [<OUTPUT.bed>]")
   options.Parse(os.Args)
 
   if *optHelp {
     options.PrintUsage(os.Stdout)
     os.Exit(0)
   }
-  if len(options.Args()) != 4 {
+  if len(options.Args()) != 3 && len(options.Args()) != 4 {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
@@ -153,7 +159,11 @@ func main() {
   }
 
   filenameGenome := options.Args()[0]
-  filenameOut    := options.Args()[3]
+  filenameOut    := ""
+
+  if len(options.Args()) == 4 {
+    filenameOut = options.Args()[3]
+  }
 
   draw(config, filenameGenome, filenameOut, n, l)
 }

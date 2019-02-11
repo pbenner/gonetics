@@ -21,7 +21,9 @@ package main
 import   "fmt"
 import   "log"
 import   "os"
+import   "math/rand"
 import   "strconv"
+import   "time"
 
 import   "github.com/pborman/getopt"
 
@@ -129,6 +131,7 @@ func main() {
 
   options := getopt.New()
 
+  optSeed    := options.    IntLong("seed",    's',  0, "random seed")
   optExclude := options. StringLong("exclude", 'e', "", "comma separated list of bed files containing regions to exclude")
   optVerbose := options.CounterLong("verbose", 'v',     "verbose level [-v or -vv]")
   optHelp    := options.   BoolLong("help",    'h',     "print help")
@@ -147,6 +150,11 @@ func main() {
   config.Exclude = *optExclude
   config.Verbose = *optVerbose
 
+  if options.Lookup('s').Seen() {
+    rand.Seed(int64(*optSeed))
+  } else {
+    rand.Seed(time.Now().UTC().UnixNano())
+  }
   if t, err := strconv.ParseInt(options.Args()[1], 10, 64); err != nil {
     log.Fatal(err)
   } else {

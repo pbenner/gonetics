@@ -30,53 +30,54 @@ import "unicode"
 /* -------------------------------------------------------------------------- */
 
 // Structure containing genomic sequences.
-type StringSet map[string][]byte
+type OrderedStringSet struct {
+  Sequences   StringSet
+  Seqnames  []string
+}
 
 /* -------------------------------------------------------------------------- */
 
-func NewStringSet(seqnames []string, sequences [][]byte) StringSet {
+func NewOrderedStringSet(seqnames []string, sequences [][]byte) OrderedStringSet {
   if len(seqnames) != len(sequences) {
-    panic("NewStringSet(): invalid parameters")
+    panic("NewOrderedStringSet(): invalid parameters")
   }
+  n := len(sequences)
   s := make(StringSet)
+  t := make([]string, n)
 
-  for i := 0; i < len(sequences); i++ {
-    s[seqnames[i]] = sequences[i]
+  for i := 0; i < n; i++ {
+    if _, ok := s[seqnames[i]]; ok {
+      panic(fmt.Sprintf("duplicate sequence name `%s'", seqnames[i]))
+    } else {
+      s[seqnames[i]] = sequences[i]
+    }
+    t[i] = seqnames[i]
   }
-  return s
+  return OrderedStringSet{s, t}
 }
 
-func EmptyStringSet() StringSet {
-  return make(StringSet)
-}
-
-/* -------------------------------------------------------------------------- */
-
-func (s StringSet) GetSlice(name string, r Range) ([]byte, error) {
-  result, ok := s[name]
-  if !ok {
-    return nil, fmt.Errorf("GetSlice(): invalid sequence name")
-  }
-  from := iMax(          0, r.From)
-  to   := iMin(len(result), r.To)
-  if from != r.From || to != r.To {
-    return result[from:to], fmt.Errorf("GetSlice(): range `(%d,%d)' out of bounds for sequence `%s'", r.From, r.To, name)
-  } else {
-    return result[from:to], nil
-  }
+func EmptyOrderedStringSet() OrderedStringSet {
+  return OrderedStringSet{EmptyStringSet(), []string{}}
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (s StringSet) Scan(query []byte) GRanges {
-  if len(s) == 0 {
+func (obj OrderedStringSet) GetSlice(name string, r Range) ([]byte, error) {
+  return obj.Sequences.GetSlice(name, r)
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj OrderedStringSet) Scan(query []byte) GRanges {
+  if len(obj.Sequences) == 0 {
     return GRanges{}
   }
   seqnames := []string{}
   from     := []int{}
   to       := []int{}
   strand   := []byte{}
-  for name, sequence := range s {
+  for _, name := range obj.Seqnames {
+    sequence := obj.Sequences[name]
     for i := 0; i+len(query)-1 < len(sequence); i++ {
       match := true
       for j := 0; j < len(query); j++ {
@@ -96,7 +97,7 @@ func (s StringSet) Scan(query []byte) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func (s StringSet) ReadFasta(reader io.Reader) error {
+func (obj OrderedStringSet) ReadFasta(reader io.Reader) error {
   scanner := bufio.NewScanner(reader)
 
   // current sequence
@@ -109,9 +110,13 @@ func (s StringSet) ReadFasta(reader io.Reader) error {
       continue
     }
     if line[0] == '>' {
-      // save data
+      // save data from previous entry
       if name != "" {
-        s[name] = seq
+        if _, ok := obj.Sequences[name]; ok {
+          fmt.Errorf("duplicate sequence name `%s'", name)
+        } else {
+          obj.Sequences[name] = seq
+        }
       }
       // header
       fields := strings.FieldsFunc(line, func(c rune) bool {
@@ -132,12 +137,17 @@ func (s StringSet) ReadFasta(reader io.Reader) error {
     }
   }
   if name != "" {
-    s[name] = seq
+    if _, ok := obj.Sequences[name]; ok {
+      return fmt.Errorf("sequence name `%s' occurred multiple times", name)
+    } else {
+      obj.Sequences[name] = seq
+      obj.Seqnames        = append(obj.Seqnames, name)
+    }
   }
   return nil
 }
 
-func (s StringSet) ImportFasta(filename string) error {
+func (obj OrderedStringSet) ImportFasta(filename string) error {
 
   var reader io.Reader
   // open file
@@ -158,11 +168,12 @@ func (s StringSet) ImportFasta(filename string) error {
   } else {
     reader = f
   }
-  return s.ReadFasta(reader)
+  return obj.ReadFasta(reader)
 }
 
-func (s StringSet) WriteFasta(writer io.Writer) error {
-  for name, seq := range s {
+func (obj OrderedStringSet) WriteFasta(writer io.Writer) error {
+  for _, name := range obj.Seqnames {
+    seq := obj.Sequences[name]
     if _, err := fmt.Fprintf(writer,  ">%s\n", name); err != nil {
       return err
     }
@@ -180,11 +191,11 @@ func (s StringSet) WriteFasta(writer io.Writer) error {
   return nil
 }
 
-func (s StringSet) ExportFasta(filename string, compress bool) error {
+func (obj OrderedStringSet) ExportFasta(filename string, compress bool) error {
   var buffer bytes.Buffer
 
   writer := bufio.NewWriter(&buffer)
-  if err := s.WriteFasta(writer); err != nil {
+  if err := obj.WriteFasta(writer); err != nil {
     return err
   }
   writer.Flush()

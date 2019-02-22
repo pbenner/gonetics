@@ -135,11 +135,11 @@ func scanSequence(sequence []byte, n, m int) [][]int {
   // loop over sequence
   for i := 0; i < len(sequence); i++ {
     // loop over all k-mers
-    for k := n; k <= m; k++ {
+    for k := n; k <= m && i+k-1 < len(sequence); k++ {
       // eval k-mer
       s := 0
       r := 0
-      for j := 0; j < k && i+j < len(sequence); j++ {
+      for j := 0; j < k; j++ {
         s += c1[i+j] * p[k-j-1]
         r += c2[i+j] * p[j]
       }

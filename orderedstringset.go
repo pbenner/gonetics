@@ -97,9 +97,12 @@ func (obj OrderedStringSet) Scan(query []byte) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj OrderedStringSet) ReadFasta(reader io.Reader) error {
+func (obj *OrderedStringSet) ReadFasta(reader io.Reader) error {
   scanner := bufio.NewScanner(reader)
 
+  if obj.Sequences == nil {
+    obj.Sequences = EmptyStringSet()
+  }
   // current sequence
   name := ""
   seq  := []byte{}

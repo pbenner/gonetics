@@ -73,40 +73,52 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
 
 /* -------------------------------------------------------------------------- */
 
-func prettyPrintKmer(result []int, k int) {
+func prettyPrintKmer(result []int, k int, p []int) {
   al := NucleotideAlphabet{}
-  s  := make([]byte, k)
-  r  := make([]byte, k)
+  c1 := make([]byte, k)
+  c2 := make([]byte, k)
   for i := 0; i < ipow(al.Length(), k); i++ {
-    ix := i
     // convert index to sequence
-    for j := 0; j < k; j++ {
-      t   := ix % al.Length()
-      ix   = ix / al.Length()
-      if x, err := al.Decode(byte(t)); err != nil {
+    for j, ix := 0, i; j < k; j++ {
+      c1[k-j-1] = byte(ix % al.Length())
+      ix        = ix / al.Length()
+      if x, err := al.ComplementCoded(c1[k-j-1]); err != nil {
         log.Fatal(err)
       } else {
-        s[k-j-1] = x
-      }
-      if x, err := al.Complement(s[k-j-1]); err != nil {
-        log.Fatal(err)
-      } else {
-        r[j] = x
+        c2[j] = x
       }
     }
-    fmt.Printf("%s|%s = %d\n", string(s), string(r), result[i])
+    q := 0
+    for j := 0; j < k; j++ {
+      q += int(c2[k-j-1]) * p[j]
+    }
+    if i <= q {
+      for j := 0; j < k; j++ {
+        if x, err := al.Decode(c1[j]); err != nil {
+          log.Fatal(err)
+        } else {
+          c1[j] = x
+        }
+        if x, err := al.Decode(c2[j]); err != nil {
+          log.Fatal(err)
+        } else {
+          c2[j] = x
+        }
+      }
+      fmt.Printf("%s|%s = %d\n", string(c1), string(c2), result[i])
+    }
   }
 }
 
-func prettyPrint(result [][]int, n, m int) {
+func prettyPrint(result [][]int, n, m int, p []int) {
   for k := n; k <= m; k++ {
-    prettyPrintKmer(result[k-n], k)
+    prettyPrintKmer(result[k-n], k, p)
   }
 }
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(sequence []byte, n, m int) [][]int {
+func scanSequence(sequence []byte, n, m int, p []int) [][]int {
   al := NucleotideAlphabet{}
   c1 := make([]int, len(sequence))
   c2 := make([]int, len(sequence))
@@ -121,11 +133,6 @@ func scanSequence(sequence []byte, n, m int) [][]int {
     } else {
       c2[i] = int(r)
     }
-  }
-  // evaluate powers 4^k
-  p := make([]int, m+1)
-  for k := 0; k <= m; k++ {
-    p[k] = ipow(al.Length(), k)
   }
   // allocate results matrix
   result := make([][]int, m-n+1)
@@ -160,11 +167,17 @@ func kmerSearch(config Config, n, m int, filenameFasta, filenameOut string) {
   jg   := pool.NewJobGroup()
   ss   := ImportFasta(config, filenameFasta)
 
+  al := NucleotideAlphabet{}
+  // evaluate powers 4^k
+  p := make([]int, m+1)
+  for k := 0; k <= m; k++ {
+    p[k] = ipow(al.Length(), k)
+  }
   pool.AddRangeJob(0, len(ss.Seqnames), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     name     := ss.Seqnames[i]
     sequence := ss.Sequences[name]
-    result   := scanSequence(sequence, n, m)
-    prettyPrint(result, n, m)
+    result   := scanSequence(sequence, n, m, p)
+    prettyPrint(result, n, m, p)
     return nil
   })
 }

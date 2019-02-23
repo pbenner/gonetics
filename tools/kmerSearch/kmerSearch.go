@@ -77,7 +77,7 @@ func prettyPrintKmer(result []int, k int, p []int) {
   al := NucleotideAlphabet{}
   c1 := make([]byte, k)
   c2 := make([]byte, k)
-  for i := 0; i < ipow(al.Length(), k); i++ {
+  for i := 0; i < len(result); i++ {
     // convert index to sequence
     for j, ix := 0, i; j < k; j++ {
       c1[k-j-1] = byte(ix % al.Length())

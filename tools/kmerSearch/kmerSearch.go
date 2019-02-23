@@ -32,9 +32,10 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Pretty  bool
-  Threads int
-  Verbose int
+  Alphabet NucleotideAlphabet
+  Pretty   bool
+  Threads  int
+  Verbose  int
 }
 
 /* i/o
@@ -73,16 +74,15 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
 
 /* -------------------------------------------------------------------------- */
 
-func prettyPrintKmer(result []int, k int, p []int) {
-  al := NucleotideAlphabet{}
+func prettyPrintKmer(config Config, result []int, k int, p []int) {
   c1 := make([]byte, k)
   c2 := make([]byte, k)
   for i := 0; i < len(result); i++ {
     // convert index to sequence
     for j, ix := 0, i; j < k; j++ {
-      c1[k-j-1] = byte(ix % al.Length())
-      ix        = ix / al.Length()
-      if x, err := al.ComplementCoded(c1[k-j-1]); err != nil {
+      c1[k-j-1] = byte(ix % config.Alphabet.Length())
+      ix        = ix / config.Alphabet.Length()
+      if x, err := config.Alphabet.ComplementCoded(c1[k-j-1]); err != nil {
         log.Fatal(err)
       } else {
         c2[j] = x
@@ -94,12 +94,12 @@ func prettyPrintKmer(result []int, k int, p []int) {
     }
     if i <= q {
       for j := 0; j < k; j++ {
-        if x, err := al.Decode(c1[j]); err != nil {
+        if x, err := config.Alphabet.Decode(c1[j]); err != nil {
           log.Fatal(err)
         } else {
           c1[j] = x
         }
-        if x, err := al.Decode(c2[j]); err != nil {
+        if x, err := config.Alphabet.Decode(c2[j]); err != nil {
           log.Fatal(err)
         } else {
           c2[j] = x
@@ -110,25 +110,24 @@ func prettyPrintKmer(result []int, k int, p []int) {
   }
 }
 
-func prettyPrint(result [][]int, n, m int, p []int) {
+func prettyPrint(config Config, result [][]int, n, m int, p []int) {
   for k := n; k <= m; k++ {
-    prettyPrintKmer(result[k-n], k, p)
+    prettyPrintKmer(config, result[k-n], k, p)
   }
 }
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(sequence []byte, n, m int, p []int) [][]int {
-  al := NucleotideAlphabet{}
+func scanSequence(config Config, sequence []byte, n, m int, p []int) [][]int {
   c1 := make([]int, len(sequence))
   c2 := make([]int, len(sequence))
   for i := 0; i < len(sequence); i++ {
-    if r, err := al.Code(sequence[i]); err != nil {
+    if r, err := config.Alphabet.Code(sequence[i]); err != nil {
       log.Fatal(err)
     } else {
       c1[i] = int(r)
     }
-    if r, err := al.ComplementCoded(byte(c1[i])); err != nil {
+    if r, err := config.Alphabet.ComplementCoded(byte(c1[i])); err != nil {
       log.Fatal(err)
     } else {
       c2[i] = int(r)
@@ -137,7 +136,7 @@ func scanSequence(sequence []byte, n, m int, p []int) [][]int {
   // allocate results matrix
   result := make([][]int, m-n+1)
   for k := n; k <= m; k++ {
-    result[k-n] = make([]int, ipow(al.Length(), k))
+    result[k-n] = make([]int, ipow(config.Alphabet.Length(), k))
   }
   // loop over sequence
   for i := 0; i < len(sequence); i++ {
@@ -167,17 +166,16 @@ func kmerSearch(config Config, n, m int, filenameFasta, filenameOut string) {
   jg   := pool.NewJobGroup()
   ss   := ImportFasta(config, filenameFasta)
 
-  al := NucleotideAlphabet{}
   // evaluate powers 4^k
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
-    p[k] = ipow(al.Length(), k)
+    p[k] = ipow(config.Alphabet.Length(), k)
   }
   pool.AddRangeJob(0, len(ss.Seqnames), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     name     := ss.Seqnames[i]
     sequence := ss.Sequences[name]
-    result   := scanSequence(sequence, n, m, p)
-    prettyPrint(result, n, m, p)
+    result   := scanSequence(config, sequence, n, m, p)
+    prettyPrint(config, result, n, m, p)
     return nil
   })
 }

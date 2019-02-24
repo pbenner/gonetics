@@ -32,7 +32,7 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Pretty   bool
+  Header   bool
   Threads  int
   Verbose  int
 }
@@ -81,6 +81,15 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
     PrintStderr(config, 1, "done\n")
   }
   return s
+}
+
+func WriteResult(config Config, granges GRanges, filenameOut string) {
+  if filenameOut == "" {
+    granges.WriteTable(os.Stdout, true, false)
+    fmt.Fprintf(os.Stdout, "\n")
+  } else {
+    granges.ExportTable(filenameOut, true, false, false)
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -243,7 +252,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   })
 
   granges.AddMeta("kmers", result)
-  fmt.Println(granges)
+  WriteResult(config, granges, filenameOut)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -254,7 +263,7 @@ func main() {
   options := getopt.New()
 
   optRegions := options. StringLong("regions",     0 , "", "bed with with regions")
-  optPretty  := options.   BoolLong("pretty",      0 ,     "print pretty")
+  optHeader  := options.   BoolLong("header",      0 ,     "print kmer header")
   optThreads := options.    IntLong("threads",     0 ,  1, "number of threads [default: 1]")
   optVerbose := options.CounterLong("verbose",    'v',     "verbose level [-v or -vv]")
   optHelp    := options.   BoolLong("help",       'h',     "print help")
@@ -270,7 +279,7 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  config.Pretty  = *optPretty
+  config.Header  = *optHeader
   config.Threads = *optThreads
   config.Verbose = *optVerbose
   // check required arguments

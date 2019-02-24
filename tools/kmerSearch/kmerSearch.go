@@ -32,7 +32,6 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Alphabet NucleotideAlphabet
   Pretty   bool
   Threads  int
   Verbose  int
@@ -55,6 +54,18 @@ func ipow(x, k int) int {
 
 /* -------------------------------------------------------------------------- */
 
+func ImportBed3(config Config, filename string) GRanges {
+  granges := GRanges{}
+  PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
+  if err := granges.ImportBed3(filename); err != nil {
+    PrintStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  } else {
+    PrintStderr(config, 1, "done\n")
+  }
+  return granges
+}
+
 func ImportFasta(config Config, filename string) OrderedStringSet {
   s := OrderedStringSet{}
   if filename == "" {
@@ -74,85 +85,142 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
 
 /* -------------------------------------------------------------------------- */
 
-func prettyPrintKmer(config Config, result []int, k int, p []int) {
-  c1 := make([]byte, k)
-  c2 := make([]byte, k)
-  for i := 0; i < len(result); i++ {
-    // convert index to sequence
-    for j, ix := 0, i; j < k; j++ {
-      c1[k-j-1] = byte(ix % config.Alphabet.Length())
-      ix        = ix / config.Alphabet.Length()
-      if x, err := config.Alphabet.ComplementCoded(c1[k-j-1]); err != nil {
-        log.Fatal(err)
-      } else {
-        c2[j] = x
+func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, [][]byte) {
+  ss := ImportFasta(config, filenameFasta)
+  if filenameRegions == "" {
+    seqnames  := ss.Seqnames
+    from      := make([]int,    len(seqnames))
+    to        := make([]int,    len(seqnames))
+    sequences := make([][]byte, len(seqnames))
+    for i := 0; i < len(seqnames); i++ {
+      sequences[i] = ss.Sequences[seqnames[i]]
+      to       [i] = len(sequences[i])
+    }
+    return NewGRanges(seqnames, from, to, nil), sequences
+  } else {
+    regions   := ImportBed3(config, filenameRegions)
+    sequences := make([][]byte, regions.Length())
+    for i := 0; i < regions.Length(); i++ {
+      sequence, err := ss.GetSlice(regions.Seqnames[i], regions.Ranges[i])
+      // if sequence is nil, it means the fasta file is missing a chromosome
+      if sequence == nil {
+        log.Fatalf("sequence `%s' not found in fasta file", regions.Seqnames[i])
       }
-    }
-    q := 0
-    for j := 0; j < k; j++ {
-      q += int(c2[k-j-1]) * p[j]
-    }
-    if i <= q {
-      for j := 0; j < k; j++ {
-        if x, err := config.Alphabet.Decode(c1[j]); err != nil {
-          log.Fatal(err)
-        } else {
-          c1[j] = x
-        }
-        if x, err := config.Alphabet.Decode(c2[j]); err != nil {
-          log.Fatal(err)
-        } else {
-          c2[j] = x
-        }
+      // if squence is not nil but there is an error then the region is out of bounds,
+      // GetSlice() then returns only that part which actually exists
+      if err != nil {
+        log.Fatal(err.Error())
       }
-      fmt.Printf("%s|%s = %d\n", string(c1), string(c2), result[i])
+      sequences[i] = sequence
     }
-  }
-}
-
-func prettyPrint(config Config, result [][]int, n, m int, p []int) {
-  for k := n; k <= m; k++ {
-    prettyPrintKmer(config, result[k-n], k, p)
+    return regions, sequences
   }
 }
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(config Config, sequence []byte, n, m int, p []int) [][]int {
+type KmerIndex struct {
+  n, m, N     int
+  indices [][]int
+  names     []string
+  p         []int
+  al          NucleotideAlphabet
+}
+
+func NewKmerIndex(config Config, n, m int) KmerIndex {
+  r := KmerIndex{n: n, m: m}
+  p := make([]int, m+1)
+  for k := 0; k <= m; k++ {
+    p[k] = ipow(r.al.Length(), k)
+  }
+  names   := []string{}
+  indices := make([][]int, m-n+1)
+  idx     := 0
+  for k := n; k <= m; k++ {
+    kn := ipow(r.al.Length(), k)
+    indices[k-n] = make([]int, kn)
+    c1 := make([]byte, k)
+    c2 := make([]byte, k)
+    for i := 0; i < kn; i++ {
+      // convert index to sequence
+      for j, ix := 0, i; j < k; j++ {
+        c1[k-j-1] = byte(ix % r.al.Length())
+        ix        = ix / r.al.Length()
+        if x, err := r.al.ComplementCoded(c1[k-j-1]); err != nil {
+          log.Fatal(err)
+        } else {
+          c2[j] = x
+        }
+      }
+      q := 0
+      for j := 0; j < k; j++ {
+        q += int(c2[k-j-1]) * p[j]
+      }
+      if i <= q {
+        for j := 0; j < k; j++ {
+          if x, err := r.al.Decode(c1[j]); err != nil {
+            log.Fatal(err)
+          } else {
+            c1[j] = x
+          }
+          if x, err := r.al.Decode(c2[j]); err != nil {
+            log.Fatal(err)
+          } else {
+            c2[j] = x
+          }
+        }
+        names = append(names, fmt.Sprintf("%s|%s", string(c1), string(c2)))
+        indices[k-n][i] = idx; idx += 1
+      } else {
+        indices[k-n][i] = -1
+      }
+    }
+  }
+  r.N       = idx
+  r.p       = p
+  r.names   = names
+  r.indices = indices
+  return r
+}
+
+func (obj KmerIndex) Index(k, i int) int {
+  return obj.indices[k-obj.n][i]
+}
+
+/* -------------------------------------------------------------------------- */
+
+func scanSequence(config Config, kmerIndex KmerIndex, sequence []byte) []int {
   c1 := make([]int, len(sequence))
   c2 := make([]int, len(sequence))
   for i := 0; i < len(sequence); i++ {
-    if r, err := config.Alphabet.Code(sequence[i]); err != nil {
+    if r, err := kmerIndex.al.Code(sequence[i]); err != nil {
       log.Fatal(err)
     } else {
       c1[i] = int(r)
     }
-    if r, err := config.Alphabet.ComplementCoded(byte(c1[i])); err != nil {
+    if r, err := kmerIndex.al.ComplementCoded(byte(c1[i])); err != nil {
       log.Fatal(err)
     } else {
       c2[i] = int(r)
     }
   }
-  // allocate results matrix
-  result := make([][]int, m-n+1)
-  for k := n; k <= m; k++ {
-    result[k-n] = make([]int, ipow(config.Alphabet.Length(), k))
-  }
+  // allocate results vector
+  result := make([]int, kmerIndex.N)
   // loop over sequence
   for i := 0; i < len(sequence); i++ {
     // loop over all k-mers
-    for k := n; k <= m && i+k-1 < len(sequence); k++ {
+    for k := kmerIndex.n; k <= kmerIndex.m && i+k-1 < len(sequence); k++ {
       // eval k-mer
       s := 0
       r := 0
       for j := 0; j < k; j++ {
-        s += c1[i+j] * p[k-j-1]
-        r += c2[i+j] * p[j]
+        s += c1[i+j] * kmerIndex.p[k-j-1]
+        r += c2[i+j] * kmerIndex.p[j]
       }
       if s < r {
-        result[k-n][s] += 1
+        result[kmerIndex.Index(k, s)] += 1
       } else {
-        result[k-n][r] += 1
+        result[kmerIndex.Index(k, r)] += 1
       }
     }
   }
@@ -161,23 +229,22 @@ func scanSequence(config Config, sequence []byte, n, m int, p []int) [][]int {
 
 /* -------------------------------------------------------------------------- */
 
-func kmerSearch(config Config, n, m int, filenameFasta, filenameOut string) {
+func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenameOut string) {
   pool := threadpool.New(config.Threads, 100*config.Threads)
   jg   := pool.NewJobGroup()
-  ss   := ImportFasta(config, filenameFasta)
+  granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
-  // evaluate powers 4^k
-  p := make([]int, m+1)
-  for k := 0; k <= m; k++ {
-    p[k] = ipow(config.Alphabet.Length(), k)
-  }
-  pool.AddRangeJob(0, len(ss.Seqnames), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
-    name     := ss.Seqnames[i]
-    sequence := ss.Sequences[name]
-    result   := scanSequence(config, sequence, n, m, p)
-    prettyPrint(config, result, n, m, p)
+  result    := make([][]int, len(sequences))
+  kmerIndex := NewKmerIndex(config, n, m)
+
+  fmt.Println(granges)
+  pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
+    result[i] = scanSequence(config, kmerIndex, sequences[i])
     return nil
   })
+
+  granges.AddMeta("kmers", result)
+  fmt.Println(granges)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -187,10 +254,11 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optPretty  := options.   BoolLong("pretty",      0 ,         "print pretty")
-  optThreads := options.    IntLong("threads",     0 ,      1, "number of threads [default: 1]")
-  optVerbose := options.CounterLong("verbose",    'v',         "verbose level [-v or -vv]")
-  optHelp    := options.   BoolLong("help",       'h',         "print help")
+  optRegions := options. StringLong("regions",     0 , "", "bed with with regions")
+  optPretty  := options.   BoolLong("pretty",      0 ,     "print pretty")
+  optThreads := options.    IntLong("threads",     0 ,  1, "number of threads [default: 1]")
+  optVerbose := options.CounterLong("verbose",    'v',     "verbose level [-v or -vv]")
+  optHelp    := options.   BoolLong("help",       'h',     "print help")
 
   options.SetParameters("<MIN-KMER-LENGTH> <MAX-KMER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
   options.Parse(os.Args)
@@ -227,5 +295,5 @@ func main() {
   if len(options.Args()) == 4 {
     filenameOut   = options.Args()[3]
   }
-  kmerSearch(config, int(n), int(m), filenameFasta, filenameOut)
+  kmerSearch(config, int(n), int(m), *optRegions, filenameFasta, filenameOut)
 }

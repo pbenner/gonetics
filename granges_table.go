@@ -124,7 +124,7 @@ func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ..
     return nil
   }
   // maximum column widths
-  widths := []int{8, 1, 1, 6}
+  widths := []int{8, 4, 2, 6}
   // determine column widths
   if err := applyRows(func(i int) error { return updateMaxWidths(i, widths) }); err != nil {
     return err

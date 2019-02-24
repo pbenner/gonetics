@@ -86,7 +86,6 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
 func WriteResult(config Config, granges GRanges, filenameOut string) {
   if filenameOut == "" {
     granges.WriteTable(os.Stdout, true, false)
-    fmt.Fprintf(os.Stdout, "\n")
   } else {
     granges.ExportTable(filenameOut, true, false, false)
   }
@@ -297,7 +296,7 @@ func main() {
   }
   filenameFasta := ""
   filenameOut   := ""
-  if len(options.Args()) == 3 {
+  if len(options.Args()) >= 3 {
     filenameFasta = options.Args()[2]
   }
   if len(options.Args()) == 4 {

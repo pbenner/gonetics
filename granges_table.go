@@ -154,6 +154,7 @@ func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ..
     }); err != nil {
     return err
   }
+  fmt.Fprintf(writer, "\n")
   return nil
 }
 
@@ -180,7 +181,6 @@ func (granges GRanges) ExportTable(filename string, header, strand, compress boo
   if err := granges.WriteTable(w, header, strand, args...); err != nil {
     return err
   }
-  fmt.Fprintf(w, "\n")
   w.Flush()
 
   return writeFile(filename, &buffer, compress)

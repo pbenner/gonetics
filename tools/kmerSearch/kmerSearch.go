@@ -237,7 +237,6 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   result    := make([][]int, len(sequences))
   kmerIndex := NewKmerIndex(config, n, m)
 
-  fmt.Println(granges)
   pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     result[i] = scanSequence(config, kmerIndex, sequences[i])
     return nil

@@ -116,9 +116,10 @@ func (obj *OrderedStringSet) ReadFasta(reader io.Reader) error {
       // save data from previous entry
       if name != "" {
         if _, ok := obj.Sequences[name]; ok {
-          fmt.Errorf("duplicate sequence name `%s'", name)
+          return fmt.Errorf("sequence name `%s' occurred multiple times", name)
         } else {
           obj.Sequences[name] = seq
+          obj.Seqnames        = append(obj.Seqnames, name)
         }
       }
       // header
@@ -150,7 +151,7 @@ func (obj *OrderedStringSet) ReadFasta(reader io.Reader) error {
   return nil
 }
 
-func (obj OrderedStringSet) ImportFasta(filename string) error {
+func (obj *OrderedStringSet) ImportFasta(filename string) error {
 
   var reader io.Reader
   // open file

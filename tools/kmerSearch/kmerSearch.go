@@ -234,6 +234,11 @@ func scanSequence(config Config, kmerMeta KmerMeta, sequence []byte) []int {
   c1 := make([]int, len(sequence))
   c2 := make([]int, len(sequence))
   for i := 0; i < len(sequence); i++ {
+    if sequence[i] == 'n' || sequence[i] == 'N' {
+      c1[i] = -1
+      c2[i] = -1
+      continue
+    }
     if r, err := kmerMeta.al.Code(sequence[i]); err != nil {
       log.Fatal(err)
     } else {
@@ -250,11 +255,15 @@ func scanSequence(config Config, kmerMeta KmerMeta, sequence []byte) []int {
   // loop over sequence
   for i := 0; i < len(sequence); i++ {
     // loop over all k-mers
+kLoop:
     for k := kmerMeta.n; k <= kmerMeta.m && i+k-1 < len(sequence); k++ {
       // eval k-mer
       s := 0
       r := 0
       for j := 0; j < k; j++ {
+        if c1[i+j] == -1 {
+          break kLoop
+        }
         s += c1[i+j] * kmerMeta.p[k-j-1]
         r += c2[i+j] * kmerMeta.p[j]
       }

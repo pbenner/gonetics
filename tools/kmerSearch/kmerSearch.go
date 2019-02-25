@@ -21,6 +21,7 @@ package main
 import   "fmt"
 import   "log"
 import   "math"
+import   "io"
 import   "os"
 import   "strconv"
 
@@ -32,6 +33,7 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
+  Human    bool
   Header   bool
   Threads  int
   Verbose  int
@@ -83,15 +85,42 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
   return s
 }
 
-func WriteResult(config Config, granges GRanges, filenameOut string) {
+func WriteResult(config Config, kmerMeta KmerMeta, granges GRanges, filenameOut string) {
+  var writer io.Writer
+
   if filenameOut == "" {
-    if err := granges.WriteTable(os.Stdout, true, false); err != nil {
-      log.Fatal(err)
-    }
+    writer = os.Stdout
   } else {
-    if err := granges.ExportTable(filenameOut, true, false, false); err != nil {
+    f, err := os.Create(filenameOut)
+    if err != nil {
       log.Fatal(err)
     }
+    defer f.Close()
+    writer = f
+  }
+  // write header
+  if config.Header {
+    for _, name := range kmerMeta.names {
+      fmt.Fprintf(writer, "# %s\n", name)
+    }
+  }
+  // convert kmer counts to human readable string
+  if config.Human {
+    kmers    := granges.GetMeta("kmers").([][]int)
+    kmersNew := make([]string, len(kmers))
+    for i, _ := range kmers {
+      for j, _ := range kmers[i] {
+        if len(kmersNew[i]) == 0 {
+          kmersNew[i] = fmt.Sprintf("%s=%d", kmerMeta.names[j], kmers[i][j])
+        } else {
+          kmersNew[i] = fmt.Sprintf("%s,%s=%d", kmersNew[i], kmerMeta.names[j], kmers[i][j])
+        }
+      }
+    }
+    granges.AddMeta("kmers", kmersNew)
+  }
+  if err := granges.WriteTable(writer, true, false); err != nil {
+    log.Fatal(err)
   }
 }
 
@@ -131,7 +160,7 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 /* -------------------------------------------------------------------------- */
 
-type KmerIndex struct {
+type KmerMeta struct {
   n, m, N     int
   indices [][]int
   names     []string
@@ -139,8 +168,8 @@ type KmerIndex struct {
   al          NucleotideAlphabet
 }
 
-func NewKmerIndex(config Config, n, m int) KmerIndex {
-  r := KmerIndex{n: n, m: m}
+func NewKmerMeta(config Config, n, m int) KmerMeta {
+  r := KmerMeta{n: n, m: m}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
     p[k] = ipow(r.al.Length(), k)
@@ -195,44 +224,44 @@ func NewKmerIndex(config Config, n, m int) KmerIndex {
   return r
 }
 
-func (obj KmerIndex) Index(k, i int) int {
+func (obj KmerMeta) Index(k, i int) int {
   return obj.indices[k-obj.n][i]
 }
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(config Config, kmerIndex KmerIndex, sequence []byte) []int {
+func scanSequence(config Config, kmerMeta KmerMeta, sequence []byte) []int {
   c1 := make([]int, len(sequence))
   c2 := make([]int, len(sequence))
   for i := 0; i < len(sequence); i++ {
-    if r, err := kmerIndex.al.Code(sequence[i]); err != nil {
+    if r, err := kmerMeta.al.Code(sequence[i]); err != nil {
       log.Fatal(err)
     } else {
       c1[i] = int(r)
     }
-    if r, err := kmerIndex.al.ComplementCoded(byte(c1[i])); err != nil {
+    if r, err := kmerMeta.al.ComplementCoded(byte(c1[i])); err != nil {
       log.Fatal(err)
     } else {
       c2[i] = int(r)
     }
   }
   // allocate results vector
-  result := make([]int, kmerIndex.N)
+  result := make([]int, kmerMeta.N)
   // loop over sequence
   for i := 0; i < len(sequence); i++ {
     // loop over all k-mers
-    for k := kmerIndex.n; k <= kmerIndex.m && i+k-1 < len(sequence); k++ {
+    for k := kmerMeta.n; k <= kmerMeta.m && i+k-1 < len(sequence); k++ {
       // eval k-mer
       s := 0
       r := 0
       for j := 0; j < k; j++ {
-        s += c1[i+j] * kmerIndex.p[k-j-1]
-        r += c2[i+j] * kmerIndex.p[j]
+        s += c1[i+j] * kmerMeta.p[k-j-1]
+        r += c2[i+j] * kmerMeta.p[j]
       }
       if s < r {
-        result[kmerIndex.Index(k, s)] += 1
+        result[kmerMeta.Index(k, s)] += 1
       } else {
-        result[kmerIndex.Index(k, r)] += 1
+        result[kmerMeta.Index(k, r)] += 1
       }
     }
   }
@@ -247,15 +276,15 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result    := make([][]int, len(sequences))
-  kmerIndex := NewKmerIndex(config, n, m)
+  kmerMeta := NewKmerMeta(config, n, m)
 
   pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
-    result[i] = scanSequence(config, kmerIndex, sequences[i])
+    result[i] = scanSequence(config, kmerMeta, sequences[i])
     return nil
   })
 
   granges.AddMeta("kmers", result)
-  WriteResult(config, granges, filenameOut)
+  WriteResult(config, kmerMeta, granges, filenameOut)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -267,6 +296,7 @@ func main() {
 
   optRegions := options. StringLong("regions",     0 , "", "bed with with regions")
   optHeader  := options.   BoolLong("header",      0 ,     "print kmer header")
+  optHuman   := options.   BoolLong("human",       0 ,     "print human readable kmer statistics")
   optThreads := options.    IntLong("threads",     0 ,  1, "number of threads [default: 1]")
   optVerbose := options.CounterLong("verbose",    'v',     "verbose level [-v or -vv]")
   optHelp    := options.   BoolLong("help",       'h',     "print help")
@@ -283,6 +313,7 @@ func main() {
     os.Exit(1)
   }
   config.Header  = *optHeader
+  config.Human   = *optHuman
   config.Threads = *optThreads
   config.Verbose = *optVerbose
   // check required arguments

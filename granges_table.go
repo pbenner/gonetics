@@ -204,7 +204,7 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
     defer g.Close()
   }
 
-  scanner := bufio.NewScanner(r)
+  reader := bufio.NewReader(r)
 
   colSeqname := -1
   colFrom    := -1
@@ -212,8 +212,10 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
   colStrand  := -1
 
   // scan header
-  if scanner.Scan() {
-    fields := strings.Fields(scanner.Text())
+  if l, err := bufioReadLine(reader); err != nil && err != io.EOF {
+    return err
+  } else {
+    fields := strings.Fields(l)
     for i := 0; i < len(fields); i++ {
       switch fields[i] {
       case "seqnames":
@@ -236,8 +238,6 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
         }
       }
     }
-  } else {
-    return fmt.Errorf("reading from file failed")
   }
   if colSeqname == -1 {
     return fmt.Errorf("is missing a seqnames column")
@@ -249,11 +249,18 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
     return fmt.Errorf("is missing a to column")
   }
   // scan data
-  for i:= 2; scanner.Scan(); i++ {
-    fields := strings.Fields(scanner.Text())
-    if len(fields) == 0 {
+  for i:= 2;; i++ {
+    l, err := bufioReadLine(reader)
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      return err
+    }
+    if len(l) == 0 {
       continue
     }
+    fields := strings.Fields(l)
     // parse seqname
     if len(fields) < colSeqname {
       return fmt.Errorf("invalid table")

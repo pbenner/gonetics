@@ -144,7 +144,7 @@ func bufioReadLine(reader *bufio.Reader) (string, error) {
   l, err := reader.ReadString('\n')
   if err != nil {
     // ignore EOF errors if some bytes were read
-    if len(l) >= 0 && err == io.EOF {
+    if len(l) > 0 && err == io.EOF {
       return l, nil
     }
     return l, err

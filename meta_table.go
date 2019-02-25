@@ -215,7 +215,7 @@ func (meta *Meta) PrintTable(header bool, args ...interface{}) string {
 /* -------------------------------------------------------------------------- */
 
 func (meta *Meta) ReadTable(r io.Reader, names, types []string) error {
-  scanner := bufio.NewScanner(r)
+  reader := bufio.NewReader(r)
 
   if len(names) != len(types) {
     panic("invalid arguments")
@@ -236,8 +236,10 @@ func (meta *Meta) ReadTable(r io.Reader, names, types []string) error {
     }
   }
   // scan header
-  if scanner.Scan() {
-    fields := strings.Fields(scanner.Text())
+  if l, err := bufioReadLine(reader); err != nil && err != io.EOF {
+    return err
+  } else {
+    fields := strings.Fields(l)
     // get number of columns
     if len(fields) < 4 {
       return fmt.Errorf("invalid table")
@@ -248,11 +250,19 @@ func (meta *Meta) ReadTable(r io.Reader, names, types []string) error {
       }
     }
   }
-  for i := 2; scanner.Scan(); i++ {
-    fields := strings.Fields(scanner.Text())
-    if len(fields) == 0 {
+  // scan data
+  for i:= 2;; i++ {
+    l, err := bufioReadLine(reader)
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      return err
+    }
+    if len(l) == 0 {
       continue
     }
+    fields := strings.Fields(l)
     for name, idx := range idxMap {
       if idx == -1 {
         // column not found, skip

@@ -35,9 +35,8 @@ import "strings"
 func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ...interface{}) error {
   // pretty print meta data and create a scanner reading
   // the resulting string
-  metaStr     := granges.Meta.PrintTable(header, args...)
-  metaReader  := strings.NewReader(metaStr)
-  metaScanner := bufio.NewScanner(metaReader)
+  metaStr    := granges.Meta.PrintTable(header, args...)
+  metaReader := bufio.NewReader(strings.NewReader(metaStr))
 
   // compute the width of a single cell
   updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) error {
@@ -71,9 +70,12 @@ func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ..
       if _, err := fmt.Fprintf(writer, " "); err != nil {
         return err
       }
-      metaScanner.Scan()
-      if _, err := fmt.Fprintf(writer, "%s", metaScanner.Text()); err != nil {
+      if l, err := bufioReadLine(metaReader); err != nil {
         return err
+      } else {
+        if _, err := fmt.Fprintf(writer, "%s", l); err != nil {
+          return err
+        }
       }
     }
     return nil
@@ -177,11 +179,11 @@ func (granges GRanges) PrintTable(header, strand bool, args ...interface{}) stri
 func (granges GRanges) ExportTable(filename string, header, strand, compress bool, args ...interface{}) error {
   var buffer bytes.Buffer
 
-  w := bufio.NewWriter(&buffer)
-  if err := granges.WriteTable(w, header, strand, args...); err != nil {
+  writer := bufio.NewWriter(&buffer)
+  if err := granges.WriteTable(writer, header, strand, args...); err != nil {
     return err
   }
-  w.Flush()
+  writer.Flush()
 
   return writeFile(filename, &buffer, compress)
 }

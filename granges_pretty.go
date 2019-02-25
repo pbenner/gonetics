@@ -31,8 +31,7 @@ func (granges GRanges) WritePretty(writer io.Writer, n int, args ...interface{})
   // pretty print meta data and create a scanner reading
   // the resulting string
   metaStr     := granges.Meta.PrintPretty(n, args...)
-  metaReader  := strings.NewReader(metaStr)
-  metaScanner := bufio.NewScanner(metaReader)
+  metaReader  := bufio.NewReader(strings.NewReader(metaStr))
 
   // compute the width of a single cell
   updateMaxWidth := func(format string, widths []int, j int, args ...interface{}) error {
@@ -69,9 +68,12 @@ func (granges GRanges) WritePretty(writer io.Writer, n int, args ...interface{})
       if _, err := fmt.Fprintf(writer, " | "); err != nil {
         return err
       }
-      metaScanner.Scan()
-      if _, err := fmt.Fprintf(writer, "%s", metaScanner.Text()); err != nil {
+      if l, err := bufioReadLine(metaReader); err != nil {
         return err
+      } else {
+        if _, err := fmt.Fprintf(writer, "%s", l); err != nil {
+          return err
+        }
       }
     }
     return nil

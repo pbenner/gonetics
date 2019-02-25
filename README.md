@@ -29,6 +29,7 @@ Executables are available [here](https://github.com/pbenner/gonetics-tools).
 | fastaExtract             | extract regions from a fasta file                                        |
 | fastaUnresolvedRegions   | identify regions that are not resolved (i.e. stretches of 'NNNN...')     |
 | gtfToBed                 | convert GTF files to Bed6 format                                         |
+| kmerSearch               | identify all kmers in a set of DNA sequences                             |
 | memeExtract              | extract PWM/PPM motifs from MEME/DREME xml files                         |
 | observedOverExpectedCpG  | compute CpG scores as defined by Gardiner-Garden and Frommer (1987)      |
 | pwmScanSequences         | scan sequences for PWM hits                                              |

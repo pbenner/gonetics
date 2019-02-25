@@ -103,8 +103,7 @@ func (meta Meta) WriteTable(writer io.Writer, header bool, args ...interface{}) 
     }
     tmpWriter.Flush()
     format := fmt.Sprintf(" %%%ds", widths[j]-1)
-    l, _ := fmt.Fprintf(writer, format, tmpBuffer.String())
-    return l, nil
+    return fmt.Fprintf(writer, format, tmpBuffer.String())
   }
   printCell := func(writer io.Writer, widths []int, i, j int) (int, error) {
     switch v := meta.MetaData[j].(type) {

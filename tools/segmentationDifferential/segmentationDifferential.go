@@ -84,14 +84,14 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   }
   r := GRanges{}
   r  = r.Merge(regions...)
-  occursIn := make([][]int, r.Length())
+  labels := make([][]int, r.Length())
   for i := 0; i < len(regions); i++ {
     queryIdx, _ := FindOverlaps(r, regions[i])
     for j := 0; j < len(queryIdx); j++ {
       qj := queryIdx[j]
       // append j if it was not already appended before
-      if n := len(occursIn[qj]); n == 0 || occursIn[qj][n-1] != i {
-        occursIn[qj] = append(occursIn[qj], i)
+      if n := len(labels[qj]); n == 0 || labels[qj][n-1] != i {
+        labels[qj] = append(labels[qj], i)
       }
     }
   }
@@ -100,8 +100,8 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
     names[i] = states
   }
   // add meta information
-  r.AddMeta("name", names)
-  r.AddMeta("occurrence", occursIn)
+  r.AddMeta("name"  , names)
+  r.AddMeta("labels", labels)
   // filter regions
   if config.FilterMaxSize != 0 {
     idx := []int{}

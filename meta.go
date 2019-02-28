@@ -163,8 +163,9 @@ func (m *Meta) RenameMeta(nameOld, nameNew string) {
 }
 
 func (m Meta) GetMeta(name string) interface{} {
+  re := regexp.MustCompile("^"+name+"$")
   for i := 0; i < m.MetaLength(); i++ {
-    if m.MetaName[i] == name {
+    if re.MatchString(m.MetaName[i]) {
       return m.MetaData[i]
     }
   }

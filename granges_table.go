@@ -105,7 +105,7 @@ func (granges GRanges) WriteTable(writer io.Writer, header, strand bool, args ..
         granges.Ranges[i].To,
         granges.Strand[i]); err != nil {
         return err
-        }
+      }
     } else {
       if _, err := fmt.Fprintf(writer, format,
         granges.Seqnames[i],

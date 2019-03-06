@@ -19,6 +19,7 @@ package main
 /* -------------------------------------------------------------------------- */
 
 import   "fmt"
+import   "bufio"
 import   "log"
 import   "math"
 import   "io"
@@ -95,8 +96,10 @@ func WriteResult(config Config, kmerMeta KmerMeta, granges GRanges, filenameOut 
     if err != nil {
       log.Fatal(err)
     }
+    buffer := bufio.NewWriter(f)
+    writer  = buffer
     defer f.Close()
-    writer = f
+    defer buffer.Flush()
   }
   // write header
   if config.Header {

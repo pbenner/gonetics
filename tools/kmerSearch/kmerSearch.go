@@ -171,7 +171,7 @@ type KmerMeta struct {
   al          NucleotideAlphabet
 }
 
-func NewKmerMeta(config Config, n, m int) KmerMeta {
+func NewKmersMeta(n, m int) KmerMeta {
   r := KmerMeta{n: n, m: m}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
@@ -288,7 +288,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result    := make([][]int, len(sequences))
-  kmerMeta := NewKmerMeta(config, n, m)
+  kmerMeta := NewKmersMeta(n, m)
 
   pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     result[i] = scanSequence(config, kmerMeta, sequences[i])

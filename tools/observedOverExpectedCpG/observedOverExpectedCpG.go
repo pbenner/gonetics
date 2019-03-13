@@ -95,7 +95,6 @@ func observedOverExpectedCpG(config SessionConfig, filenameFasta, filenameRegion
     if err := granges.WriteTable(os.Stdout, true, false); err != nil {
       log.Fatal(err)
     }
-    fmt.Fprintf(os.Stdout, "\n")
   case "vector":
     for i := 0; i < len(r); i++ {
       fmt.Println(r[i])

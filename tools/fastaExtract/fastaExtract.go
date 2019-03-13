@@ -97,8 +97,6 @@ func exportTable(config Config, granges GRanges, filename string) {
   if filename == "" {
     if err := granges.WriteTable(os.Stdout, true, false); err != nil {
       log.Fatal(err)
-    } else {
-      fmt.Fprintf(os.Stdout, "\n")
     }
   } else {
     PrintStderr(config, 1, "Writing table `%s'... ", filename)

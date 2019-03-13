@@ -121,7 +121,6 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
     }
   }
   r.WriteTable(os.Stdout, true, false)
-  fmt.Fprintf(os.Stdout, "\n")
 }
 
 /* -------------------------------------------------------------------------- */

@@ -260,6 +260,7 @@ func (granges *GRanges) ReadTable(s io.ReadSeeker, names, types []string) error 
     if len(l) == 0 {
       continue
     }
+    fmt.Println("scanning line", i)
     fields := strings.Fields(l)
     // parse seqname
     if len(fields) < colSeqname {

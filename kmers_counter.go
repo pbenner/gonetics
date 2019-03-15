@@ -153,7 +153,7 @@ kLoop:
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCounter) CodeLength() int {
+func (obj KmersCounter) Length() int {
   return obj.length
 }
 

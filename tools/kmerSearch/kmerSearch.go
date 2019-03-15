@@ -106,7 +106,7 @@ func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, file
   }
   // write header
   if config.Header {
-    for i := 0; i < kmersCounter.CodeLength(); i++ {
+    for i := 0; i < kmersCounter.Length(); i++ {
       fmt.Fprintf(writer, "# %s\n", kmersCounter.KmerName(i))
     }
   }
@@ -167,7 +167,7 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 /* -------------------------------------------------------------------------- */
 
 func scanSequence(config Config, kmersCounter KmersCounter, sequence []byte) []int {
-  result := make([]int, kmersCounter.CodeLength())
+  result := make([]int, kmersCounter.Length())
   if err := kmersCounter.CountKmers(result, sequence); err != nil {
     log.Fatal(err)
   }

@@ -23,6 +23,7 @@ import "bytes"
 import "compress/gzip"
 import "io"
 import "io/ioutil"
+import "math"
 import "regexp"
 import "strings"
 import "os"
@@ -59,6 +60,10 @@ func iMax(a, b int) int {
   } else {
     return b
   }
+}
+
+func iPow(x, k int) int {
+  return int(math.Pow(float64(x), float64(k)))
 }
 
 // Divide a by b, the result is rounded down.

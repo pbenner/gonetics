@@ -89,7 +89,7 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
   return s
 }
 
-func WriteResult(config Config, kmersMeta KmersMeta, granges GRanges, filenameOut string) {
+func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, filenameOut string) {
   var writer io.Writer
 
   if filenameOut == "" {
@@ -106,8 +106,8 @@ func WriteResult(config Config, kmersMeta KmersMeta, granges GRanges, filenameOu
   }
   // write header
   if config.Header {
-    for _, name := range kmersMeta.names {
-      fmt.Fprintf(writer, "# %s\n", name)
+    for i := 0; i < kmersCounter.CodeLength(); i++ {
+      fmt.Fprintf(writer, "# %s\n", kmersCounter.KmerName(i))
     }
   }
   // convert kmer counts to human readable string
@@ -117,9 +117,9 @@ func WriteResult(config Config, kmersMeta KmersMeta, granges GRanges, filenameOu
     for i, _ := range kmers {
       for j, _ := range kmers[i] {
         if len(kmersNew[i]) == 0 {
-          kmersNew[i] = fmt.Sprintf("%s=%d", kmersMeta.names[j], kmers[i][j])
+          kmersNew[i] = fmt.Sprintf("%s=%d", kmersCounter.KmerName(j), kmers[i][j])
         } else {
-          kmersNew[i] = fmt.Sprintf("%s,%s=%d", kmersNew[i], kmersMeta.names[j], kmers[i][j])
+          kmersNew[i] = fmt.Sprintf("%s,%s=%d", kmersNew[i], kmersCounter.KmerName(j), kmers[i][j])
         }
       }
     }
@@ -166,151 +166,10 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 /* -------------------------------------------------------------------------- */
 
-type KmersMeta struct {
-  n, m, N     int
-  indices [][]int
-  names     []string
-  p         []int
-  al          NucleotideAlphabet
-}
-
-func NewKmersMeta(n, m int, comp, rev, rc bool) KmersMeta {
-  r := KmersMeta{n: n, m: m}
-  p := make([]int, m+1)
-  for k := 0; k <= m; k++ {
-    p[k] = ipow(r.al.Length(), k)
-  }
-  names   := []string{}
-  indices := make([][]int, m-n+1)
-  idx     := 0
-  for k := n; k <= m; k++ {
-    kn := ipow(r.al.Length(), k)
-    indices[k-n] = make([]int, kn)
-    c1 := make([]byte, k)
-    c2 := make([]byte, k)
-    c3 := make([]byte, k)
-    c4 := make([]byte, k)
-    for i := 0; i < kn; i++ {
-      // convert index to sequence
-      for j, ix := 0, i; j < k; j++ {
-        c1[k-j-1] = byte(ix % r.al.Length())
-        ix        = ix / r.al.Length()
-        if x, err := r.al.ComplementCoded(c1[k-j-1]); err != nil {
-          log.Fatal(err)
-        } else {
-          c2[k-j-1] = x
-        }
-      }
-      // compute indices
-      i_c   := 0 // index of complement
-      i_r   := 0 // index of reverse
-      i_rc  := 0 // index of reverse complement
-      i_res := i // final index
-      for j := 0; j < k; j++ {
-        i_c  += int(c2[    j]) * p[j]
-        i_r  += int(c1[k-j-1]) * p[j]
-        i_rc += int(c2[k-j-1]) * p[j]
-      }
-      // find minimum
-      if comp && i_res > i_c {
-        i_res = i_c
-      }
-      if rev && i_res > i_r {
-        i_res = i_r
-      }
-      if rc && i_res > i_rc {
-        i_res = i_rc
-      }
-      if i_res != i {
-        indices[k-n][i] = indices[k-n][i_res]
-      } else {
-        // new kmer found
-        indices[k-n][i] = idx; idx += 1
-        // compute strings
-        if err := r.decode(c1, c1); err != nil {
-          log.Fatal(err)
-        }
-        if comp || rc {
-          if err := r.decode(c2, c2); err != nil {
-            log.Fatal(err)
-          }
-        }
-        name := string(c1)
-        if comp {
-          name = fmt.Sprintf("%s|%s", name, string(c2))
-        }
-        if rev {
-          r.reverse(c3, c1)
-          name = fmt.Sprintf("%s|%s", name, string(c3))
-        }
-        if rc {
-          r.reverse(c4, c2)
-          name = fmt.Sprintf("%s|%s", name, string(c4))
-        }
-        names = append(names, name)
-      }
-    }
-  }
-  r.N       = idx
-  r.p       = p
-  r.names   = names
-  r.indices = indices
-  return r
-}
-
-func (obj KmersMeta) Index(k, i int) int {
-  return obj.indices[k-obj.n][i]
-}
-
-func (obj KmersMeta) decode(dest, src []byte) error {
-  for j := 0; j < len(src); j++ {
-    if x, err := obj.al.Decode(src[j]); err != nil {
-      return err
-    } else {
-      dest[j] = x
-    }
-  }
-  return nil
-}
-
-func (obj KmersMeta) reverse(dest, src []byte) {
-  for i, j := 0, len(src)-1; i < j; i, j = i+1, j-1 {
-    dest[i], dest[j] = src[j], src[i]
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-
-func scanSequence(config Config, kmersMeta KmersMeta, sequence []byte) []int {
-  c := make([]int, len(sequence))
-  for i := 0; i < len(sequence); i++ {
-    if sequence[i] == 'n' || sequence[i] == 'N' {
-      c[i] = -1
-      continue
-    }
-    if r, err := kmersMeta.al.Code(sequence[i]); err != nil {
-      log.Fatal(err)
-    } else {
-      c[i] = int(r)
-    }
-  }
-  // allocate results vector
-  result := make([]int, kmersMeta.N)
-  // loop over sequence
-  for i := 0; i < len(sequence); i++ {
-    // loop over all k-mers
-kLoop:
-    for k := kmersMeta.n; k <= kmersMeta.m && i+k-1 < len(sequence); k++ {
-      // eval k-mer
-      s := 0
-      for j := 0; j < k; j++ {
-        if c[i+j] == -1 {
-          break kLoop
-        }
-        s += c[i+j] * kmersMeta.p[k-j-1]
-      }
-      result[kmersMeta.Index(k, s)] += 1
-    }
+func scanSequence(config Config, kmersCounter KmersCounter, sequence []byte) []int {
+  result := make([]int, kmersCounter.CodeLength())
+  if err := kmersCounter.CountKmers(result, sequence); err != nil {
+    log.Fatal(err)
   }
   return result
 }
@@ -322,16 +181,18 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   jg   := pool.NewJobGroup()
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
-  result    := make([][]int, len(sequences))
-  kmersMeta := NewKmersMeta(n, m, config.Complement, config.Reverse, config.Revcomp)
+  result := make([][]int, len(sequences))
+  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp); if err != nil {
+    log.Fatal(err)
+  }
 
   pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
-    result[i] = scanSequence(config, kmersMeta, sequences[i])
+    result[i] = scanSequence(config, kmersCounter, sequences[i])
     return nil
   })
 
   granges.AddMeta("kmers", result)
-  WriteResult(config, kmersMeta, granges, filenameOut)
+  WriteResult(config, kmersCounter, granges, filenameOut)
 }
 
 /* -------------------------------------------------------------------------- */

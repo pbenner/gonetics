@@ -34,12 +34,13 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Reverse  bool
-  Revcomp  bool
-  Human    bool
-  Header   bool
-  Threads  int
-  Verbose  int
+  Complement bool
+  Reverse    bool
+  Revcomp    bool
+  Human      bool
+  Header     bool
+  Threads    int
+  Verbose    int
 }
 
 /* i/o
@@ -173,7 +174,7 @@ type KmersMeta struct {
   al          NucleotideAlphabet
 }
 
-func NewKmersMeta(n, m int, rev, rc bool) KmersMeta {
+func NewKmersMeta(n, m int, comp, rev, rc bool) KmersMeta {
   r := KmersMeta{n: n, m: m}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
@@ -197,69 +198,56 @@ func NewKmersMeta(n, m int, rev, rc bool) KmersMeta {
         if x, err := r.al.ComplementCoded(c1[k-j-1]); err != nil {
           log.Fatal(err)
         } else {
-          c2[j] = x
+          c2[k-j-1] = x
         }
       }
-      i_c  := 0 // index of complement
-      i_r  := 0 // index of reverse
-      i_rc := 0 // index of reverse complement
+      // compute indices
+      i_c   := 0 // index of complement
+      i_r   := 0 // index of reverse
+      i_rc  := 0 // index of reverse complement
+      i_res := i // final index
       for j := 0; j < k; j++ {
         i_c  += int(c2[    j]) * p[j]
         i_r  += int(c1[k-j-1]) * p[j]
         i_rc += int(c2[k-j-1]) * p[j]
       }
-      if !rev && !rc {
+      // find minimum
+      if comp && i_res > i_c {
+        i_res = i_c
+      }
+      if rev && i_res > i_r {
+        i_res = i_r
+      }
+      if rc && i_res > i_rc {
+        i_res = i_rc
+      }
+      if i_res != i {
+        indices[k-n][i] = indices[k-n][i_res]
+      } else {
+        // new kmer found
+        indices[k-n][i] = idx; idx += 1
+        // compute strings
         if err := r.decode(c1, c1); err != nil {
           log.Fatal(err)
         }
-        names = append(names, fmt.Sprintf("%s", string(c1)))
-        indices[k-n][i] = idx; idx += 1
-      } else
-      if rev && !rc {
-        if i <= i_r {
-          if err := r.decode(c1, c1); err != nil {
-            log.Fatal(err)
-          }
-          r.reverse(c3, c1)
-          names = append(names, fmt.Sprintf("%s|%s", string(c1), string(c3)))
-          indices[k-n][i] = idx; idx += 1
-        }
-      } else
-      if !rev && rc {
-        if i <= i_rc {
-          if err := r.decode(c1, c1); err != nil {
-            log.Fatal(err)
-          }
+        if comp || rc {
           if err := r.decode(c2, c2); err != nil {
             log.Fatal(err)
           }
-          names = append(names, fmt.Sprintf("%s|%s", string(c1), string(c2)))
-          indices[k-n][i] = idx; idx += 1
-        } else {
-          indices[k-n][i] = indices[k-n][i_rc]
         }
-      }
-      if rev && rc {
-        if i <= i_r && i <= i_rc {
-          if err := r.decode(c1, c1); err != nil {
-            log.Fatal(err)
-          }
-          if err := r.decode(c2, c2); err != nil {
-            log.Fatal(err)
-          }
+        name := string(c1)
+        if comp {
+          name = fmt.Sprintf("%s|%s", name, string(c2))
+        }
+        if rev {
           r.reverse(c3, c1)
+          name = fmt.Sprintf("%s|%s", name, string(c3))
+        }
+        if rc {
           r.reverse(c4, c2)
-          names = append(names, fmt.Sprintf("%s|%s|%s|%s", string(c1), string(c2), string(c3), string(c4)))
-          indices[k-n][i] = idx; idx += 1
-        } else {
-          if i_r < i_rc {
-            indices[k-n][i] = indices[k-n][i_r]
-            indices[k-n][i] = indices[k-n][i_r]
-          } else {
-            indices[k-n][i] = indices[k-n][i_rc]
-            indices[k-n][i] = indices[k-n][i_rc]
-          }
+          name = fmt.Sprintf("%s|%s", name, string(c4))
         }
+        names = append(names, name)
       }
     }
   }
@@ -335,7 +323,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result    := make([][]int, len(sequences))
-  kmersMeta := NewKmersMeta(n, m, config.Reverse, config.Revcomp)
+  kmersMeta := NewKmersMeta(n, m, config.Complement, config.Reverse, config.Revcomp)
 
   pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
     result[i] = scanSequence(config, kmersMeta, sequences[i])
@@ -353,14 +341,15 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optRegions := options. StringLong("regions",  0 , "", "bed with with regions")
-  optHeader  := options.   BoolLong("header",   0 ,     "print kmer header")
-  optHuman   := options.   BoolLong("human",    0 ,     "print human readable kmer statistics")
-  optThreads := options.    IntLong("threads",  0 ,  1, "number of threads [default: 1]")
-  optReverse := options.   BoolLong("reverse",  0 ,     "consider reverse sequences")
-  optRevcomp := options.   BoolLong("revcomp",  0 ,     "consider reverse complement sequences")
-  optVerbose := options.CounterLong("verbose", 'v',     "verbose level [-v or -vv]")
-  optHelp    := options.   BoolLong("help",    'h',     "print help")
+  optRegions    := options. StringLong("regions",    0 , "", "bed with with regions")
+  optHeader     := options.   BoolLong("header",     0 ,     "print kmer header")
+  optHuman      := options.   BoolLong("human",      0 ,     "print human readable kmer statistics")
+  optThreads    := options.    IntLong("threads",    0 ,  1, "number of threads [default: 1]")
+  optComplement := options.   BoolLong("complement", 0 ,     "consider complement sequences")
+  optReverse    := options.   BoolLong("reverse",    0 ,     "consider reverse sequences")
+  optRevcomp    := options.   BoolLong("revcomp",    0 ,     "consider reverse complement sequences")
+  optVerbose    := options.CounterLong("verbose",   'v',     "verbose level [-v or -vv]")
+  optHelp       := options.   BoolLong("help",      'h',     "print help")
 
   options.SetParameters("<MIN-KMER-LENGTH> <MAX-KMER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
   options.Parse(os.Args)
@@ -373,12 +362,13 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  config.Reverse = *optReverse
-  config.Revcomp = *optRevcomp
-  config.Header  = *optHeader
-  config.Human   = *optHuman
-  config.Threads = *optThreads
-  config.Verbose = *optVerbose
+  config.Complement = *optComplement
+  config.Reverse    = *optReverse
+  config.Revcomp    = *optRevcomp
+  config.Header     = *optHeader
+  config.Human      = *optHuman
+  config.Threads    = *optThreads
+  config.Verbose    = *optVerbose
   // check required arguments
   n, err := strconv.ParseInt(options.Args()[0], 10, 64); if err != nil {
     options.PrintUsage(os.Stderr)

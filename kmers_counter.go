@@ -69,9 +69,9 @@ func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
       i_rc  := 0 // index of reverse complement
       i_res := i // final index
       for j := 0; j < k; j++ {
-        i_c  += int(c2[    j]) * p[j]
-        i_r  += int(c1[k-j-1]) * p[j]
-        i_rc += int(c2[k-j-1]) * p[j]
+        i_c  += int(c2[k-j-1]) * p[j]
+        i_r  += int(c1[    j]) * p[j]
+        i_rc += int(c2[    j]) * p[j]
       }
       // find minimum
       if comp && i_res > i_c {

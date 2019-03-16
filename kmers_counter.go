@@ -28,13 +28,16 @@ type KmersCounter struct {
   indices [][]int      // index map
   names     []string   // kmer names
   p         []int      // pre-evaluated powers
+  complement  bool
+  reverse     bool
+  revcomp     bool
   al          NucleotideAlphabet
 }
 
 /* -------------------------------------------------------------------------- */
 
 func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
-  r := KmersCounter{n: n, m: m}
+  r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
     p[k] = iPow(r.al.Length(), k)
@@ -99,11 +102,11 @@ func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
           name = fmt.Sprintf("%s|%s", name, string(c2))
         }
         if rev {
-          r.reverse(c3, c1)
+          r.rev(c3, c1)
           name = fmt.Sprintf("%s|%s", name, string(c3))
         }
         if rc {
-          r.reverse(c4, c2)
+          r.rev(c4, c2)
           name = fmt.Sprintf("%s|%s", name, string(c4))
         }
         names = append(names, name)
@@ -161,6 +164,26 @@ func (obj KmersCounter) KmerName(i int) string {
   return obj.names[i]
 }
 
+func (obj KmersCounter) MinKmerSize() int {
+  return obj.n
+}
+
+func (obj KmersCounter) MaxKmerSize() int {
+  return obj.m
+}
+
+func (obj KmersCounter) Complement() bool {
+  return obj.complement
+}
+
+func (obj KmersCounter) Reverse() bool {
+  return obj.reverse
+}
+
+func (obj KmersCounter) Revcomp() bool {
+  return obj.revcomp
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) index(k, i int) int {
@@ -178,7 +201,7 @@ func (obj KmersCounter) decode(dest, src []byte) error {
   return nil
 }
 
-func (obj KmersCounter) reverse(dest, src []byte) {
+func (obj KmersCounter) rev(dest, src []byte) {
   for i, j := 0, len(src)-1; i < j; i, j = i+1, j-1 {
     dest[i], dest[j] = src[j], src[i]
   }

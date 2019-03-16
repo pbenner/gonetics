@@ -202,7 +202,7 @@ func (obj KmersCounter) decode(dest, src []byte) error {
 }
 
 func (obj KmersCounter) rev(dest, src []byte) {
-  for i, j := 0, len(src)-1; i < j; i, j = i+1, j-1 {
+  for i, j := 0, len(src)-1; i <= j; i, j = i+1, j-1 {
     dest[i], dest[j] = src[j], src[i]
   }
 }

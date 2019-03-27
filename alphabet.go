@@ -84,3 +84,66 @@ func (NucleotideAlphabet) Complement(i byte) (byte, error) {
   default:  return 0xFF, fmt.Errorf("Complement(): `%c' is not part of the alphabet", i)
   }
 }
+
+/* -------------------------------------------------------------------------- */
+
+type GappedNucleotideAlphabet struct {
+}
+
+func (GappedNucleotideAlphabet) Code(i byte) (byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return 0, nil
+  case 'C': fallthrough
+  case 'c': return 1, nil
+  case 'G': fallthrough
+  case 'g': return 2, nil
+  case 'T': fallthrough
+  case 't': return 3, nil
+  case 'N': fallthrough
+  case 'n': return 4, nil
+  default:  return 0xFF, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  }
+}
+
+func (GappedNucleotideAlphabet) Decode(i byte) (byte, error) {
+  switch i {
+  case 0:  return 'a', nil
+  case 1:  return 'c', nil
+  case 2:  return 'g', nil
+  case 3:  return 't', nil
+  case 4:  return 'n', nil
+  default: return 0xFF, fmt.Errorf("Code(): `%d' is not a code of the alphabet", int(i))
+  }
+}
+
+func (GappedNucleotideAlphabet) Length() int {
+  return 5
+}
+
+func (GappedNucleotideAlphabet) ComplementCoded(i byte) (byte, error) {
+  switch i {
+  case 0:  return 3, nil
+  case 1:  return 2, nil
+  case 2:  return 1, nil
+  case 3:  return 0, nil
+  case 4:  return 4, nil
+  default: return 0xFF, fmt.Errorf("ComplementCoded(): `%d' is not a code of the alphabet", int(i))
+  }
+}
+
+func (GappedNucleotideAlphabet) Complement(i byte) (byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return 't', nil
+  case 'C': fallthrough
+  case 'c': return 'g', nil
+  case 'G': fallthrough
+  case 'g': return 'c', nil
+  case 'T': fallthrough
+  case 't': return 'a', nil
+  case 'N': fallthrough
+  case 'n': return 'n', nil
+  default:  return 0xFF, fmt.Errorf("Complement(): `%c' is not part of the alphabet", i)
+  }
+}

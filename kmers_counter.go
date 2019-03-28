@@ -19,41 +19,41 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
-
-/* -------------------------------------------------------------------------- */
+import "strings"
 
 /* -------------------------------------------------------------------------- */
 
 type KmersCounter struct {
-  n, m        int      // min and max kmer size
-  length      int      // code length
-  indices [][]int      // index map
-  names     []string   // kmer names
-  p         []int      // pre-evaluated powers
+  n, m        int              // min and max kmer size
+  length      int              // code length
+  names     []string           // kmer names
+  p         []int              // pre-evaluated powers
+  kmap      []map[string][]int // map kmer strings to indices
   complement  bool
   reverse     bool
   revcomp     bool
-  al          NucleotideAlphabet
+  al          ComplementableAlphabet
 }
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
-  r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc}
+func NewKmersCounter(n, m int, comp, rev, rc bool, al ComplementableAlphabet) (KmersCounter, error) {
+  r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc, al: al}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
     p[k] = iPow(r.al.Length(), k)
   }
-  names   := []string{}
-  indices := make([][]int, m-n+1)
-  idx     := 0
+  r.kmap = make([]map[string][]int, m-n+1)
+  names := []string{}
+  idx   := 0
   for k := n; k <= m; k++ {
+    r.kmap[k-n] = make(map[string][]int)
     kn := iPow(r.al.Length(), k)
-    indices[k-n] = make([]int, kn)
     c1 := make([]byte, k)
     c2 := make([]byte, k)
     c3 := make([]byte, k)
     c4 := make([]byte, k)
+    cr := make([]byte, k)
     for i := 0; i < kn; i++ {
       // convert index to sequence
       for j, ix := 0, i; j < k; j++ {
@@ -64,6 +64,13 @@ func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
         } else {
           c2[k-j-1] = x
         }
+      }
+      // do not allow gaps at the ends
+      if x, _ := al.Decode(c1[0]); x == 'n' {
+        continue
+      }
+      if x, _ := al.Decode(c1[k-1]); x == 'n' {
+        continue
       }
       // compute indices
       i_c   := 0 // index of complement
@@ -85,15 +92,13 @@ func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
       if rc && i_res > i_rc {
         i_res = i_rc
       }
-      if i_res != i {
-        indices[k-n][i] = indices[k-n][i_res]
-      } else {
+      if i_res == i {
         // new kmer found
-        indices[k-n][i] = idx; idx += 1
-        // compute strings
         if err := r.decode(c1, c1); err != nil {
           return r, err
         }
+        r.addEquivalentKmers(cr, c1, idx)
+        // compute strings
         if comp || rc {
           if err := r.decode(c2, c2); err != nil {
             return r, err
@@ -101,56 +106,59 @@ func NewKmersCounter(n, m int, comp, rev, rc bool) (KmersCounter, error) {
         }
         name := string(c1)
         if comp {
+          if string(c2) != string(c1) {
+            r.addEquivalentKmers(cr, c2, idx)
+          }
           name = fmt.Sprintf("%s|%s", name, string(c2))
         }
         if rev {
           r.rev(c3, c1)
+          if comp {
+            if string(c3) != string(c2) && string(c3) != string(c1) {
+              r.addEquivalentKmers(cr, c3, idx)
+            }
+          } else {
+            if string(c3) != string(c1) {
+              r.addEquivalentKmers(cr, c3, idx)
+            }
+          }
           name = fmt.Sprintf("%s|%s", name, string(c3))
         }
         if rc {
           r.rev(c4, c2)
+          if comp {
+            if string(c4) != string(c3) && string(c4) != string(c2) && string(c4) != string(c1) {
+              r.addEquivalentKmers(cr, c4, idx)
+            }
+          } else {
+            if string(c4) != string(c3) && string(c4) != string(c1) {
+              r.addEquivalentKmers(cr, c4, idx)
+            }
+          }
           name = fmt.Sprintf("%s|%s", name, string(c4))
         }
         names = append(names, name)
+        idx  += 1
       }
     }
   }
   r.length  = idx
   r.p       = p
   r.names   = names
-  r.indices = indices
   return r, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) CountKmers(result []int, sequence []byte) error {
-  c := make([]int, len(sequence))
-  for i := 0; i < len(sequence); i++ {
-    if sequence[i] == 'n' || sequence[i] == 'N' {
-      c[i] = -1
-      continue
-    }
-    if r, err := obj.al.Code(sequence[i]); err != nil {
-      return err
-    } else {
-      c[i] = int(r)
-    }
-  }
+  c := strings.ToLower(string(sequence))
   // loop over sequence
-  for i := 0; i < len(sequence); i++ {
+  for i := 0; i < len(c); i++ {
     // loop over all k-mers
-kLoop:
     for k := obj.n; k <= obj.m && i+k-1 < len(c); k++ {
-      // eval k-mer
-      s := 0
-      for j := 0; j < k; j++ {
-        if c[i+j] == -1 {
-          break kLoop
-        }
-        s += c[i+j] * obj.p[k-j-1]
+      for _, j := range obj.kmap[k-obj.n][c[i:i+k]] {
+        result[j] += 1
       }
-      result[obj.index(k, s)] += 1
     }
   }
   return nil
@@ -188,10 +196,6 @@ func (obj KmersCounter) Revcomp() bool {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCounter) index(k, i int) int {
-  return obj.indices[k-obj.n][i]
-}
-
 func (obj KmersCounter) decode(dest, src []byte) error {
   for j := 0; j < len(src); j++ {
     if x, err := obj.al.Decode(src[j]); err != nil {
@@ -207,4 +211,24 @@ func (obj KmersCounter) rev(dest, src []byte) {
   for i, j := 0, len(src)-1; i <= j; i, j = i+1, j-1 {
     dest[i], dest[j] = src[j], src[i]
   }
+}
+
+func (obj KmersCounter) addEquivalentKmersRec(dest, src []byte, i, idx int) {
+  if i == len(src) {
+    obj.kmap[len(dest)-obj.n][string(dest)] = append(obj.kmap[len(dest)-obj.n][string(dest)], idx)
+  } else {
+    if src[i] == 'n' {
+      for _, k := range []byte{'a', 'c', 'g', 't'} {
+        dest[i] = k
+        obj.addEquivalentKmersRec(dest, src, i+1, idx)
+      }
+    } else {
+      dest[i] = src[i]
+      obj.addEquivalentKmersRec(dest, src, i+1, idx)
+    }
+  }
+}
+
+func (obj KmersCounter) addEquivalentKmers(dest, src []byte, idx int) {
+  obj.addEquivalentKmersRec(dest, src, 0, idx)
 }

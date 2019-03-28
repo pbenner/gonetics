@@ -28,6 +28,14 @@ type Alphabet interface {
   Length()       int
 }
 
+type ComplementableAlphabet interface {
+  Code           (i byte) (byte, error)
+  Decode         (i byte) (byte, error)
+  Length         ()       int
+  Complement     (i byte) (byte, error)
+  ComplementCoded(i byte) (byte, error)
+}
+
 /* -------------------------------------------------------------------------- */
 
 type NucleotideAlphabet struct {

@@ -182,7 +182,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result := make([][]int, len(sequences))
-  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp); if err != nil {
+  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, GappedNucleotideAlphabet{}); if err != nil {
     log.Fatal(err)
   }
 

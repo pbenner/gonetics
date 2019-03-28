@@ -66,10 +66,10 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, al ComplementableAlphabet) (K
         }
       }
       // do not allow gaps at the ends
-      if x, _ := al.Decode(c1[0]); x == 'n' {
+      if x, _ := al.Decode(c1[  0]); r.al.IsWildcard(x) {
         continue
       }
-      if x, _ := al.Decode(c1[k-1]); x == 'n' {
+      if x, _ := al.Decode(c1[k-1]); r.al.IsWildcard(x) {
         continue
       }
       // compute indices

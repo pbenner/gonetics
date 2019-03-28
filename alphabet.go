@@ -23,19 +23,21 @@ import "fmt"
 /* -------------------------------------------------------------------------- */
 
 type Alphabet interface {
-  Bases (i byte) ([]byte, error)
-  Code  (i byte) (  byte, error)
-  Decode(i byte) (  byte, error)
-  Length()       int
+  Bases     (i byte) ([]byte, error)
+  Code      (i byte) (  byte, error)
+  Decode    (i byte) (  byte, error)
+  IsWildcard(i byte) bool
+  Length    ()       int
 }
 
 type ComplementableAlphabet interface {
-  Bases (i byte) ([]byte, error)
+  Bases          (i byte) ([]byte, error)
   Code           (i byte) (byte, error)
   Decode         (i byte) (byte, error)
-  Length         ()       int
   Complement     (i byte) (byte, error)
   ComplementCoded(i byte) (byte, error)
+  IsWildcard     (i byte) bool
+  Length         ()       int
 }
 
 /* -------------------------------------------------------------------------- */
@@ -79,6 +81,10 @@ func (NucleotideAlphabet) Decode(i byte) (byte, error) {
   case 3:  return 't', nil
   default: return 0xFF, fmt.Errorf("Code(): `%d' is not a code of the alphabet", int(i))
   }
+}
+
+func (NucleotideAlphabet) IsWildcard(i byte) bool {
+  return i == 'n' || i == 'N'
 }
 
 func (NucleotideAlphabet) Length() int {
@@ -186,4 +192,8 @@ func (GappedNucleotideAlphabet) Complement(i byte) (byte, error) {
   case 'n': return 'n', nil
   default:  return 0xFF, fmt.Errorf("Complement(): `%c' is not part of the alphabet", i)
   }
+}
+
+func (GappedNucleotideAlphabet) IsWildcard(i byte) bool {
+  return i == 'n' || i == 'N'
 }

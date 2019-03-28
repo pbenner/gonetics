@@ -23,12 +23,14 @@ import "fmt"
 /* -------------------------------------------------------------------------- */
 
 type Alphabet interface {
-  Code  (i byte) (byte, error)
-  Decode(i byte) (byte, error)
+  Bases (i byte) ([]byte, error)
+  Code  (i byte) (  byte, error)
+  Decode(i byte) (  byte, error)
   Length()       int
 }
 
 type ComplementableAlphabet interface {
+  Bases (i byte) ([]byte, error)
   Code           (i byte) (byte, error)
   Decode         (i byte) (byte, error)
   Length         ()       int
@@ -39,6 +41,20 @@ type ComplementableAlphabet interface {
 /* -------------------------------------------------------------------------- */
 
 type NucleotideAlphabet struct {
+}
+
+func (NucleotideAlphabet) Bases(i byte) ([]byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return []byte{'a'}, nil
+  case 'C': fallthrough
+  case 'c': return []byte{'c'}, nil
+  case 'G': fallthrough
+  case 'g': return []byte{'g'}, nil
+  case 'T': fallthrough
+  case 't': return []byte{'t'}, nil
+  default:  return nil, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  }
 }
 
 func (NucleotideAlphabet) Code(i byte) (byte, error) {
@@ -96,6 +112,22 @@ func (NucleotideAlphabet) Complement(i byte) (byte, error) {
 /* -------------------------------------------------------------------------- */
 
 type GappedNucleotideAlphabet struct {
+}
+
+func (GappedNucleotideAlphabet) Bases(i byte) ([]byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return []byte{'a'}, nil
+  case 'C': fallthrough
+  case 'c': return []byte{'c'}, nil
+  case 'G': fallthrough
+  case 'g': return []byte{'g'}, nil
+  case 'T': fallthrough
+  case 't': return []byte{'t'}, nil
+  case 'N': fallthrough
+  case 'n': return []byte{'a', 'c', 'g', 't'}, nil
+  default:  return nil, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  }
 }
 
 func (GappedNucleotideAlphabet) Code(i byte) (byte, error) {

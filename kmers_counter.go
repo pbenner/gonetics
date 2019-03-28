@@ -217,13 +217,9 @@ func (obj KmersCounter) addEquivalentKmersRec(dest, src []byte, i, idx int) {
   if i == len(src) {
     obj.kmap[len(dest)-obj.n][string(dest)] = append(obj.kmap[len(dest)-obj.n][string(dest)], idx)
   } else {
-    if src[i] == 'n' {
-      for _, k := range []byte{'a', 'c', 'g', 't'} {
-        dest[i] = k
-        obj.addEquivalentKmersRec(dest, src, i+1, idx)
-      }
-    } else {
-      dest[i] = src[i]
+    x, _ := obj.al.Bases(src[i])
+    for _, k := range x {
+      dest[i] = k
       obj.addEquivalentKmersRec(dest, src, i+1, idx)
     }
   }

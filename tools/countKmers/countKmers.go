@@ -25,6 +25,7 @@ import   "math"
 import   "io"
 import   "os"
 import   "strconv"
+import   "strings"
 
 import   "github.com/pborman/getopt"
 
@@ -34,6 +35,7 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
+  Alphabet   ComplementableAlphabet
   Complement bool
   Reverse    bool
   Revcomp    bool
@@ -182,7 +184,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result := make([][]int, len(sequences))
-  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, GappedNucleotideAlphabet{}); if err != nil {
+  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.Alphabet); if err != nil {
     log.Fatal(err)
   }
 
@@ -202,15 +204,16 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optRegions    := options. StringLong("regions",    0 , "", "bed with with regions")
-  optHeader     := options.   BoolLong("header",     0 ,     "print kmer header")
-  optHuman      := options.   BoolLong("human",      0 ,     "print human readable kmer statistics")
-  optThreads    := options.    IntLong("threads",    0 ,  1, "number of threads [default: 1]")
-  optComplement := options.   BoolLong("complement", 0 ,     "consider complement sequences")
-  optReverse    := options.   BoolLong("reverse",    0 ,     "consider reverse sequences")
-  optRevcomp    := options.   BoolLong("revcomp",    0 ,     "consider reverse complement sequences")
-  optVerbose    := options.CounterLong("verbose",   'v',     "verbose level [-v or -vv]")
-  optHelp       := options.   BoolLong("help",      'h',     "print help")
+  optAlphabet   := options. StringLong("alphabet",   0 , "nucleotide", "nucleotide, gapped-nucleotide, or iupac-nucleotide")
+  optRegions    := options. StringLong("regions",    0 , "",           "bed with with regions")
+  optHeader     := options.   BoolLong("header",     0 ,               "print kmer header")
+  optHuman      := options.   BoolLong("human",      0 ,               "print human readable kmer statistics")
+  optThreads    := options.    IntLong("threads",    0 ,  1,           "number of threads [default: 1]")
+  optComplement := options.   BoolLong("complement", 0 ,               "consider complement sequences")
+  optReverse    := options.   BoolLong("reverse",    0 ,               "consider reverse sequences")
+  optRevcomp    := options.   BoolLong("revcomp",    0 ,               "consider reverse complement sequences")
+  optVerbose    := options.CounterLong("verbose",   'v',               "verbose level [-v or -vv]")
+  optHelp       := options.   BoolLong("help",      'h',               "print help")
 
   options.SetParameters("<MIN-KMER-LENGTH> <MAX-KMER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
   options.Parse(os.Args)
@@ -220,6 +223,14 @@ func main() {
     os.Exit(0)
   }
   if len(options.Args()) < 2 || len(options.Args()) > 4 {
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
+  switch strings.ToLower(*optAlphabet) {
+  case "nucleotide"       : config.Alphabet =       NucleotideAlphabet{}
+  case "gapped-nucleotide": config.Alphabet = GappedNucleotideAlphabet{}
+  case "iupac-nucleotide" : config.Alphabet =  IupacNucleotideAlphabet{}
+  default:
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
@@ -251,5 +262,6 @@ func main() {
   if len(options.Args()) == 4 {
     filenameOut   = options.Args()[3]
   }
+
   kmerSearch(config, int(n), int(m), *optRegions, filenameFasta, filenameOut)
 }

@@ -194,6 +194,10 @@ func (obj KmersCounter) Revcomp() bool {
   return obj.revcomp
 }
 
+func (obj KmersCounter) Alphabet() ComplementableAlphabet {
+  return obj.al
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) decode(dest, src []byte) error {

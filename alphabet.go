@@ -28,6 +28,7 @@ type Alphabet interface {
   Decode    (i byte) (  byte, error)
   IsWildcard(i byte) bool
   Length    ()       int
+  String    ()       string
 }
 
 type ComplementableAlphabet interface {
@@ -38,6 +39,7 @@ type ComplementableAlphabet interface {
   ComplementCoded(i byte) (byte, error)
   IsWildcard     (i byte) bool
   Length         ()       int
+  String         ()       string
 }
 
 /* -------------------------------------------------------------------------- */
@@ -113,6 +115,10 @@ func (NucleotideAlphabet) Complement(i byte) (byte, error) {
   case 't': return 'a', nil
   default:  return 0xFF, fmt.Errorf("Complement(): `%c' is not part of the alphabet", i)
   }
+}
+
+func (NucleotideAlphabet) String() string {
+  return "nucleotide alphabet"
 }
 
 /* -------------------------------------------------------------------------- */
@@ -196,6 +202,10 @@ func (GappedNucleotideAlphabet) Complement(i byte) (byte, error) {
 
 func (GappedNucleotideAlphabet) IsWildcard(i byte) bool {
   return i == 'n' || i == 'N'
+}
+
+func (GappedNucleotideAlphabet) String() string {
+  return "gapped nucleotide alphabet"
 }
 
 /* -------------------------------------------------------------------------- */
@@ -359,4 +369,8 @@ func (IupacNucleotideAlphabet) Complement(i byte) (byte, error) {
 
 func (IupacNucleotideAlphabet) IsWildcard(i byte) bool {
   return i == 'n' || i == 'N'
+}
+
+func (IupacNucleotideAlphabet) String() string {
+  return "iupac nucleotide alphabet"
 }

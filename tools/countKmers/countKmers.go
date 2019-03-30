@@ -35,14 +35,15 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Alphabet   ComplementableAlphabet
-  Complement bool
-  Reverse    bool
-  Revcomp    bool
-  Human      bool
-  Header     bool
-  Threads    int
-  Verbose    int
+  Alphabet     ComplementableAlphabet
+  MaxAmbiguous int
+  Complement   bool
+  Reverse      bool
+  Revcomp      bool
+  Human        bool
+  Header       bool
+  Threads      int
+  Verbose      int
 }
 
 /* i/o
@@ -184,7 +185,7 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   result := make([][]int, len(sequences))
-  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.Alphabet); if err != nil {
+  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); if err != nil {
     log.Fatal(err)
   }
 
@@ -204,16 +205,17 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optAlphabet   := options. StringLong("alphabet",   0 , "nucleotide", "nucleotide, gapped-nucleotide, or iupac-nucleotide")
-  optRegions    := options. StringLong("regions",    0 , "",           "bed with with regions")
-  optHeader     := options.   BoolLong("header",     0 ,               "print kmer header")
-  optHuman      := options.   BoolLong("human",      0 ,               "print human readable kmer statistics")
-  optThreads    := options.    IntLong("threads",    0 ,  1,           "number of threads [default: 1]")
-  optComplement := options.   BoolLong("complement", 0 ,               "consider complement sequences")
-  optReverse    := options.   BoolLong("reverse",    0 ,               "consider reverse sequences")
-  optRevcomp    := options.   BoolLong("revcomp",    0 ,               "consider reverse complement sequences")
-  optVerbose    := options.CounterLong("verbose",   'v',               "verbose level [-v or -vv]")
-  optHelp       := options.   BoolLong("help",      'h',               "print help")
+  optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
+  optMaxAmbiguous := options.    IntLong("max-ambiguous", 0 , -1,           "maxum number of ambiguous positions")
+  optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
+  optHeader       := options.   BoolLong("header",        0 ,               "print kmer header")
+  optHuman        := options.   BoolLong("human",         0 ,               "print human readable kmer statistics")
+  optThreads      := options.    IntLong("threads",       0 ,  1,           "number of threads [default: 1]")
+  optComplement   := options.   BoolLong("complement",    0 ,               "consider complement sequences")
+  optReverse      := options.   BoolLong("reverse",       0 ,               "consider reverse sequences")
+  optRevcomp      := options.   BoolLong("revcomp",       0 ,               "consider reverse complement sequences")
+  optVerbose      := options.CounterLong("verbose",      'v',               "verbose level [-v or -vv]")
+  optHelp         := options.   BoolLong("help",         'h',               "print help")
 
   options.SetParameters("<MIN-KMER-LENGTH> <MAX-KMER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
   options.Parse(os.Args)
@@ -227,20 +229,21 @@ func main() {
     os.Exit(1)
   }
   switch strings.ToLower(*optAlphabet) {
-  case "nucleotide"       : config.Alphabet =       NucleotideAlphabet{}
-  case "gapped-nucleotide": config.Alphabet = GappedNucleotideAlphabet{}
-  case "iupac-nucleotide" : config.Alphabet =  IupacNucleotideAlphabet{}
+  case "nucleotide"          : config.Alphabet =          NucleotideAlphabet{}
+  case "gapped-nucleotide"   : config.Alphabet =    GappedNucleotideAlphabet{}
+  case "ambiguous-nucleotide": config.Alphabet = AmbiguousNucleotideAlphabet{}
   default:
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  config.Complement = *optComplement
-  config.Reverse    = *optReverse
-  config.Revcomp    = *optRevcomp
-  config.Header     = *optHeader
-  config.Human      = *optHuman
-  config.Threads    = *optThreads
-  config.Verbose    = *optVerbose
+  config.MaxAmbiguous = *optMaxAmbiguous
+  config.Complement   = *optComplement
+  config.Reverse      = *optReverse
+  config.Revcomp      = *optRevcomp
+  config.Header       = *optHeader
+  config.Human        = *optHuman
+  config.Threads      = *optThreads
+  config.Verbose      = *optVerbose
   // check required arguments
   n, err := strconv.ParseInt(options.Args()[0], 10, 64); if err != nil {
     options.PrintUsage(os.Stderr)

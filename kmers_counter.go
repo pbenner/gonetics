@@ -32,13 +32,14 @@ type KmersCounter struct {
   complement  bool
   reverse     bool
   revcomp     bool
+  ma          int              // maximum number of ambiguous positions
   al          ComplementableAlphabet
 }
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersCounter(n, m int, comp, rev, rc bool, al ComplementableAlphabet) (KmersCounter, error) {
-  r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc, al: al}
+func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al ComplementableAlphabet) (KmersCounter, error) {
+  r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc, ma: maxAmbiguous, al: al}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
     p[k] = iPow(r.al.Length(), k)
@@ -54,6 +55,7 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, al ComplementableAlphabet) (K
     c3 := make([]byte, k)
     c4 := make([]byte, k)
     cr := make([]byte, k)
+  Outer:
     for i := 0; i < kn; i++ {
       // convert index to sequence
       for j, ix := 0, i; j < k; j++ {
@@ -66,11 +68,25 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, al ComplementableAlphabet) (K
         }
       }
       // do not allow gaps at the ends
-      if x, _ := al.Decode(c1[  0]); r.al.IsWildcard(x) {
-        continue
+      {
+        x, _ := al.Decode(c1[  0]); if ok, _ := r.al.IsWildcard(x); ok {
+          continue
+        }
+        x, _  = al.Decode(c1[k-1]); if ok, _ := r.al.IsWildcard(x); ok {
+          continue
+        }
       }
-      if x, _ := al.Decode(c1[k-1]); r.al.IsWildcard(x) {
-        continue
+      if maxAmbiguous >= 0 {
+        for j, l := 0, 0; j < k; j++ {
+          x, _ := al.Decode(c1[j])
+          b, _ := al.Bases(x)
+          if len(b) > 1 {
+            l += 1
+          }
+          if l > maxAmbiguous {
+            continue Outer
+          }
+        }
       }
       // compute indices
       i_c   := 0 // index of complement
@@ -180,6 +196,10 @@ func (obj KmersCounter) MinKmerSize() int {
 
 func (obj KmersCounter) MaxKmerSize() int {
   return obj.m
+}
+
+func (obj KmersCounter) MaxAmbiguous() int {
+  return obj.ma
 }
 
 func (obj KmersCounter) Complement() bool {

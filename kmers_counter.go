@@ -38,6 +38,53 @@ type KmersCounter struct {
 
 /* -------------------------------------------------------------------------- */
 
+type KmersIterator struct {
+  c  []byte
+  al   ComplementableAlphabet
+  ok   bool
+  ma   int
+  na   int
+}
+
+func NewKmersIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet) KmersIterator {
+  c := make([]byte, k)
+  for i := 0; i < k; i++ {
+    c[i], _ = alphabet.Decode(0)
+  }
+  return KmersIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous}
+}
+
+func (obj KmersIterator) Get() []byte {
+  return obj.c
+}
+
+func (obj KmersIterator) Ok() bool {
+  return obj.ok
+}
+
+func (obj *KmersIterator) Next() {
+  k := len(obj.c)
+  // increment d
+  for i := 0; i < k; i++ {
+    if obj.incrementPosition(k-i-1) {
+      return
+    }
+  }
+  obj.ok = false
+}
+
+func (obj KmersIterator) incrementPosition(i int) bool {
+  if c, _ := obj.al.Code(obj.c[i]); int(c+1) < obj.al.Length() {
+    obj.c[i], _ = obj.al.Decode(c+1)
+    return true
+  } else {
+    obj.c[i], _ = obj.al.Decode(0)
+    return false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
 func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al ComplementableAlphabet) (KmersCounter, error) {
   r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc, ma: maxAmbiguous, al: al}
   p := make([]int, m+1)
@@ -49,38 +96,23 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
   idx   := 0
   for k := n; k <= m; k++ {
     r.kmap[k-n] = make(map[string][]int)
-    kn := iPow(r.al.Length(), k)
-    c1 := make([]byte, k)
     c2 := make([]byte, k)
     c3 := make([]byte, k)
     c4 := make([]byte, k)
     cr := make([]byte, k)
+    it := NewKmersIterator(k, maxAmbiguous, al)
   Outer:
-    for i := 0; i < kn; i++ {
-      // convert index to sequence
-      for j, ix := 0, i; j < k; j++ {
-        c1[k-j-1] = byte(ix % r.al.Length())
-        ix        = ix / r.al.Length()
-        if x, err := r.al.ComplementCoded(c1[k-j-1]); err != nil {
-          return r, err
-        } else {
-          c2[k-j-1] = x
-        }
-      }
+    for c1 := it.Get(); it.Ok(); it.Next() {
       // do not allow gaps at the ends
-      {
-        x, _ := al.Decode(c1[  0]); if ok, _ := r.al.IsWildcard(x); ok {
-          continue
-        }
-        x, _  = al.Decode(c1[k-1]); if ok, _ := r.al.IsWildcard(x); ok {
-          continue
-        }
+      if ok, _ := r.al.IsWildcard(c1[  0]); ok {
+        continue
+      }
+      if ok, _ := r.al.IsWildcard(c1[k-1]); ok {
+        continue
       }
       if maxAmbiguous >= 0 {
         for j, l := 0, 0; j < k; j++ {
-          x, _ := al.Decode(c1[j])
-          b, _ := al.Bases(x)
-          if len(b) > 1 {
+          if ok, _ := al.IsAmbiguous(c1[j]); ok {
             l += 1
           }
           if l > maxAmbiguous {
@@ -89,15 +121,22 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
         }
       }
       // compute indices
+      i     := 0 // index
       i_c   := 0 // index of complement
       i_r   := 0 // index of reverse
       i_rc  := 0 // index of reverse complement
-      i_res := i // final index
+      i_res := 0 // final index
       for j := 0; j < k; j++ {
-        i_c  += int(c2[k-j-1]) * p[j]
-        i_r  += int(c1[    j]) * p[j]
-        i_rc += int(c2[    j]) * p[j]
+        x1, _ := r.al.Code(c1[    j])
+        x2, _ := r.al.Code(c1[k-j-1])
+        y1, _ := r.al.ComplementCoded(x1)
+        y2, _ := r.al.ComplementCoded(x2)
+        i    += int(x2) * p[j]
+        i_c  += int(y2) * p[j]
+        i_r  += int(x1) * p[j]
+        i_rc += int(y1) * p[j]
       }
+      i_res = i
       // find minimum
       if comp && i_res > i_c {
         i_res = i_c
@@ -110,13 +149,10 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
       }
       if i_res == i {
         // new kmer found
-        if err := r.decode(c1, c1); err != nil {
-          return r, err
-        }
         r.addEquivalentKmers(cr, c1, idx)
         // compute strings
         if comp || rc {
-          if err := r.decode(c2, c2); err != nil {
+          if err := r.comp(c2, c1); err != nil {
             return r, err
           }
         }
@@ -220,9 +256,9 @@ func (obj KmersCounter) Alphabet() ComplementableAlphabet {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCounter) decode(dest, src []byte) error {
+func (obj KmersCounter) comp(dest, src []byte) error {
   for j := 0; j < len(src); j++ {
-    if x, err := obj.al.Decode(src[j]); err != nil {
+    if x, err := obj.al.Complement(src[j]); err != nil {
       return err
     } else {
       dest[j] = x

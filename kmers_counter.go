@@ -32,7 +32,8 @@ type KmersCounter struct {
   complement  bool
   reverse     bool
   revcomp     bool
-  ma          int              // maximum number of ambiguous positions
+  ma          int              // maximum number of ambiguous letters
+  na          int              // current number of ambiguous letters
   al          ComplementableAlphabet
 }
 
@@ -65,8 +66,24 @@ func (obj KmersIterator) Ok() bool {
 func (obj *KmersIterator) Next() {
   k := len(obj.c)
   // increment d
-  for i := 0; i < k; i++ {
+  for i := 0; i < k; {
+    ret  := false
+    t, _ := obj.al.IsAmbiguous(obj.c[k-i-1])
     if obj.incrementPosition(k-i-1) {
+      ret = true
+    }
+    // update ambiguous letter counter
+    if s, _ := obj.al.IsAmbiguous(obj.c[k-i-1]); s {
+      if !t { obj.na += 1 }
+    } else {
+      if  t { obj.na -= 1 }
+    }
+    if obj.ma >= 0 && obj.na > obj.ma {
+      ret = false
+    } else {
+      i  += 1
+    }
+    if ret {
       return
     }
   }
@@ -101,7 +118,6 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
     c4 := make([]byte, k)
     cr := make([]byte, k)
     it := NewKmersIterator(k, maxAmbiguous, al)
-  Outer:
     for c1 := it.Get(); it.Ok(); it.Next() {
       // do not allow gaps at the ends
       if ok, _ := r.al.IsWildcard(c1[  0]); ok {
@@ -109,16 +125,6 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
       }
       if ok, _ := r.al.IsWildcard(c1[k-1]); ok {
         continue
-      }
-      if maxAmbiguous >= 0 {
-        for j, l := 0, 0; j < k; j++ {
-          if ok, _ := al.IsAmbiguous(c1[j]); ok {
-            l += 1
-          }
-          if l > maxAmbiguous {
-            continue Outer
-          }
-        }
       }
       // compute indices
       i     := 0 // index

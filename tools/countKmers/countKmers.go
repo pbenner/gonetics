@@ -261,6 +261,10 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  if *optHuman && *optSparse {
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
   config.Binary       = *optBinary
   config.Complement   = *optComplement
   config.Reverse      = *optReverse

@@ -32,7 +32,7 @@ type KmersCounter struct {
   complement  bool
   reverse     bool
   revcomp     bool
-  ma          int              // maximum number of ambiguous letters
+  ma        []int              // maximum number of ambiguous letters
   na          int              // current number of ambiguous letters
   al          ComplementableAlphabet
 }
@@ -102,7 +102,23 @@ func (obj KmersIterator) incrementPosition(i int) bool {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al ComplementableAlphabet) (KmersCounter, error) {
+func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (KmersCounter, error) {
+  if len(maxAmbiguous) == 0 {
+    maxAmbiguous = make([]int, m-n+1)
+    for i := 0; i < m-n+1; i++ {
+      maxAmbiguous[i] = -1
+    }
+  } else
+  if len(maxAmbiguous) == 1 {
+    x := maxAmbiguous[0]
+    maxAmbiguous = make([]int, m-n+1)
+    for i := 0; i < m-n+1; i++ {
+      maxAmbiguous[i] = x
+    }
+  } else
+  if len(maxAmbiguous) != m-n+1 {
+    return KmersCounter{}, fmt.Errorf("parameter `maxAmbiguous' has invalid length")
+  }
   r := KmersCounter{n: n, m: m, complement: comp, reverse: rev, revcomp: rc, ma: maxAmbiguous, al: al}
   p := make([]int, m+1)
   for k := 0; k <= m; k++ {
@@ -117,7 +133,7 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous int, al Compleme
     c3 := make([]byte, k)
     c4 := make([]byte, k)
     cr := make([]byte, k)
-    it := NewKmersIterator(k, maxAmbiguous, al)
+    it := NewKmersIterator(k, maxAmbiguous[k-n], al)
     for c1 := it.Get(); it.Ok(); it.Next() {
       // do not allow gaps at the ends
       if ok, _ := r.al.IsWildcard(c1[  0]); ok {
@@ -240,7 +256,7 @@ func (obj KmersCounter) MaxKmerSize() int {
   return obj.m
 }
 
-func (obj KmersCounter) MaxAmbiguous() int {
+func (obj KmersCounter) MaxAmbiguous() []int {
   return obj.ma
 }
 

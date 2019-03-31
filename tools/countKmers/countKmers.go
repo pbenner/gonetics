@@ -35,15 +35,15 @@ import   "github.com/pbenner/threadpool"
 /* -------------------------------------------------------------------------- */
 
 type Config struct {
-  Alphabet     ComplementableAlphabet
-  MaxAmbiguous int
-  Complement   bool
-  Reverse      bool
-  Revcomp      bool
-  Human        bool
-  Header       bool
-  Threads      int
-  Verbose      int
+  Alphabet       ComplementableAlphabet
+  MaxAmbiguous []int
+  Complement     bool
+  Reverse        bool
+  Revcomp        bool
+  Human          bool
+  Header         bool
+  Threads        int
+  Verbose        int
 }
 
 /* i/o
@@ -206,7 +206,7 @@ func main() {
   options := getopt.New()
 
   optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
-  optMaxAmbiguous := options.    IntLong("max-ambiguous", 0 , -1,           "maxum number of ambiguous positions")
+  optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length MAX-KMER-LENGTH-MIN-KMER-LENGTH+1)")
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
   optHeader       := options.   BoolLong("header",        0 ,               "print kmer header")
   optHuman        := options.   BoolLong("human",         0 ,               "print human readable kmer statistics")
@@ -236,7 +236,6 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  config.MaxAmbiguous = *optMaxAmbiguous
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
@@ -254,6 +253,29 @@ func main() {
     os.Exit(1)
   }
   if n < 1 || m < n {
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
+  if fields := strings.Split(*optMaxAmbiguous, ","); len(fields) == 1 {
+    config.MaxAmbiguous = make([]int, 1)
+    if t, err := strconv.ParseInt(fields[0], 10, 64); err != nil {
+      options.PrintUsage(os.Stderr)
+      os.Exit(1)
+    } else {
+      config.MaxAmbiguous[0] = int(t)
+    }
+  } else
+  if len(fields) == int(m-n+1) {
+    config.MaxAmbiguous = make([]int, int(m-n+1))
+    for i := 0; i < int(m-n+1); i++ {
+      if t, err := strconv.ParseInt(fields[i], 10, 64); err != nil {
+        options.PrintUsage(os.Stderr)
+        os.Exit(1)
+      } else {
+        config.MaxAmbiguous[i] = int(t)
+      }
+    }
+  } else {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }

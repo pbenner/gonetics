@@ -36,6 +36,7 @@ import   "github.com/pbenner/threadpool"
 
 type Config struct {
   Alphabet       ComplementableAlphabet
+  Binary         bool
   MaxAmbiguous []int
   Complement     bool
   Reverse        bool
@@ -115,7 +116,7 @@ func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, file
   }
   // convert kmer counts to human readable string
   if config.Human {
-    kmers    := granges.GetMeta("kmers").([][]int)
+    kmers    := granges.GetMeta("k-mers").([][]int)
     kmersNew := make([]string, len(kmers))
     for i, _ := range kmers {
       for j, _ := range kmers[i] {
@@ -126,7 +127,7 @@ func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, file
         }
       }
     }
-    granges.AddMeta("kmers", kmersNew)
+    granges.AddMeta("k-mers", kmersNew)
   }
   if err := granges.WriteTable(writer, true, false); err != nil {
     log.Fatal(err)
@@ -171,8 +172,14 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 func scanSequence(config Config, kmersCounter KmersCounter, sequence []byte) []int {
   result := make([]int, kmersCounter.Length())
-  if err := kmersCounter.CountKmers(result, sequence); err != nil {
-    log.Fatal(err)
+  if config.Binary {
+    if err := kmersCounter.IdentifyKmers(result, sequence); err != nil {
+      log.Fatal(err)
+    }
+  } else {
+    if err := kmersCounter.CountKmers(result, sequence); err != nil {
+      log.Fatal(err)
+    }
   }
   return result
 }
@@ -206,10 +213,11 @@ func main() {
   options := getopt.New()
 
   optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
-  optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length MAX-KMER-LENGTH-MIN-KMER-LENGTH+1)")
+  optBinary       := options.   BoolLong("binary",        0 ,               "count matrix only shows the presence or absence of k-mers")
+  optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length MAX-K-MER-LENGTH-MIN-K-MER-LENGTH+1)")
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
-  optHeader       := options.   BoolLong("header",        0 ,               "print kmer header")
-  optHuman        := options.   BoolLong("human",         0 ,               "print human readable kmer statistics")
+  optHeader       := options.   BoolLong("header",        0 ,               "print k-mer header")
+  optHuman        := options.   BoolLong("human",         0 ,               "print human readable k-mer statistics")
   optThreads      := options.    IntLong("threads",       0 ,  1,           "number of threads [default: 1]")
   optComplement   := options.   BoolLong("complement",    0 ,               "consider complement sequences")
   optReverse      := options.   BoolLong("reverse",       0 ,               "consider reverse sequences")
@@ -217,7 +225,7 @@ func main() {
   optVerbose      := options.CounterLong("verbose",      'v',               "verbose level [-v or -vv]")
   optHelp         := options.   BoolLong("help",         'h',               "print help")
 
-  options.SetParameters("<MIN-KMER-LENGTH> <MAX-KMER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
+  options.SetParameters("<MIN-K-MER-LENGTH> <MAX-K-MER-LENGTH> [<INPUT.fasta> [OUTPUT.table]]")
   options.Parse(os.Args)
 
   if *optHelp {
@@ -236,6 +244,7 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  config.Binary       = *optBinary
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
@@ -256,17 +265,8 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  if fields := strings.Split(*optMaxAmbiguous, ","); len(fields) == 1 {
-    config.MaxAmbiguous = make([]int, 1)
-    if t, err := strconv.ParseInt(fields[0], 10, 64); err != nil {
-      options.PrintUsage(os.Stderr)
-      os.Exit(1)
-    } else {
-      config.MaxAmbiguous[0] = int(t)
-    }
-  } else
-  if len(fields) == int(m-n+1) {
-    config.MaxAmbiguous = make([]int, int(m-n+1))
+  if fields := strings.Split(*optMaxAmbiguous, ","); len(fields) == 1 || len(fields) == int(m-n+1) {
+    config.MaxAmbiguous = make([]int, len(fields))
     for i := 0; i < int(m-n+1); i++ {
       if t, err := strconv.ParseInt(fields[i], 10, 64); err != nil {
         options.PrintUsage(os.Stderr)

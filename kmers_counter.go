@@ -238,6 +238,20 @@ func (obj KmersCounter) CountKmers(result []int, sequence []byte) error {
   return nil
 }
 
+func (obj KmersCounter) IdentifyKmers(result []int, sequence []byte) error {
+  c := strings.ToLower(string(sequence))
+  // loop over sequence
+  for i := 0; i < len(c); i++ {
+    // loop over all k-mers
+    for k := obj.n; k <= obj.m && i+k-1 < len(c); k++ {
+      for _, j := range obj.kmap[k-obj.n][c[i:i+k]] {
+        result[j] = 1
+      }
+    }
+  }
+  return nil
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) Length() int {

@@ -43,6 +43,7 @@ type Config struct {
   Revcomp        bool
   Human          bool
   Header         bool
+  Sparse         bool
   Threads        int
   Verbose        int
 }
@@ -200,8 +201,23 @@ func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenam
     result[i] = scanSequence(config, kmersCounter, sequences[i])
     return nil
   })
-
-  granges.AddMeta("kmers", result)
+  if config.Sparse {
+    str := make([]string, len(result))
+    for i := 0; i < len(result); i++ {
+      for j := 0; j < len(result[i]); j++ {
+        if result[i][j] > 0 {
+          if str[i] == "" {
+            str[i] += fmt.Sprintf( "%s=%d", kmersCounter.KmerName(j), result[i][j])
+          } else {
+            str[i] += fmt.Sprintf(",%s=%d", kmersCounter.KmerName(j), result[i][j])
+          }
+        }
+      }
+    }
+    granges.AddMeta("k-mers", str)
+  } else {
+    granges.AddMeta("k-mers", result)
+  }
   WriteResult(config, kmersCounter, granges, filenameOut)
 }
 
@@ -222,6 +238,7 @@ func main() {
   optComplement   := options.   BoolLong("complement",    0 ,               "consider complement sequences")
   optReverse      := options.   BoolLong("reverse",       0 ,               "consider reverse sequences")
   optRevcomp      := options.   BoolLong("revcomp",       0 ,               "consider reverse complement sequences")
+  optSparse       := options.   BoolLong("sparse",        0 ,               "print a sparse representation of the count matrix")
   optVerbose      := options.CounterLong("verbose",      'v',               "verbose level [-v or -vv]")
   optHelp         := options.   BoolLong("help",         'h',               "print help")
 
@@ -250,6 +267,7 @@ func main() {
   config.Revcomp      = *optRevcomp
   config.Header       = *optHeader
   config.Human        = *optHuman
+  config.Sparse       = *optSparse
   config.Threads      = *optThreads
   config.Verbose      = *optVerbose
   // check required arguments

@@ -267,7 +267,7 @@ func main() {
   }
   if fields := strings.Split(*optMaxAmbiguous, ","); len(fields) == 1 || len(fields) == int(m-n+1) {
     config.MaxAmbiguous = make([]int, len(fields))
-    for i := 0; i < int(m-n+1); i++ {
+    for i := 0; i < len(fields); i++ {
       if t, err := strconv.ParseInt(fields[i], 10, 64); err != nil {
         options.PrintUsage(os.Stderr)
         os.Exit(1)

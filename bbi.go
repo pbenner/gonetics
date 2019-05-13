@@ -691,6 +691,7 @@ func (it *BbiRawBlockEncoderIterator) Next() {
       header.End += header.Step
       // check if maximum number of items per block is reached
       if int(header.ItemCount) == it.ItemsPerSlot {
+        it.position++
         break
       }
     }
@@ -707,6 +708,7 @@ func (it *BbiRawBlockEncoderIterator) Next() {
       }
       // check if maximum number of items per block is reached
       if int(header.ItemCount) == it.ItemsPerSlot {
+        it.position++
         break
       }
     }

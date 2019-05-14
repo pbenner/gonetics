@@ -1834,7 +1834,24 @@ type BbiHeader struct {
 func NewBbiHeader() *BbiHeader {
   header := BbiHeader{}
   header.Version = 4
+  header.MinVal = math.NaN()
+  header.MaxVal = math.NaN()
   return &header
+}
+
+func (header *BbiHeader) SummaryAddValue(x float64, n int) {
+  if math.IsNaN(x) {
+    return
+  }
+  if math.IsNaN(float64(header.MinVal)) || header.MinVal > x {
+    header.MinVal = x
+  }
+  if math.IsNaN(float64(header.MaxVal)) || header.MaxVal < x {
+    header.MaxVal = x
+  }
+  header.NBasesCovered += uint64(n)
+  header.SumData       += x
+  header.SumSquares    += x*x
 }
 
 func (header *BbiHeader) Read(file io.ReadSeeker, magic uint32) (binary.ByteOrder, error) {
@@ -2077,6 +2094,10 @@ func (header *BbiHeader) Write(file io.WriteSeeker, order binary.ByteOrder) erro
       return err
     }
   }
+  return nil
+}
+
+func (header *BbiHeader) WriteSummary(file io.WriteSeeker, order binary.ByteOrder) error {
   // summary
   if header.NBasesCovered > 0 {
     // get current offset

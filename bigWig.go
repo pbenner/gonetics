@@ -387,6 +387,10 @@ func (bww *BigWigWriter) write(idx int, sequence []float64, binSize int) (int, e
     // save leaf for tree construction
     bww.Leaves[idx] = append(bww.Leaves[idx], tmp.Vertex)
   }
+  // update summary
+  for _, v := range sequence {
+    bww.Bwf.Header.SummaryAddValue(v, binSize)
+  }
   return n, nil
 }
 
@@ -547,6 +551,10 @@ func (bww *BigWigWriter) Close() error {
   }
   // go to the end of the file
   if _, err := bww.Writer.Seek(0, 2); err != nil {
+    return err
+  }
+  // write summary
+  if err := bww.Bwf.Header.WriteSummary(bww.Writer, bww.Bwf.Order); err != nil {
     return err
   }
   // write magic number

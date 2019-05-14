@@ -20,6 +20,7 @@ package gonetics
 
 //import   "fmt"
 import   "math"
+import   "os"
 import   "testing"
 
 /* -------------------------------------------------------------------------- */
@@ -104,6 +105,7 @@ func TestTrack3(t *testing.T) {
       }
     }
   }
+  os.Remove("track_test.1.wig")
 }
 
 func TestTrack4(t *testing.T) {
@@ -181,6 +183,7 @@ func TestTrack7(t *testing.T) {
   if err := track.ImportBigWig("track_test.1.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
+  os.Remove("track_test.1.bw.tmp")
 }
 
 func TestTrack8(t *testing.T) {
@@ -200,6 +203,7 @@ func TestTrack8(t *testing.T) {
   if err := track2.ImportBigWig("track_test.3.bw.tmp", "", BinMean, 10, 0, math.NaN()); err != nil {
     t.Error(err)
   }
+  os.Remove("track_test.3.bw.tmp")
 }
 
 func TestTrack9(t *testing.T) {
@@ -233,6 +237,7 @@ func TestTrack9(t *testing.T) {
       }
     }
   }
+  os.Remove("track_test.4.bw")
 }
 
 func TestTrack10(t *testing.T) {
@@ -267,6 +272,7 @@ func TestTrack10(t *testing.T) {
       }
     }
   }
+  os.Remove("track_test.1.wig")
 }
 
 func TestTrack11(t *testing.T) {
@@ -313,4 +319,5 @@ func TestTrack11(t *testing.T) {
       }
     }
   }
+  os.Remove("track_test.4.bw")
 }

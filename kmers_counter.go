@@ -283,17 +283,22 @@ func (obj KmersCounter) IdentifyKmers(result []int, sequence []byte) error {
 
 func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
   c := strings.ToLower(string(sequence))
-  r := []int{}
+  r := make(map[int]struct{})
   // loop over sequence
   for i := 0; i < len(c); i++ {
     // loop over all k-mers
     for k := obj.n; k <= obj.m && i+k-1 < len(c); k++ {
       for _, j := range obj.kmap[k-obj.n][c[i:i+k]] {
-        r = append(r, j)
+        r[j] = struct{}{}
       }
     }
   }
-  return r
+  indices := []int{}
+  for k, _ := range r {
+    indices = append(indices, k)
+  }
+  sort.Ints(indices)
+  return indices
 }
 
 /* -------------------------------------------------------------------------- */

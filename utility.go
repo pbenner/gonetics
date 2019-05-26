@@ -157,3 +157,23 @@ func bufioReadLine(reader *bufio.Reader) (string, error) {
   // remove newline character
   return l[0:len(l)-1], err
 }
+
+/* -------------------------------------------------------------------------- */
+
+type sortIntPairs struct {
+  a []int
+  b []int
+}
+
+func (obj sortIntPairs) Len() int {
+  return len(obj.a)
+}
+
+func (obj sortIntPairs) Less(i, j int) bool {
+  return obj.a[i] < obj.b[j]
+}
+
+func (obj sortIntPairs) Swap(i, j int) {
+  obj.a[i], obj.a[j] = obj.a[j], obj.a[i]
+  obj.b[i], obj.b[j] = obj.b[j], obj.b[i]
+}

@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "sort"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
@@ -225,6 +226,9 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Comple
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) CountKmers(result []int, sequence []byte) error {
+  if len(result) != obj.Length() {
+    return fmt.Errorf("result slice has invalid length")
+  }
   c := strings.ToLower(string(sequence))
   // loop over sequence
   for i := 0; i < len(c); i++ {
@@ -238,7 +242,32 @@ func (obj KmersCounter) CountKmers(result []int, sequence []byte) error {
   return nil
 }
 
+func (obj KmersCounter) CountKmersSparse(sequence []byte) ([]int, []int) {
+  c := strings.ToLower(string(sequence))
+  r := make(map[int]int)
+  // loop over sequence
+  for i := 0; i < len(c); i++ {
+    // loop over all k-mers
+    for k := obj.n; k <= obj.m && i+k-1 < len(c); k++ {
+      for _, j := range obj.kmap[k-obj.n][c[i:i+k]] {
+        r[j] += 1
+      }
+    }
+  }
+  indices := []int{}
+  counts  := []int{}
+  for k, v := range r {
+    indices = append(indices, k)
+    counts  = append(counts,  v)
+  }
+  sort.Sort(sortIntPairs{indices, counts})
+  return indices, counts
+}
+
 func (obj KmersCounter) IdentifyKmers(result []int, sequence []byte) error {
+  if len(result) != obj.Length() {
+    return fmt.Errorf("result slice has invalid length")
+  }
   c := strings.ToLower(string(sequence))
   // loop over sequence
   for i := 0; i < len(c); i++ {
@@ -250,6 +279,21 @@ func (obj KmersCounter) IdentifyKmers(result []int, sequence []byte) error {
     }
   }
   return nil
+}
+
+func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
+  c := strings.ToLower(string(sequence))
+  r := []int{}
+  // loop over sequence
+  for i := 0; i < len(c); i++ {
+    // loop over all k-mers
+    for k := obj.n; k <= obj.m && i+k-1 < len(c); k++ {
+      for _, j := range obj.kmap[k-obj.n][c[i:i+k]] {
+        r = append(r, j)
+      }
+    }
+  }
+  return r
 }
 
 /* -------------------------------------------------------------------------- */

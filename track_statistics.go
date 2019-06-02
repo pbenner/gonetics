@@ -282,6 +282,7 @@ type TrackSummaryStatistics struct {
   Mean float64
   Max  float64
   Min  float64
+  N    int
 }
 
 func (statistics TrackSummaryStatistics) String() string {
@@ -291,18 +292,19 @@ func (statistics TrackSummaryStatistics) String() string {
   } else {
     s = fmt.Sprintf("Track `%s' summary statistics\n", statistics.Name)
   }
+  s += "- N      : %d\n"
   s += "- Maximum: %f\n"
   s += "- Minimum: %f\n"
   s += "- Mean   : %f"
-  return fmt.Sprintf(s, statistics.Max, statistics.Min, statistics.Mean)
+  return fmt.Sprintf(s, statistics.N, statistics.Max, statistics.Min, statistics.Mean)
 }
 
 func (track GenericTrack) SummaryStatistics() TrackSummaryStatistics {
   statistics := TrackSummaryStatistics{}
   statistics.Name = track.GetName()
+  statistics.N    = 0
   statistics.Max  = math.Inf(-1)
   statistics.Min  = math.Inf(+1)
-  n := 0
 
   // compute number of data points
   for _, name := range track.GetSeqNames() {
@@ -311,7 +313,7 @@ func (track GenericTrack) SummaryStatistics() TrackSummaryStatistics {
     }
     for i := 0; i < sequence.NBins(); i++ {
       if !math.IsNaN(sequence.AtBin(i)) {
-        n++
+        statistics.N++
       }
     }
   }
@@ -332,7 +334,7 @@ func (track GenericTrack) SummaryStatistics() TrackSummaryStatistics {
         statistics.Max = sequence.AtBin(i)
       }
       // update mean
-      statistics.Mean += 1.0/float64(n)*sequence.AtBin(i)
+      statistics.Mean += 1.0/float64(statistics.N)*sequence.AtBin(i)
     }
   }
   return statistics

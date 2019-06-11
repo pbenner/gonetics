@@ -54,7 +54,7 @@ func TestKmersCounter1(t *testing.T) {
 
 func TestKmersCounter2(t *testing.T) {
   kmersCounter, _ := NewKmersCounter(4, 6, false, false, true, nil, NucleotideAlphabet{})
-  for _, kmer := range kmersCounter.RelatedKmers([]byte("cgtat")) {
-    fmt.Println(string(kmer))
+  for _, i := range kmersCounter.RelatedKmers([]byte("cgtat")) {
+    fmt.Println(kmersCounter.KmerName(i))
   }
 }

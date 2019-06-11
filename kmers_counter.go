@@ -384,13 +384,12 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCounter) RelatedKmers(kmer []byte) [][]byte {
-  r := [][]byte{}
+func (obj KmersCounter) RelatedKmers(kmer []byte) []int {
   m := 0
   // count number of ambiguous characters
   for i := 0; i < len(kmer); i++ {
     if ok, err := obj.al.IsAmbiguous(kmer[i]); err != nil {
-      return r
+      return nil
     } else {
       if ok {
         m++
@@ -398,18 +397,24 @@ func (obj KmersCounter) RelatedKmers(kmer []byte) [][]byte {
     }
   }
   // scan kmer for sub-kmers
-  for _, s := range obj.IdentifyKmersSparse(kmer) {
-    r = append(r, []byte(obj.names[s]))
-  }
+  r := obj.IdentifyKmersSparse(kmer)
   // iterate over all kmers longer than the given one
+  indexMap := make(map[int]struct{})
+  // loop over kmer sizes
   for k := len(kmer)+1; k <= obj.m; k++ {
     // loop over positions where the kmer can be fixed
     for j := 0; j <= k - len(kmer); j++ {
       for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, kmer); it.Ok(); it.Next() {
-        r = append(r, it.Get())
+        for _, idx := range obj.kmap[k-obj.n][string(it.Get())] {
+          indexMap[idx] = struct{}{}
+        }
       }
     }
   }
+  for k, _ := range r {
+    r = append(r, k)
+  }
+  sort.Ints(r)
   return r
 }
 

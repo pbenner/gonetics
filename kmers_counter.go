@@ -103,6 +103,82 @@ func (obj KmersIterator) incrementPosition(i int) bool {
 
 /* -------------------------------------------------------------------------- */
 
+type KmersCylinderIterator struct {
+  c  []byte
+  al   ComplementableAlphabet
+  ok   bool
+  ma   int
+  na   int
+  j    int
+  m    int
+}
+
+func NewKmersCylinderIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet, j int, a []byte) KmersCylinderIterator {
+  m := j + len(a)
+  c := make([]byte, k)
+  if m > k {
+    panic("invalid parameters")
+  }
+  for i := 0; i < k; i++ {
+    c[i], _ = alphabet.Decode(0)
+  }
+  for i := j; i < m; i++ {
+    c[i] = a[i-j]
+  }
+  return KmersCylinderIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous, j: j, m: m}
+}
+
+func (obj KmersCylinderIterator) Get() []byte {
+  return obj.c
+}
+
+func (obj KmersCylinderIterator) Ok() bool {
+  return obj.ok
+}
+
+func (obj *KmersCylinderIterator) Next() {
+  k := len(obj.c)
+  // increment d
+  for i := 0; i < k; {
+    // skip fixed sub-kmer
+    for i >= obj.j && i < obj.m {
+      i++
+    }
+    ret  := false
+    t, _ := obj.al.IsAmbiguous(obj.c[k-i-1])
+    if obj.incrementPosition(k-i-1) {
+      ret = true
+    }
+    // update ambiguous letter counter
+    if s, _ := obj.al.IsAmbiguous(obj.c[k-i-1]); s {
+      if !t { obj.na += 1 }
+    } else {
+      if  t { obj.na -= 1 }
+    }
+    if obj.ma >= 0 && obj.na > obj.ma {
+      ret = false
+    } else {
+      i  += 1
+    }
+    if ret {
+      return
+    }
+  }
+  obj.ok = false
+}
+
+func (obj KmersCylinderIterator) incrementPosition(i int) bool {
+  if c, _ := obj.al.Code(obj.c[i]); int(c+1) < obj.al.Length() {
+    obj.c[i], _ = obj.al.Decode(c+1)
+    return true
+  } else {
+    obj.c[i], _ = obj.al.Decode(0)
+    return false
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+
 func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (KmersCounter, error) {
   if len(maxAmbiguous) == 0 {
     maxAmbiguous = make([]int, m-n+1)

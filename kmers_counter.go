@@ -138,19 +138,20 @@ func (obj KmersCylinderIterator) Ok() bool {
 
 func (obj *KmersCylinderIterator) Next() {
   k := len(obj.c)
+  i := k-1
+  // skip fixed sub-kmer
+  if i >= obj.j && i < obj.m {
+    i = obj.j-1
+  }
   // increment d
-  for i := 0; i < k; {
-    // skip fixed sub-kmer
-    for i >= obj.j && i < obj.m {
-      i++
-    }
+  for i >= 0 {
     ret  := false
-    t, _ := obj.al.IsAmbiguous(obj.c[k-i-1])
-    if obj.incrementPosition(k-i-1) {
+    t, _ := obj.al.IsAmbiguous(obj.c[i])
+    if obj.incrementPosition(i) {
       ret = true
     }
     // update ambiguous letter counter
-    if s, _ := obj.al.IsAmbiguous(obj.c[k-i-1]); s {
+    if s, _ := obj.al.IsAmbiguous(obj.c[i]); s {
       if !t { obj.na += 1 }
     } else {
       if  t { obj.na -= 1 }
@@ -158,7 +159,11 @@ func (obj *KmersCylinderIterator) Next() {
     if obj.ma >= 0 && obj.na > obj.ma {
       ret = false
     } else {
-      i  += 1
+      i  -= 1
+      // skip fixed sub-kmer
+      if i >= obj.j && i < obj.m {
+        i = obj.j-1
+      }
     }
     if ret {
       return
@@ -397,9 +402,9 @@ func (obj KmersCounter) RelatedKmers(kmer []byte) [][]byte {
     r = append(r, []byte(obj.names[s]))
   }
   // iterate over all kmers longer than the given one
-  for k := len(kmer)+1; k < obj.m; k++ {
+  for k := len(kmer)+1; k <= obj.m; k++ {
     // loop over positions where the kmer can be fixed
-    for j := 0; j < k - len(kmer); j++ {
+    for j := 0; j <= k - len(kmer); j++ {
       for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, kmer); it.Ok(); it.Next() {
         r = append(r, it.Get())
       }

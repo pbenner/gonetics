@@ -385,7 +385,7 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) RelatedKmers(kmerIdx int) []int {
-  kmer := []byte(obj.KmerName(kmerIdx))
+  kmer := []byte(strings.Split(obj.KmerName(kmerIdx), "|")[0])
   m := 0
   // count number of ambiguous characters
   for i := 0; i < len(kmer); i++ {

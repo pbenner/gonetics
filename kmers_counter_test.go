@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
+//import "fmt"
 import "testing"
 
 /* -------------------------------------------------------------------------- */
@@ -54,7 +54,23 @@ func TestKmersCounter1(t *testing.T) {
 
 func TestKmersCounter2(t *testing.T) {
   kmersCounter, _ := NewKmersCounter(4, 6, false, false, true, nil, NucleotideAlphabet{})
-  for _, i := range kmersCounter.RelatedKmers([]byte("cgtat")) {
-    fmt.Println(kmersCounter.KmerName(i))
+  r := []string{
+    "atac|gtat",
+    "cgta|tacg",
+    "atacg|cgtat",
+    "aatacg|cgtatt",
+    "acgtat|atacgt",
+    "atacga|tcgtat",
+    "atacgc|gcgtat",
+    "atacgg|ccgtat",
+    "catacg|cgtatg",
+    "cgtata|tatacg",
+    "cgtatc|gatacg"}
+  i := 0
+  for _, idx := range kmersCounter.RelatedKmers([]byte("cgtat")) {
+    if r[i] != kmersCounter.KmerName(idx) {
+      t.Error("test failed")
+    }
+    i++
   }
 }

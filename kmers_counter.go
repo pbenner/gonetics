@@ -411,7 +411,7 @@ func (obj KmersCounter) RelatedKmers(kmer []byte) []int {
       }
     }
   }
-  for k, _ := range r {
+  for k, _ := range indexMap {
     r = append(r, k)
   }
   sort.Ints(r)

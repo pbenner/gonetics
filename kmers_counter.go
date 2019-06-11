@@ -387,10 +387,11 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 func (obj KmersCounter) RelatedKmers(kmerIdx int) []int {
   s := []byte(strings.Split(obj.KmerName(kmerIdx), "|")[0])
   m := obj.CountAmbiguous(kmerIdx)
-  // scan kmer for sub-kmers
-  r := obj.IdentifyKmersSparse(s)
-  // iterate over all kmers longer than the given one
   indexMap := make(map[int]struct{})
+  // scan kmer for sub-kmers
+  for _, k := range obj.IdentifyKmersSparse(s) {
+    indexMap[k] = struct{}{}
+  }
   // loop over kmer sizes
   for k := len(s)+1; k <= obj.m; k++ {
     // loop over positions where the kmer can be fixed
@@ -403,6 +404,7 @@ func (obj KmersCounter) RelatedKmers(kmerIdx int) []int {
     }
   }
   delete(indexMap, kmerIdx)
+  r := []int{}
   for k, _ := range indexMap {
     r = append(r, k)
   }

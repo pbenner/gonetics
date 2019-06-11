@@ -58,7 +58,6 @@ func TestKmersCounter2(t *testing.T) {
   r := []string{
     "atac|gtat",
     "cgta|tacg",
-    "atacg|cgtat",
     "aatacg|cgtatt",
     "acgtat|atacgt",
     "atacga|tcgtat",
@@ -88,7 +87,6 @@ func TestKmersCounter3(t *testing.T) {
     "cgna|tncg",
     "cnta|tang",
     "cnna|tnng",
-    "atacg|cgtat",
     "atang|cntat",
     "atncg|cgnat",
     "atnng|cnnat",

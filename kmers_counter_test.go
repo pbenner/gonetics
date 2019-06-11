@@ -18,7 +18,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-import "fmt"
+//import "fmt"
 import "testing"
 
 /* -------------------------------------------------------------------------- */
@@ -58,6 +58,7 @@ func TestKmersCounter2(t *testing.T) {
   r := []string{
     "atac|gtat",
     "cgta|tacg",
+    "atacg|cgtat",
     "aatacg|cgtatt",
     "acgtat|atacgt",
     "atacga|tcgtat",
@@ -65,7 +66,7 @@ func TestKmersCounter2(t *testing.T) {
     "atacgg|ccgtat",
     "catacg|cgtatg",
     "cgtata|tatacg",
-    "cgtatc|gatacg"}
+    "cgtatc|gatacg" }
   i := 0
   for _, idx := range kmersCounter.RelatedKmers(k) {
     if r[i] != kmersCounter.KmerName(idx) {
@@ -78,7 +79,28 @@ func TestKmersCounter2(t *testing.T) {
 func TestKmersCounter3(t *testing.T) {
   kmersCounter, _ := NewKmersCounter(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
   k, _ := kmersCounter.KmerIndex([]byte("cgtat"))
+  r := []string{
+    "atac|gtat",
+    "atnc|gnat",
+    "anac|gtnt",
+    "annc|gnnt",
+    "cgta|tacg",
+    "cgna|tncg",
+    "cnta|tang",
+    "cnna|tnng",
+    "atacg|cgtat",
+    "atang|cntat",
+    "atncg|cgnat",
+    "atnng|cnnat",
+    "anacg|cgtnt",
+    "anang|cntnt",
+    "anncg|cgnnt",
+    "annng|cnnnt" }
+  i := 0
   for _, idx := range kmersCounter.RelatedKmers(k) {
-    fmt.Println(kmersCounter.KmerName(idx))
+    if r[i] != kmersCounter.KmerName(idx) {
+      t.Error("test failed")
+    }
+    i++
   }
 }

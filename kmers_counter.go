@@ -384,7 +384,8 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCounter) RelatedKmers(kmer []byte) []int {
+func (obj KmersCounter) RelatedKmers(kmerIdx int) []int {
+  kmer := []byte(obj.KmerName(kmerIdx))
   m := 0
   // count number of ambiguous characters
   for i := 0; i < len(kmer); i++ {
@@ -411,6 +412,7 @@ func (obj KmersCounter) RelatedKmers(kmer []byte) []int {
       }
     }
   }
+  delete(indexMap, kmerIdx)
   for k, _ := range indexMap {
     r = append(r, k)
   }
@@ -454,6 +456,24 @@ func (obj KmersCounter) Revcomp() bool {
 
 func (obj KmersCounter) Alphabet() ComplementableAlphabet {
   return obj.al
+}
+
+func (obj KmersCounter) KmerIndex(kmer []byte) (int, bool) {
+  if len(kmer) < obj.n || len(kmer) > obj.m {
+    return -1, false
+  }
+  if indices, ok := obj.kmap[len(kmer)-obj.n][string(kmer)]; !ok {
+    return -1, false
+  } else {
+    for _, i := range indices {
+      for _, substr := range strings.Split(obj.KmerName(i), "|") {
+        if string(kmer) == substr {
+          return i, true
+        }
+      }
+    }
+  }
+  return -1, false
 }
 
 /* -------------------------------------------------------------------------- */

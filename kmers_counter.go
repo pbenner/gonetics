@@ -379,6 +379,37 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 
 /* -------------------------------------------------------------------------- */
 
+func (obj KmersCounter) RelatedKmers(kmer []byte) [][]byte {
+  r := [][]byte{}
+  m := 0
+  // count number of ambiguous characters
+  for i := 0; i < len(kmer); i++ {
+    if ok, err := obj.al.IsAmbiguous(kmer[i]); err != nil {
+      return r
+    } else {
+      if ok {
+        m++
+      }
+    }
+  }
+  // scan kmer for sub-kmers
+  for _, s := range obj.IdentifyKmersSparse(kmer) {
+    r = append(r, []byte(obj.names[s]))
+  }
+  // iterate over all kmers longer than the given one
+  for k := len(kmer)+1; k < obj.m; k++ {
+    // loop over positions where the kmer can be fixed
+    for j := 0; j < k - len(kmer); j++ {
+      for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, kmer); it.Ok(); it.Next() {
+        r = append(r, it.Get())
+      }
+    }
+  }
+  return r
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (obj KmersCounter) Length() int {
   return obj.length
 }

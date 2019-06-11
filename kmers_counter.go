@@ -385,27 +385,17 @@ func (obj KmersCounter) IdentifyKmersSparse(sequence []byte) []int {
 /* -------------------------------------------------------------------------- */
 
 func (obj KmersCounter) RelatedKmers(kmerIdx int) []int {
-  kmer := []byte(strings.Split(obj.KmerName(kmerIdx), "|")[0])
-  m := 0
-  // count number of ambiguous characters
-  for i := 0; i < len(kmer); i++ {
-    if ok, err := obj.al.IsAmbiguous(kmer[i]); err != nil {
-      return nil
-    } else {
-      if ok {
-        m++
-      }
-    }
-  }
+  s := []byte(strings.Split(obj.KmerName(kmerIdx), "|")[0])
+  m := obj.CountAmbiguous(kmerIdx)
   // scan kmer for sub-kmers
-  r := obj.IdentifyKmersSparse(kmer)
+  r := obj.IdentifyKmersSparse(s)
   // iterate over all kmers longer than the given one
   indexMap := make(map[int]struct{})
   // loop over kmer sizes
-  for k := len(kmer)+1; k <= obj.m; k++ {
+  for k := len(s)+1; k <= obj.m; k++ {
     // loop over positions where the kmer can be fixed
-    for j := 0; j <= k - len(kmer); j++ {
-      for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, kmer); it.Ok(); it.Next() {
+    for j := 0; j <= k - len(s); j++ {
+      for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, s); it.Ok(); it.Next() {
         for _, idx := range obj.kmap[k-obj.n][string(it.Get())] {
           indexMap[idx] = struct{}{}
         }
@@ -474,6 +464,21 @@ func (obj KmersCounter) KmerIndex(kmer []byte) (int, bool) {
     }
   }
   return -1, false
+}
+
+func (obj KmersCounter) CountAmbiguous(k int) int {
+  m := 0
+  s := []byte(strings.Split(obj.KmerName(k), "|")[0])
+  for i := 0; i < len(s); i++ {
+    if ok, err := obj.al.IsAmbiguous(s[i]); err != nil {
+      panic("internal error")
+    } else {
+      if ok {
+        m++
+      }
+    }
+  }
+  return m
 }
 
 /* -------------------------------------------------------------------------- */

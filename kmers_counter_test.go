@@ -51,4 +51,3 @@ func TestKmersCounter1(t *testing.T) {
     i++
   }
 }
-

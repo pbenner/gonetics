@@ -384,8 +384,13 @@ func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) f
 
   // estimate fragment length
   config.Logger.Printf("Estimating mean fragment length")
-  if fraglen, x, y, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
-    return fraglenEstimate{0, x, y, err}
+  if fraglen, x, y, n, err := EstimateFragmentLength(reads, genome, 2000, config.FraglenBinSize, config.FraglenRange); err != nil {
+    if n == 0 {
+      // do not report an error if no single-end reads were found
+      return fraglenEstimate{0, x, y, nil}
+    } else {
+      return fraglenEstimate{0, x, y, err}
+    }
   } else {
     config.Logger.Printf("Estimated mean fragment length: %d", fraglen)
     return fraglenEstimate{fraglen, x, y, err}

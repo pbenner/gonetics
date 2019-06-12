@@ -48,7 +48,7 @@ func TestTrackCrosscorrelation(t *testing.T) {
   reads  := NewEmptyGRanges(0)
   reads.ImportBed6("track_statistics_test.bed")
 
-  _, y2, _, err := CrosscorrelateReads(reads.AsReadChannel(), genome, 21, 1)
+  _, y2, _, _, err := CrosscorrelateReads(reads.AsReadChannel(), genome, 21, 1)
 
   if err != nil {
     t.Error(err); return

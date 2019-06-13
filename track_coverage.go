@@ -626,6 +626,14 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       fraglenControl[i] = -1
     }
   }
+  if !config.EstimateFraglen {
+    for i, _ := range fraglenTreatment {
+      treatmentFraglenEstimates[i].Fraglen = fraglenTreatment[i]
+    }
+    for i, _ := range fraglenControl {
+      controlFraglenEstimates[i].Fraglen = fraglenControl[i]
+    }
+  }
   // fragment length estimation
   //////////////////////////////////////////////////////////////////////////////
   if config.EstimateFraglen {

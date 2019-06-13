@@ -620,12 +620,17 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
   if len(fraglenControl) == 0 {
     fraglenControl = make([]int, len(filenamesControl))
   }
-
+  for i, _ := range fraglenTreatment {
+    fraglenTreatment[i] = -1
+  }
+  for i, _ := range fraglenControl {
+    fraglenControl[i] = -1
+  }
   // fragment length estimation
   //////////////////////////////////////////////////////////////////////////////
   if config.EstimateFraglen {
     for i, filename := range filenamesTreatment {
-      if fraglenTreatment[i] != 0 {
+      if fraglenTreatment[i] != -1 {
         treatmentFraglenEstimates[i].Error = fmt.Errorf("estimate provided")
         continue
       }
@@ -640,7 +645,7 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       }
     }
     for i, filename := range filenamesControl {
-      if fraglenControl[i] != 0 {
+      if fraglenControl[i] != -1 {
         controlFraglenEstimates[i].Error = fmt.Errorf("estimate provided")
         continue
       }

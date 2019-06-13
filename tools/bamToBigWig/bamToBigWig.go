@@ -67,7 +67,7 @@ func parseFilename(filename string) (string, int) {
   if len(tmp) >= 2 {
     log.Fatal("invalid input file description `%s'", filename)
   }
-  return filename, 0
+  return filename, -1
 }
 
 
@@ -159,7 +159,7 @@ func importFraglen(config Config, filename string) int {
   basename := strings.TrimRight(filename, filepath.Ext(filename))
   filename  = fmt.Sprintf("%s.fraglen.txt", basename)
   if f, err := os.Open(filename); err != nil {
-    return 0
+    return -1
   } else {
     defer f.Close()
     printStderr(config, 1, "Reading fragment length from `%s'... ", filename)
@@ -171,7 +171,7 @@ func importFraglen(config Config, filename string) int {
       }
     }
     printStderr(config, 1, "failed\n")
-    return 0
+    return -1
   }
 }
 

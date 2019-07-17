@@ -26,6 +26,7 @@ import "io/ioutil"
 import "math"
 import "regexp"
 import "strings"
+import "sort"
 import "os"
 import "unicode"
 
@@ -170,10 +171,18 @@ func (obj sortIntPairs) Len() int {
 }
 
 func (obj sortIntPairs) Less(i, j int) bool {
-  return obj.a[i] < obj.b[j]
+  return obj.a[i] < obj.a[j]
 }
 
 func (obj sortIntPairs) Swap(i, j int) {
   obj.a[i], obj.a[j] = obj.a[j], obj.a[i]
   obj.b[i], obj.b[j] = obj.b[j], obj.b[i]
+}
+
+func (obj sortIntPairs) Sort() {
+  sort.Sort(obj)
+}
+
+func (obj sortIntPairs) SortRev() {
+  sort.Sort(sort.Reverse(obj))
 }

@@ -23,82 +23,66 @@ import "testing"
 
 /* -------------------------------------------------------------------------- */
 
-func TestKmersCounter1(t *testing.T) {
-  c := []byte("cgta")
+func TestKmersCounter1(test *testing.T) {
   r := []string{
-    "acgtaa",
-    "acgtac",
-    "acgtag",
-    "acgtat",
-    "ccgtaa",
-    "ccgtac",
-    "ccgtag",
-    "ccgtat",
-    "gcgtaa",
-    "gcgtac",
-    "gcgtag",
-    "gcgtat",
-    "tcgtaa",
-    "tcgtac",
-    "tcgtag",
-    "tcgtat" }
+    "acgt|tgca|tgca|acgt",
+    "acnt|tgna|tnca|angt",
+    "agcg|tcgc|gcga|cgct",
+    "agng|tcnc|gnga|cnct",
+    "ancg|tngc|gcna|cgnt",
+    "anng|tnnc|gnna|cnnt",
+    "annt|tnna|tnna|annt",
+    "cagc|gtcg|cgac|gctg",
+    "canc|gtng|cnac|gntg",
+    "cgcg|gcgc|gcgc|cgcg",
+    "cgtc|gcag|ctgc|gacg",
+    "cgnc|gcng|cngc|gncg",
+    "cgng|gcnc|gngc|cncg",
+    "ctnc|gang|cntc|gnag",
+    "cnnc|gnng|cnnc|gnng",
+    "cnng|gnnc|gnnc|cnng",
+    "acgtc|tgcag|ctgca|gacgt",
+    "acgnc|tgcng|cngca|gncgt",
+    "acntc|tgnag|ctnca|gangt",
+    "acnnc|tgnng|cnnca|gnngt",
+    "agcgc|tcgcg|cgcga|gcgct",
+    "agcnc|tcgng|cncga|gngct",
+    "agngc|tcncg|cgnga|gcnct",
+    "agnnc|tcnng|cnnga|gnnct",
+    "ancgc|tngcg|cgcna|gcgnt",
+    "ancnc|tngng|cncna|gngnt",
+    "angtc|tncag|ctgna|gacnt",
+    "angnc|tncng|cngna|gncnt",
+    "anngc|tnncg|cgnna|gcnnt",
+    "anntc|tnnag|ctnna|gannt",
+    "annnc|tnnng|cnnna|gnnnt",
+    "cagcg|gtcgc|gcgac|cgctg",
+    "cagng|gtcnc|gngac|cnctg",
+    "cancg|gtngc|gcnac|cgntg",
+    "canng|gtnnc|gnnac|cnntg",
+    "cgacg|gctgc|gcagc|cgtcg",
+    "cgang|gctnc|gnagc|cntcg",
+    "cgcng|gcgnc|gncgc|cngcg",
+    "cgtng|gcanc|gntgc|cnacg",
+    "cgncg|gcngc|gcngc|cgncg",
+    "cgnng|gcnnc|gnngc|cnncg",
+    "cnang|gntnc|gnanc|cntng",
+    "cncng|gngnc|gncnc|cngng",
+    "cnnng|gnnnc|gnnnc|cnnng" }
+  s := []int{
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+    1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 2, 1, 1, 2 }
 
-  i := 0
-  for it := NewKmersCylinderIterator(6, 2, NucleotideAlphabet{}, 1, c); it.Ok(); it.Next() {
-    if r[i] != string(it.Get()) {
-      t.Error("test failed")
+  kmersCounter, _ := NewKmersCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
+  names, counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
+  for i, _ := range names {
+    if names[i] != r[i] {
+      test.Error("test failed")
     }
-    i++
-  }
-}
-
-func TestKmersCounter2(t *testing.T) {
-  kmersCounter, _ := NewKmersCounter(4, 6, false, false, true, nil, NucleotideAlphabet{})
-  k, _ := kmersCounter.KmerIndex([]byte("cgtat"))
-  r := []string{
-    "atac|gtat",
-    "cgta|tacg",
-    "aatacg|cgtatt",
-    "acgtat|atacgt",
-    "atacga|tcgtat",
-    "atacgc|gcgtat",
-    "atacgg|ccgtat",
-    "catacg|cgtatg",
-    "cgtata|tatacg",
-    "cgtatc|gatacg" }
-  i := 0
-  for _, idx := range kmersCounter.RelatedKmers(k) {
-    if r[i] != kmersCounter.KmerName(idx) {
-      t.Error("test failed")
+    if counts[i] != s[i] {
+      test.Error("test failed")
     }
-    i++
-  }
-}
-
-func TestKmersCounter3(t *testing.T) {
-  kmersCounter, _ := NewKmersCounter(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
-  k, _ := kmersCounter.KmerIndex([]byte("cgtat"))
-  r := []string{
-    "atac|gtat",
-    "atnc|gnat",
-    "anac|gtnt",
-    "annc|gnnt",
-    "cgta|tacg",
-    "cgna|tncg",
-    "cnta|tang",
-    "cnna|tnng",
-    "atang|cntat",
-    "atncg|cgnat",
-    "atnng|cnnat",
-    "anacg|cgtnt",
-    "anang|cntnt",
-    "anncg|cgnnt",
-    "annng|cnnnt" }
-  i := 0
-  for _, idx := range kmersCounter.RelatedKmers(k) {
-    if r[i] != kmersCounter.KmerName(idx) {
-      t.Error("test failed")
-    }
-    i++
   }
 }

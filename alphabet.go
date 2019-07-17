@@ -23,25 +23,29 @@ import "fmt"
 /* -------------------------------------------------------------------------- */
 
 type Alphabet interface {
-  Bases      (i byte) ([]byte, error)
-  Code       (i byte) (  byte, error)
-  Decode     (i byte) (  byte, error)
-  IsAmbiguous(i byte) (  bool, error)
-  IsWildcard (i byte) (  bool, error)
-  Length     ()       int
-  String     ()       string
+  Bases            (i byte) ([]byte, error)
+  Matching         (i byte) ([]byte, error)
+  Code             (i byte) (  byte, error)
+  Decode           (i byte) (  byte, error)
+  IsAmbiguous      (i byte) (  bool, error)
+  IsWildcard       (i byte) (  bool, error)
+  Length           ()       int
+  LengthUnambiguous()       int
+  String           ()       string
 }
 
 type ComplementableAlphabet interface {
-  Bases          (i byte) ([]byte, error)
-  Code           (i byte) (byte, error)
-  Decode         (i byte) (byte, error)
-  Complement     (i byte) (byte, error)
-  ComplementCoded(i byte) (byte, error)
-  IsAmbiguous    (i byte) (bool, error)
-  IsWildcard     (i byte) (bool, error)
-  Length         ()       int
-  String         ()       string
+  Bases            (i byte) ([]byte, error)
+  Matching         (i byte) ([]byte, error)
+  Code             (i byte) (byte, error)
+  Decode           (i byte) (byte, error)
+  Complement       (i byte) (byte, error)
+  ComplementCoded  (i byte) (byte, error)
+  IsAmbiguous      (i byte) (bool, error)
+  IsWildcard       (i byte) (bool, error)
+  Length           ()       int
+  LengthUnambiguous()       int
+  String           ()       string
 }
 
 /* -------------------------------------------------------------------------- */
@@ -59,7 +63,21 @@ func (NucleotideAlphabet) Bases(i byte) ([]byte, error) {
   case 'g': return []byte{'g'}, nil
   case 'T': fallthrough
   case 't': return []byte{'t'}, nil
-  default:  return nil, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return nil, fmt.Errorf("Bases(): `%c' is not part of the alphabet", i)
+  }
+}
+
+func (NucleotideAlphabet) Matching(i byte) ([]byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return []byte{'a'}, nil
+  case 'C': fallthrough
+  case 'c': return []byte{'c'}, nil
+  case 'G': fallthrough
+  case 'g': return []byte{'g'}, nil
+  case 'T': fallthrough
+  case 't': return []byte{'t'}, nil
+  default:  return nil, fmt.Errorf("Matching(): `%c' is not a non-ambiguous letter of the alphabet", i)
   }
 }
 
@@ -83,7 +101,7 @@ func (NucleotideAlphabet) Decode(i byte) (byte, error) {
   case 1:  return 'c', nil
   case 2:  return 'g', nil
   case 3:  return 't', nil
-  default: return 0xFF, fmt.Errorf("Code(): `%d' is not a code of the alphabet", int(i))
+  default: return 0xFF, fmt.Errorf("Decode(): `%d' is not a code of the alphabet", int(i))
   }
 }
 
@@ -97,7 +115,7 @@ func (NucleotideAlphabet) IsAmbiguous(i byte) (bool, error) {
   case 'g': return false, nil
   case 'T': fallthrough
   case 't': return false, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsAmbiguous(): `%c' is not part of the alphabet", i)
   }
 }
 
@@ -111,11 +129,15 @@ func (NucleotideAlphabet) IsWildcard(i byte) (bool, error) {
   case 'g': return false, nil
   case 'T': fallthrough
   case 't': return false, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsWildcard(): `%c' is not part of the alphabet", i)
   }
 }
 
 func (NucleotideAlphabet) Length() int {
+  return 4
+}
+
+func (NucleotideAlphabet) LengthUnambiguous() int {
   return 4
 }
 
@@ -164,7 +186,21 @@ func (GappedNucleotideAlphabet) Bases(i byte) ([]byte, error) {
   case 't': return []byte{'t'}, nil
   case 'N': fallthrough
   case 'n': return []byte{'a', 'c', 'g', 't'}, nil
-  default:  return nil, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return nil, fmt.Errorf("Bases(): `%c' is not part of the alphabet", i)
+  }
+}
+
+func (GappedNucleotideAlphabet) Matching(i byte) ([]byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return []byte{'a', 'n'}, nil
+  case 'C': fallthrough
+  case 'c': return []byte{'c', 'n'}, nil
+  case 'G': fallthrough
+  case 'g': return []byte{'g', 'n'}, nil
+  case 'T': fallthrough
+  case 't': return []byte{'t', 'n'}, nil
+  default:  return nil, fmt.Errorf("Matching(): `%c' is not a non-ambiguous letter of the alphabet", i)
   }
 }
 
@@ -191,12 +227,16 @@ func (GappedNucleotideAlphabet) Decode(i byte) (byte, error) {
   case 2:  return 'g', nil
   case 3:  return 't', nil
   case 4:  return 'n', nil
-  default: return 0xFF, fmt.Errorf("Code(): `%d' is not a code of the alphabet", int(i))
+  default: return 0xFF, fmt.Errorf("Decode(): `%d' is not a code of the alphabet", int(i))
   }
 }
 
 func (GappedNucleotideAlphabet) Length() int {
   return 5
+}
+
+func (GappedNucleotideAlphabet) LengthUnambiguous() int {
+  return 4
 }
 
 func (GappedNucleotideAlphabet) ComplementCoded(i byte) (byte, error) {
@@ -238,7 +278,7 @@ func (GappedNucleotideAlphabet) IsAmbiguous(i byte) (bool, error) {
   case 't': return false, nil
   case 'N': fallthrough
   case 'n': return true, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsAmbiguous(): `%c' is not part of the alphabet", i)
   }
 }
 
@@ -253,7 +293,7 @@ func (GappedNucleotideAlphabet) IsWildcard(i byte) (bool, error) {
   case 'T': fallthrough
   case 't': return false, nil
   case 'n': return true, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsAmbiguous(): `%c' is not part of the alphabet", i)
   }
 }
 
@@ -298,7 +338,21 @@ func (AmbiguousNucleotideAlphabet) Bases(i byte) ([]byte, error) {
   case 'v': return []byte{'a', 'c', 'g'}, nil
   case 'N': fallthrough
   case 'n': return []byte{'a', 'c', 'g', 't'}, nil
-  default:  return nil, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return nil, fmt.Errorf("Bases(): `%c' is not part of the alphabet", i)
+  }
+}
+
+func (AmbiguousNucleotideAlphabet) Matching(i byte) ([]byte, error) {
+  switch i {
+  case 'A': fallthrough
+  case 'a': return []byte{'a', 'w', 'm', 'r', 'd', 'h', 'v', 'n'}, nil
+  case 'C': fallthrough
+  case 'c': return []byte{'c', 's', 'm', 'y', 'b', 'h', 'v', 'n'}, nil
+  case 'G': fallthrough
+  case 'g': return []byte{'g', 's', 'k', 'r', 'b', 'd', 'v', 'n'}, nil
+  case 'T': fallthrough
+  case 't': return []byte{'t', 'w', 'k', 'y', 'b', 'd', 'h', 'n'}, nil
+  default:  return nil, fmt.Errorf("Matching(): `%c' is not a non-ambiguous letter of the alphabet", i)
   }
 }
 
@@ -355,12 +409,16 @@ func (AmbiguousNucleotideAlphabet) Decode(i byte) (byte, error) {
   case 12:  return 'h', nil
   case 13:  return 'v', nil
   case 14:  return 'n', nil
-  default: return 0xFF, fmt.Errorf("Code(): `%d' is not a code of the alphabet", int(i))
+  default: return 0xFF, fmt.Errorf("Decode(): `%d' is not a code of the alphabet", int(i))
   }
 }
 
 func (AmbiguousNucleotideAlphabet) Length() int {
   return 15
+}
+
+func (AmbiguousNucleotideAlphabet) LengthUnambiguous() int {
+  return 4
 }
 
 func (AmbiguousNucleotideAlphabet) ComplementCoded(i byte) (byte, error) {
@@ -452,7 +510,7 @@ func (AmbiguousNucleotideAlphabet) IsAmbiguous(i byte) (bool, error) {
   case 'v': return true, nil
   case 'N': fallthrough
   case 'n': return true, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsAmbiguous(): `%c' is not part of the alphabet", i)
   }
 }
 
@@ -488,7 +546,7 @@ func (AmbiguousNucleotideAlphabet) IsWildcard(i byte) (bool, error) {
   case 'v': return false, nil
   case 'N': fallthrough
   case 'n': return true, nil
-  default:  return false, fmt.Errorf("Code(): `%c' is not part of the alphabet", i)
+  default:  return false, fmt.Errorf("IsWildcard(): `%c' is not part of the alphabet", i)
   }
 }
 

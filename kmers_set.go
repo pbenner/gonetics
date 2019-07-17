@@ -19,6 +19,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 import "fmt"
+import "sort"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
@@ -249,4 +250,89 @@ func (obj *KmersSet) rev(dest, src []byte) {
   for i, j := 0, len(src)-1; i <= j; i, j = i+1, j-1 {
     dest[i], dest[j] = src[j], src[i]
   }
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj *KmersSet) scanSubKmers_(kmer []byte, k int) []int {
+  idMap := make(map[int]struct{})
+  // loop over sequence
+  for i := 0; i < len(kmer); i++ {
+    if i+k-1 >= len(kmer) {
+      break
+    }
+    it := NewKmersInstantiationIterator(obj.al, string(kmer[i:i+k]), true)
+    for ; it.Ok(); it.Next() {
+      if id, ok := obj.idmap[k-obj.n][it.Get()]; ok {
+        idMap[id] = struct{}{}
+      }
+    }
+  }
+  ids := []int{}
+  for id, _ := range idMap {
+    ids = append(ids, id)
+  }
+  sort.Ints(ids)
+  return ids
+}
+
+func (obj *KmersSet) scanSubKmers(kmer []byte) []string {
+  names := []string{}
+  for k := obj.n; k <= obj.m; k++ {
+    ids := obj.scanSubKmers_(kmer, k)
+    for _, id := range ids {
+      names = append(names , obj.IdToName(k, id))
+    }
+  }
+  return names
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj *KmersSet) relatedKmers(s []byte, m, k int) []int {
+  idMap := make(map[int]struct{})
+  // loop over positions where the k-mer can be fixed
+  for j := 0; j <= k - len(s); j++ {
+    for it := NewKmersCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, string(s)); it.Ok(); it.Next() {
+      if id, ok := obj.idmap[k-obj.n][it.Get()]; ok {
+        idMap[id] = struct{}{}
+      }
+    }
+  }
+  ids := []int{}
+  for id, _ := range idMap {
+    ids = append(ids, id)
+  }
+  sort.Ints(ids)
+  return ids
+}
+
+func (obj *KmersSet) RelatedKmers(kmer string) []string {
+  s := []byte(obj.GetNames(kmer)[0])
+  m := obj.countAmbiguous(kmer)
+  // scan k-mer for sub-k-mers
+  names := obj.scanSubKmers(s)
+  // loop over k-mer sizes
+  for k := len(s)+1; k <= obj.m; k++ {
+    ids := obj.relatedKmers(s, m, k)
+    for _, id := range ids {
+      names = append(names , obj.IdToName(k, id))
+    }
+  }
+  return names
+}
+
+func (obj *KmersSet) countAmbiguous(kmer string) int {
+  m := 0
+  s := []byte(kmer)
+  for i := 0; i < len(s); i++ {
+    if ok, err := obj.al.IsAmbiguous(s[i]); err != nil {
+      panic("internal error")
+    } else {
+      if ok {
+        m++
+      }
+    }
+  }
+  return m
 }

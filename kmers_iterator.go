@@ -168,18 +168,21 @@ func (obj KmersCylinderIterator) incrementPosition(i int) bool {
 /* -------------------------------------------------------------------------- */
 
 type KmersInstantiationIterator struct {
-  c   []byte
-  b [][]byte
-  j     int
-  ok    bool
-  al    ComplementableAlphabet
+  a     []byte
+  c     []byte
+  b   [][]byte
+  j     []int
+  ok      bool
+  partial bool
+  al      ComplementableAlphabet
 }
 
-func NewKmersInstantiationIterator(alphabet ComplementableAlphabet, a_ string) KmersInstantiationIterator {
+func NewKmersInstantiationIterator(alphabet ComplementableAlphabet, a_ string, partial bool) KmersInstantiationIterator {
   a  := []byte(a_)
   k  := len(a)
   c  := make(  []byte, k)
   b  := make([][]byte, k)
+  j  := make(  []int , k)
   ok := false
   copy(c, a)
   for i, _ := range a {
@@ -194,13 +197,18 @@ func NewKmersInstantiationIterator(alphabet ComplementableAlphabet, a_ string) K
     if r, err := alphabet.Bases(a[i]); err != nil {
       panic(err)
     } else {
-      c[i] = r[0]
-      b[i] = r[1:]
+      if partial {
+        b[i] = r
+      } else {
+        b[i] = r
+        c[i] = r[0]
+        j[i] = 1
+      }
     }
     ok = true
   }
   
-  return KmersInstantiationIterator{c: c, b: b, j: 0, ok: ok, al: alphabet}
+  return KmersInstantiationIterator{a: a, c: c, b: b, j: j, ok: ok, partial: partial, al: alphabet}
 }
 
 func (obj KmersInstantiationIterator) Get() string {
@@ -212,14 +220,27 @@ func (obj KmersInstantiationIterator) Ok() bool {
 }
 
 func (obj *KmersInstantiationIterator) Next() {
-  for obj.j < len(obj.b) && len(obj.b[obj.j]) == 0 {
-    obj.j++
+  // find next position where an update is possible
+  i := len(obj.b)-1
+  for i >= 0 && (len(obj.b[i]) == 0 || len(obj.b[i]) == obj.j[i]) {
+    i--
   }
-  if obj.j == len(obj.b) {
+  if i < 0 {
     obj.ok = false
     obj.c  = nil
   } else {
-    obj.c[obj.j] = obj.b[obj.j][0]
-    obj.b[obj.j] = obj.b[obj.j][1:]
+    obj.c[i] = obj.b[i][obj.j[i]]
+    for i_ := len(obj.b)-1; i_ > i; i_-- {
+      if len(obj.b[i_]) > 0 {
+        if obj.partial {
+          obj.j[i_] = 0
+          obj.c[i_] = obj.a[i_]
+        } else {
+          obj.j[i_] = 1
+          obj.c[i_] = obj.b[i_][0]
+        }
+      }
+    }
+    obj.j[i]++
   }
 }

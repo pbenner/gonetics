@@ -152,7 +152,7 @@ func (obj *KmersCounter) identifyKmers(sequence []byte, k int) []int {
 }
 
 func (obj *KmersCounter) IdentifyKmers(sequence []byte) []string {
-  names  := []string{}
+  names := []string{}
   for k := obj.n; k <= obj.m; k++ {
     ids := obj.identifyKmers(sequence, k)
     for _, id := range ids {

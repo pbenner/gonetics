@@ -55,14 +55,60 @@ func TestKmersIterator1(t *testing.T) {
 func TestKmersIterator2(test *testing.T) {
   r := []string{
     "ctaaa",
+    "ctaca",
+    "ctaga",
+    "ctata",
     "ctcaa",
+    "ctcca",
+    "ctcga",
+    "ctcta",
     "ctgaa",
+    "ctgca",
+    "ctgga",
+    "ctgta",
     "cttaa",
     "cttca",
     "cttga",
     "cttta" }
 
-  it := NewKmersInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna")
+  it := NewKmersInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", false)
+  for i := 0; it.Ok(); it.Next() {
+    if it.Get() != r[i] {
+      test.Error("test failed")
+    }
+    i++
+  }
+}
+
+func TestKmersIterator3(test *testing.T) {
+  r := []string{
+    "ctnna",
+    "ctnaa",
+    "ctnca",
+    "ctnga",
+    "ctnta",
+    "ctana",
+    "ctaaa",
+    "ctaca",
+    "ctaga",
+    "ctata",
+    "ctcna",
+    "ctcaa",
+    "ctcca",
+    "ctcga",
+    "ctcta",
+    "ctgna",
+    "ctgaa",
+    "ctgca",
+    "ctgga",
+    "ctgta",
+    "cttna",
+    "cttaa",
+    "cttca",
+    "cttga",
+    "cttta" }
+
+  it := NewKmersInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", true)
   for i := 0; it.Ok(); it.Next() {
     if it.Get() != r[i] {
       test.Error("test failed")

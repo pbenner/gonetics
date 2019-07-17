@@ -43,7 +43,6 @@ type Config struct {
   Revcomp        bool
   Human          bool
   Header         bool
-  Sparse         bool
   Threads        int
   Verbose        int
 }
@@ -187,7 +186,7 @@ func scanSequence(config Config, kmersCounter KmersCounter, sequence []byte) []i
 
 /* -------------------------------------------------------------------------- */
 
-func kmerSearch(config Config, n, m int, filenameRegions, filenameFasta, filenameOut string) {
+func countKmers(config Config, n, m int, filenameRegions, filenameFasta, filenameOut string) {
   pool := threadpool.New(config.Threads, 100*config.Threads)
   jg   := pool.NewJobGroup()
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
@@ -238,7 +237,6 @@ func main() {
   optComplement   := options.   BoolLong("complement",    0 ,               "consider complement sequences")
   optReverse      := options.   BoolLong("reverse",       0 ,               "consider reverse sequences")
   optRevcomp      := options.   BoolLong("revcomp",       0 ,               "consider reverse complement sequences")
-  optSparse       := options.   BoolLong("sparse",        0 ,               "print a sparse representation of the count matrix")
   optVerbose      := options.CounterLong("verbose",      'v',               "verbose level [-v or -vv]")
   optHelp         := options.   BoolLong("help",         'h',               "print help")
 
@@ -261,17 +259,12 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
-  if *optHuman && *optSparse {
-    options.PrintUsage(os.Stderr)
-    os.Exit(1)
-  }
   config.Binary       = *optBinary
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
   config.Header       = *optHeader
   config.Human        = *optHuman
-  config.Sparse       = *optSparse
   config.Threads      = *optThreads
   config.Verbose      = *optVerbose
   // check required arguments
@@ -310,5 +303,5 @@ func main() {
     filenameOut   = options.Args()[3]
   }
 
-  kmerSearch(config, int(n), int(m), *optRegions, filenameFasta, filenameOut)
+  countKmers(config, int(n), int(m), *optRegions, filenameFasta, filenameOut)
 }

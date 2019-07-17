@@ -186,3 +186,31 @@ func (obj sortIntPairs) Sort() {
 func (obj sortIntPairs) SortRev() {
   sort.Sort(sort.Reverse(obj))
 }
+
+/* -------------------------------------------------------------------------- */
+
+type sortIntStringPairs struct {
+  a []int
+  b []string
+}
+
+func (obj sortIntStringPairs) Len() int {
+  return len(obj.a)
+}
+
+func (obj sortIntStringPairs) Less(i, j int) bool {
+  return obj.a[i] < obj.a[j]
+}
+
+func (obj sortIntStringPairs) Swap(i, j int) {
+  obj.a[i], obj.a[j] = obj.a[j], obj.a[i]
+  obj.b[i], obj.b[j] = obj.b[j], obj.b[i]
+}
+
+func (obj sortIntStringPairs) Sort() {
+  sort.Sort(obj)
+}
+
+func (obj sortIntStringPairs) SortRev() {
+  sort.Sort(sort.Reverse(obj))
+}

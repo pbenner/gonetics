@@ -82,7 +82,10 @@ func TestKmersSet4(test *testing.T) {
 
 func TestKmersSet5(t *testing.T) {
   kmersCounter, _ := NewKmersCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
-  kmersCounter.CountKmers([]byte("acgtcgcg"))
+  names, counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
+  for i, _ := range names {
+    fmt.Printf("%25s: %5d\n", names[i], counts[i])
+  }
   for _, name := range kmersCounter.RelatedKmers("gang") {
     fmt.Println("-> related:", name)
   }

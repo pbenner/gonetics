@@ -42,6 +42,7 @@ type Config struct {
   Reverse        bool
   Revcomp        bool
   Human          bool
+  Sparse         bool
   Header         bool
   Threads        int
   Verbose        int
@@ -93,7 +94,7 @@ func ImportFasta(config Config, filename string) OrderedStringSet {
   return s
 }
 
-func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, filenameOut string) {
+func WriteResult(config Config, granges GRanges, countsList KmerCountsList, filenameOut string) {
   var writer io.Writer
 
   if filenameOut == "" {
@@ -110,24 +111,52 @@ func WriteResult(config Config, kmersCounter KmersCounter, granges GRanges, file
   }
   // write header
   if config.Header {
-    for i := 0; i < kmersCounter.Length(); i++ {
-      fmt.Fprintf(writer, "# %s\n", kmersCounter.KmerName(i))
+    for i := 0; i < countsList.Kmers.Len(); i++ {
+      fmt.Fprintf(writer, "# %s\n", countsList.Kmers[i].Name)
     }
   }
   // convert kmer counts to human readable string
   if config.Human {
-    kmers    := granges.GetMeta("k-mers").([][]int)
-    kmersNew := make([]string, len(kmers))
-    for i, _ := range kmers {
-      for j, _ := range kmers[i] {
-        if len(kmersNew[i]) == 0 {
-          kmersNew[i] = fmt.Sprintf("%s=%d", kmersCounter.KmerName(j), kmers[i][j])
+    kmersMeta := make([]string, countsList.Len())
+    for i := 0; i < countsList.Len(); i++ {
+      counts := countsList.At(i)
+      for it := counts.Iterate(); it.Ok(); it.Next() {
+        if len(kmersMeta[i]) == 0 {
+          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetName(), it.GetCount())
         } else {
-          kmersNew[i] = fmt.Sprintf("%s,%s=%d", kmersNew[i], kmersCounter.KmerName(j), kmers[i][j])
+          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetName(), it.GetCount())
         }
       }
     }
-    granges.AddMeta("k-mers", kmersNew)
+    granges.AddMeta("k-mers", kmersMeta)
+  } else
+  if config.Sparse {
+    kmersMeta := make([]string, countsList.Len())
+    for i := 0; i < countsList.Len(); i++ {
+      counts := countsList.At(i)
+      for it := counts.Iterate(); it.Ok(); it.Next() {
+        if it.GetCount() == 0 {
+          continue
+        }
+        if len(kmersMeta[i]) == 0 {
+          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetName(), it.GetCount())
+        } else {
+          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetName(), it.GetCount())
+        }
+      }
+    }
+    granges.AddMeta("k-mers", kmersMeta)
+  } else {
+    kmersMeta := make([][]int, countsList.Len())
+    for i := 0; i < countsList.Len(); i++ {
+      counts := countsList.At(i)
+      kmersMeta[i] = make([]int, counts.Len())
+      for j, it := 0, counts.Iterate(); it.Ok(); it.Next() {
+        kmersMeta[i][j] = it.GetCount()
+        j++
+      }
+    }
+    granges.AddMeta("k-mers", kmersMeta)
   }
   if err := granges.WriteTable(writer, true, false); err != nil {
     log.Fatal(err)
@@ -170,59 +199,37 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(config Config, kmersCounter KmersCounter, sequence []byte) []int {
-  result := make([]int, kmersCounter.Length())
+func scanSequence(config Config, kmersCounter *KmersCounter, sequence []byte) KmerCounts {
   if config.Binary {
-    if err := kmersCounter.IdentifyKmers(result, sequence); err != nil {
-      log.Fatal(err)
-    }
+    return kmersCounter.IdentifyKmers(sequence)
   } else {
-    if err := kmersCounter.CountKmers(result, sequence); err != nil {
-      log.Fatal(err)
-    }
+    return kmersCounter.CountKmers(sequence)
   }
-  return result
 }
 
 /* -------------------------------------------------------------------------- */
 
 func countKmers(config Config, n, m int, filenameRegions, filenameFasta, filenameOut string) {
   pool := threadpool.New(config.Threads, 100*config.Threads)
-  jg   := pool.NewJobGroup()
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
-  result := make([][]int, len(sequences))
   kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); if err != nil {
     log.Fatal(err)
   }
+  counts := make([]KmerCounts, len(sequences))
 
-  pool.AddRangeJob(0, len(sequences), jg, func(i int, pool threadpool.ThreadPool, erf func() error) error {
-    result[i] = scanSequence(config, kmersCounter, sequences[i])
+  pool.RangeJob(0, len(sequences), func(i int, pool threadpool.ThreadPool, erf func() error) error {
+    counts[i] = scanSequence(config, kmersCounter, sequences[i])
     return nil
   })
-  if config.Sparse {
-    str := make([]string, len(result))
-    for i := 0; i < len(result); i++ {
-      for j := 0; j < len(result[i]); j++ {
-        if result[i][j] > 0 {
-          if str[i] == "" {
-            str[i] += fmt.Sprintf( "%s=%d", kmersCounter.KmerName(j), result[i][j])
-          } else {
-            str[i] += fmt.Sprintf(",%s=%d", kmersCounter.KmerName(j), result[i][j])
-          }
-        }
-      }
-    }
-    granges.AddMeta("k-mers", str)
-  } else {
-    granges.AddMeta("k-mers", result)
-  }
-  WriteResult(config, kmersCounter, granges, filenameOut)
+  countsList := NewKmerCountsList(counts...)
+  WriteResult(config, granges, countsList, filenameOut)
 }
 
 /* -------------------------------------------------------------------------- */
 
 func main() {
+  log.SetFlags(0)
 
   config  := Config{}
   options := getopt.New()
@@ -233,6 +240,7 @@ func main() {
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
   optHeader       := options.   BoolLong("header",        0 ,               "print k-mer header")
   optHuman        := options.   BoolLong("human",         0 ,               "print human readable k-mer statistics")
+  optSparse       := options.   BoolLong("sparse",        0 ,               "print sparse k-mer statistics")
   optThreads      := options.    IntLong("threads",       0 ,  1,           "number of threads [default: 1]")
   optComplement   := options.   BoolLong("complement",    0 ,               "consider complement sequences")
   optReverse      := options.   BoolLong("reverse",       0 ,               "consider reverse sequences")
@@ -259,12 +267,19 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  if *optHuman && *optSparse {
+    log.Fatal("options `--human' and `--sparse' are incompatible")
+  }
+  if *optHeader && *optSparse {
+    log.Fatal("options `--header' and `--sparse' are incompatible")
+  }
   config.Binary       = *optBinary
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
   config.Header       = *optHeader
   config.Human        = *optHuman
+  config.Sparse       = *optSparse
   config.Threads      = *optThreads
   config.Verbose      = *optVerbose
   // check required arguments

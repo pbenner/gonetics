@@ -114,24 +114,30 @@ type KmerCountsList struct {
   Counts []map[Kmer]int
 }
 
-func (obj *KmerCountsList) Append(r ...KmerCounts) KmerCountsList {
-  idLists := make([]KmerList, len(r))
-  for i, ri := range r {
-    idLists[i] = ri.Kmers
+func NewKmerCountsList(counts ...KmerCounts) KmerCountsList {
+  r := KmerCountsList{}
+  return r.Append(counts...)
+}
+
+func (obj KmerCountsList) Append(args ...KmerCounts) KmerCountsList {
+  if len(args) == 0 {
+    return obj
   }
-  ids    := obj.Kmers.Union(idLists...)
-  counts := obj.Counts
-  for _, ri := range r {
-    counts = append(counts, ri.Counts)
+  idLists := make([]KmerList, len(args))
+  counts  := obj.Counts
+  for i, c := range args {
+    idLists[i] = c.Kmers
+    counts = append(counts, c.Counts)
   }
+  ids := obj.Kmers.Union(idLists...)
   return KmerCountsList{Kmers: ids, Counts: counts}
 }
 
-func (obj *KmerCountsList) Len() int {
+func (obj KmerCountsList) Len() int {
   return len(obj.Counts)
 }
 
-func (obj *KmerCountsList) At(i int) KmerCounts {
+func (obj KmerCountsList) At(i int) KmerCounts {
   return KmerCounts{Kmers: obj.Kmers, Counts: obj.Counts[i]}
 }
 

@@ -145,6 +145,10 @@ func (obj KmerCountsList) At(i int) KmerCounts {
   return KmerCounts{Kmers: obj.Kmers, Counts: obj.Counts[i]}
 }
 
+func (obj *KmerCountsList) Slice(i, j int) KmerCountsList {
+  return KmerCountsList{Kmers: obj.Kmers, Counts: obj.Counts[i:j]}
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerCountsIterator struct {

@@ -236,7 +236,7 @@ func main() {
 
   optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
   optBinary       := options.   BoolLong("binary",        0 ,               "count matrix only shows the presence or absence of k-mers")
-  optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length MAX-K-MER-LENGTH-MIN-K-MER-LENGTH+1)")
+  optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length [MAX-K-MER-LENGTH]-[MIN-K-MER-LENGTH]+1)")
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
   optHeader       := options.   BoolLong("header",        0 ,               "print k-mer header")
   optHuman        := options.   BoolLong("human",         0 ,               "print human readable k-mer statistics")

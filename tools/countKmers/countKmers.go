@@ -21,7 +21,6 @@ package main
 import   "fmt"
 import   "bufio"
 import   "log"
-import   "math"
 import   "io"
 import   "os"
 import   "strconv"
@@ -55,12 +54,6 @@ func PrintStderr(config Config, level int, format string, args ...interface{}) {
   if config.Verbose >= level {
     fmt.Fprintf(os.Stderr, format, args...)
   }
-}
-
-/* -------------------------------------------------------------------------- */
-
-func ipow(x, k int) int {
-  return int(math.Pow(float64(x), float64(k)))
 }
 
 /* -------------------------------------------------------------------------- */

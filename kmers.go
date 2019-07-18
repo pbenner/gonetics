@@ -88,6 +88,18 @@ type KmerCounts struct {
   Counts map[KmerId]int
 }
 
+func (obj KmerCounts) Len() int {
+  return len(obj.Ids)
+}
+
+func (obj KmerCounts) At(i int) int {
+  if c, ok := obj.Counts[obj.Ids[i]]; ok {
+    return c
+  } else {
+    return 0
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerCountsList struct {
@@ -117,3 +129,24 @@ func (obj *KmerCountsList) At(i int) KmerCounts {
 }
 
 /* -------------------------------------------------------------------------- */
+
+type KmerCountsIterator struct {
+  KmerCounts
+  i int
+}
+
+func (obj KmerCountsIterator) Ok() bool {
+  return obj.i < obj.Len()
+}
+
+func (obj KmerCountsIterator) GetId() KmerId {
+  return obj.Ids[obj.i]
+}
+
+func (obj KmerCountsIterator) GetName() string {
+  return obj.Ids[obj.i].Name
+}
+
+func (obj KmerCountsIterator) GetCount() int {
+  return obj.At(obj.i)
+}

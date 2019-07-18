@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
-import "sort"
 import "strings"
 
 /* -------------------------------------------------------------------------- */
@@ -95,9 +94,21 @@ func (obj *KmersCounter) matchingKmers(c []byte) []int {
   }
 }
 
+func (obj *KmersCounter) MatchingKmers(c []byte) KmerList {
+  k := len(c)
+  i := obj.matchingKmers(c)
+  r := make(KmerList, len(i))
+  for j, _ := range i {
+    r[j].K    = k
+    r[j].I    = i[j]
+    r[j].Name = obj.KmersSet.IdToName(k, i[j])
+  }
+  return r
+}
+
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersCounter) countKmers(sequence []byte, k int) ([]int, []int) {
+func (obj *KmersCounter) countKmers(sequence []byte, k int) KmerCounts {
   c := []byte(strings.ToLower(string(sequence)))
   r := make(map[int]int)
   // loop over sequence
@@ -108,30 +119,33 @@ func (obj *KmersCounter) countKmers(sequence []byte, k int) ([]int, []int) {
       }
     }
   }
-  ids    := []int{}
-  counts := []int{}
+  // construct a list of k-mers
+  kmers  := make(KmerList, len(r))
+  counts := make(map[Kmer]int)
+  i      := 0
   for id, c := range r {
-    ids    = append(ids   , id)
-    counts = append(counts, c)
+    kmers[i] = Kmer{K: k, I: id, Name: obj.KmersSet.IdToName(k, id) }
+    counts[kmers[i]] = c
+    i++
   }
-  sortIntPairs{ids, counts}.Sort()
-  return ids, counts
+  kmers.Sort()
+  return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) CountKmers(sequence []byte) ([]string, []int) {
-  names  := []string{}
-  counts := []int{}
+func (obj *KmersCounter) CountKmers(sequence []byte) KmerCounts {
+  kmers  := KmerList{}
+  counts := make(map[Kmer]int)
   for k := obj.n; k <= obj.m; k++ {
-    ids, c := obj.countKmers(sequence, k)
-    for i, id := range ids {
-      names  = append(names , obj.KmersSet.IdToName(k, id))
-      counts = append(counts, c[i])
+    kmerCounts := obj.countKmers(sequence, k)
+    kmers = append(kmers, kmerCounts.Kmers...)
+    for kmer, c := range kmerCounts.Counts {
+      counts[kmer] = c
     }
   }
-  return names, counts
+  return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) identifyKmers(sequence []byte, k int) []int {
+func (obj *KmersCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   c := []byte(strings.ToLower(string(sequence)))
   r := make(map[int]struct{})
   // loop over sequence
@@ -143,23 +157,30 @@ func (obj *KmersCounter) identifyKmers(sequence []byte, k int) []int {
       }
     }
   }
-  ids := []int{}
+  // construct a list of k-mers
+  kmers  := make(KmerList, len(r))
+  counts := make(map[Kmer]int)
+  i      := 0
   for id, _ := range r {
-    ids = append(ids, id)
+    kmers[i] = Kmer{K: k, I: id, Name: obj.KmersSet.IdToName(k, id) }
+    counts[kmers[i]] = 1
+    i++
   }
-  sort.Ints(ids)
-  return ids
+  kmers.Sort()
+  return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) IdentifyKmers(sequence []byte) []string {
-  names := []string{}
+func (obj *KmersCounter) IdentifyKmers(sequence []byte) KmerCounts {
+  kmers  := KmerList{}
+  counts := make(map[Kmer]int)
   for k := obj.n; k <= obj.m; k++ {
-    ids := obj.identifyKmers(sequence, k)
-    for _, id := range ids {
-      names = append(names , obj.KmersSet.IdToName(k, id))
+    kmerCounts := obj.identifyKmers(sequence, k)
+    kmers = append(kmers, kmerCounts.Kmers...)
+    for kmer, c := range kmerCounts.Counts {
+      counts[kmer] = c
     }
   }
-  return names
+  return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
 /* -------------------------------------------------------------------------- */

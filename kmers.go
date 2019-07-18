@@ -23,21 +23,23 @@ import "sort"
 
 /* -------------------------------------------------------------------------- */
 
-type KmerId struct {
+type Kmer struct {
+  // K-mer ID
   K    int
   I    int
+  // K-mer string representation
   Name string
 }
 
 /* -------------------------------------------------------------------------- */
 
-type KmerIdList []KmerId
+type KmerList []Kmer
 
-func (obj KmerIdList) Len() int {
+func (obj KmerList) Len() int {
   return len(obj)
 }
 
-func (obj KmerIdList) Less(i, j int) bool {
+func (obj KmerList) Less(i, j int) bool {
   if obj[i].K != obj[j].K {
     return obj[i].K < obj[j].K
   } else {
@@ -45,17 +47,16 @@ func (obj KmerIdList) Less(i, j int) bool {
   }
 }
 
-func (obj KmerIdList) Swap(i, j int) {
-  obj[i].K, obj[j].K = obj[j].K, obj[i].K
-  obj[i].I, obj[j].I = obj[j].I, obj[i].I
+func (obj KmerList) Swap(i, j int) {
+  obj[i], obj[j] = obj[j], obj[i]
 }
 
-func (obj KmerIdList) Sort() {
+func (obj KmerList) Sort() {
   sort.Sort(obj)
 }
 
-func (obj KmerIdList) Union(b ...KmerIdList) KmerIdList {
-  m := make(KmerIdSet)
+func (obj KmerList) Union(b ...KmerList) KmerList {
+  m := make(KmerSet)
   for _, id := range obj {
     m[id] = struct{}{}
   }
@@ -69,10 +70,10 @@ func (obj KmerIdList) Union(b ...KmerIdList) KmerIdList {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerIdSet map[KmerId]struct{}
+type KmerSet map[Kmer]struct{}
 
-func (obj KmerIdSet) AsList() KmerIdList {
-  r := make(KmerIdList, len(obj))
+func (obj KmerSet) AsList() KmerList {
+  r := make(KmerList, len(obj))
   i := 0
   for id, _ := range obj {
     r[i] = id; i++
@@ -84,40 +85,46 @@ func (obj KmerIdSet) AsList() KmerIdList {
 /* -------------------------------------------------------------------------- */
 
 type KmerCounts struct {
-  Ids    KmerIdList
-  Counts map[KmerId]int
+  // this is a sorted list of k-mers and might contain more entries than
+  // the counts map
+  Kmers  KmerList
+  Counts map[Kmer]int
 }
 
 func (obj KmerCounts) Len() int {
-  return len(obj.Ids)
+  return len(obj.Kmers)
 }
 
 func (obj KmerCounts) At(i int) int {
-  if c, ok := obj.Counts[obj.Ids[i]]; ok {
+  if c, ok := obj.Counts[obj.Kmers[i]]; ok {
     return c
   } else {
     return 0
   }
 }
 
+func (obj KmerCounts) Iterate() KmerCountsIterator {
+  return KmerCountsIterator{obj, 0}
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerCountsList struct {
-  Ids      KmerIdList
-  Counts []map[KmerId]int
+  Kmers    KmerList
+  Counts []map[Kmer]int
 }
 
 func (obj *KmerCountsList) Append(r ...KmerCounts) KmerCountsList {
-  idLists := make([]KmerIdList, len(r))
+  idLists := make([]KmerList, len(r))
   for i, ri := range r {
-    idLists[i] = ri.Ids
+    idLists[i] = ri.Kmers
   }
-  ids    := obj.Ids.Union(idLists...)
+  ids    := obj.Kmers.Union(idLists...)
   counts := obj.Counts
   for _, ri := range r {
     counts = append(counts, ri.Counts)
   }
-  return KmerCountsList{Ids: ids, Counts: counts}
+  return KmerCountsList{Kmers: ids, Counts: counts}
 }
 
 func (obj *KmerCountsList) Len() int {
@@ -125,7 +132,7 @@ func (obj *KmerCountsList) Len() int {
 }
 
 func (obj *KmerCountsList) At(i int) KmerCounts {
-  return KmerCounts{Ids: obj.Ids, Counts: obj.Counts[i]}
+  return KmerCounts{Kmers: obj.Kmers, Counts: obj.Counts[i]}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -139,12 +146,12 @@ func (obj KmerCountsIterator) Ok() bool {
   return obj.i < obj.Len()
 }
 
-func (obj KmerCountsIterator) GetId() KmerId {
-  return obj.Ids[obj.i]
+func (obj KmerCountsIterator) GetKmer() Kmer {
+  return obj.Kmers[obj.i]
 }
 
 func (obj KmerCountsIterator) GetName() string {
-  return obj.Ids[obj.i].Name
+  return obj.Kmers[obj.i].Name
 }
 
 func (obj KmerCountsIterator) GetCount() int {

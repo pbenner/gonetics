@@ -76,13 +76,14 @@ func TestKmersCounter1(test *testing.T) {
     1, 1, 1, 1, 2, 1, 1, 2 }
 
   kmersCounter, _ := NewKmersCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
-  names, counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
-  for i, _ := range names {
-    if names[i] != r[i] {
+  counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
+  for i, it := 0, counts.Iterate(); it.Ok(); it.Next() {
+    if it.GetName() != r[i] {
       test.Error("test failed")
     }
-    if counts[i] != s[i] {
+    if it.GetCount() != s[i] {
       test.Error("test failed")
     }
+    i++
   }
 }

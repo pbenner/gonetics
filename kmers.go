@@ -95,6 +95,10 @@ func (obj KmerCounts) Len() int {
   return len(obj.Kmers)
 }
 
+func (obj KmerCounts) N() int {
+  return len(obj.Counts)
+}
+
 func (obj KmerCounts) At(i int) int {
   if c, ok := obj.Counts[obj.Kmers[i]]; ok {
     return c

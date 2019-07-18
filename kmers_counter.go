@@ -27,6 +27,7 @@ type KmersCounter struct {
   KmersSet
   kmap      []map[int][]int // for each k, map k-mer [ID] (with no
                             // ambiguous characters) to matching k-mers [ID]
+  frozen      bool
 }
 
 /* -------------------------------------------------------------------------- */
@@ -90,7 +91,11 @@ func (obj *KmersCounter) matchingKmers(c []byte) []int {
   if r, ok := obj.kmap[k-obj.n][i]; ok {
     return r
   } else {
-    return obj.addKmer(c, i)
+    if obj.frozen {
+      return []int(nil)
+    } else {
+      return obj.addKmer(c, i)
+    }
   }
 }
 
@@ -211,4 +216,8 @@ func (obj *KmersCounter) Revcomp() bool {
 
 func (obj *KmersCounter) Alphabet() ComplementableAlphabet {
   return obj.al
+}
+
+func (obj *KmersCounter) Freeze() {
+  obj.frozen = true
 }

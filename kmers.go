@@ -150,3 +150,7 @@ func (obj KmerCountsIterator) GetName() string {
 func (obj KmerCountsIterator) GetCount() int {
   return obj.At(obj.i)
 }
+
+func (obj *KmerCountsIterator) Next() {
+  obj.i++
+}

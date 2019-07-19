@@ -172,12 +172,14 @@ func computeSimilarity_cosine(config Config, countsSeq, countsRef KmerCounts) fl
   r := 0.0
   a := 0.0
   b := 0.0
-  for i := 0; i < countsSeq.Len(); i++ {
-    x := float64(countsSeq.At(i))
-    y := float64(countsRef.GetCount(countsSeq.GetKmer(i)))
-    a += math.Pow(x, 2.0)
-    b += math.Pow(y, 2.0)
-    r += float64(x*y)
+  // computation of norms requires to loop over countsRef here,
+  // although it is probably much longer
+  for i := 0; i < countsRef.Len(); i++ {
+    x := float64(countsRef.At(i))
+    y := float64(countsSeq.GetCount(countsRef.GetKmer(i)))
+    a += x*x
+    b += y*y
+    r += x*y
   }
   a = math.Sqrt(a)
   b = math.Sqrt(b)
@@ -186,12 +188,29 @@ func computeSimilarity_cosine(config Config, countsSeq, countsRef KmerCounts) fl
   return r
 }
 
+func computeSimilarity_tanimoto(config Config, countsSeq, countsRef KmerCounts) float64 {
+  r := 0.0
+  a := 0.0
+  b := 0.0
+  // computation of norms requires to loop over countsRef here,
+  // although it is probably much longer
+  for i := 0; i < countsRef.Len(); i++ {
+    x := float64(countsRef.At(i))
+    y := float64(countsSeq.GetCount(countsRef.GetKmer(i)))
+    a += x*x
+    b += y*y
+    r += x*y
+  }
+  r = r / ( a + b - r)
+  return r
+}
+
 func computeSimilarity_dotproduct(config Config, countsSeq, countsRef KmerCounts) float64 {
   r := 0.0
   for i := 0; i < countsSeq.Len(); i++ {
     x := float64(countsSeq.At(i))
     y := float64(countsRef.GetCount(countsSeq.GetKmer(i)))
-    r += float64(x*y)
+    r += x*y
   }
   return r / float64(countsRef.Len())
 }
@@ -200,6 +219,8 @@ func computeSimilarity(config Config, countsSeq, countsRef KmerCounts) float64 {
   switch config.Measure {
   case "cosine":
     return computeSimilarity_cosine(config, countsSeq, countsRef)
+  case "tanimoto":
+    return computeSimilarity_tanimoto(config, countsSeq, countsRef)
   case "dot-product":
     return computeSimilarity_dotproduct(config, countsSeq, countsRef)
   default:
@@ -309,6 +330,7 @@ func main() {
   // check measure option
   switch config.Measure {
   case "cosine":
+  case "tanimoto":
   case "dot-product":
   case "":
   default:

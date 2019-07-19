@@ -46,6 +46,7 @@ type Config struct {
   Header         bool
   Format         string
   Measure        string
+  StepSize       int
   Threads        int
   Verbose        int
 }
@@ -230,6 +231,19 @@ func computeSimilarity(config Config, countsSeq, countsRef KmerCounts) float64 {
 
 /* -------------------------------------------------------------------------- */
 
+func computeStepSize(config Config, n int) int {
+  k := config.StepSize
+  if k == -1 {
+    k = n/10
+    if k == 0 {
+      k = 1
+    }
+  }
+  return k
+}
+
+/* -------------------------------------------------------------------------- */
+
 func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameReference, filenameFasta, filenameOut string) {
   pool := threadpool.New(config.Threads, 100*config.Threads)
 
@@ -249,6 +263,8 @@ func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameRefere
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
   // allocate result
   result := make([][]float64, len(sequences))
+  // compute step size
+  k := computeStepSize(config, len(reference[0]))
   // count k-mers on target sequences
   pool.RangeJob(0, len(sequences), func(i int, pool threadpool.ThreadPool, erf func() error) error {
     n := len(reference[0])
@@ -257,7 +273,7 @@ func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameRefere
       return nil
     }    
     r := make([]float64, m)
-    for j := 0; j < m; j++ {
+    for j := 0; j < m; j += k {
       countsSeq := scanSequence(config, kmersCounter, sequences[i][j:j+n])
       if countsSeq.Len() > countsRef.Len() {
         panic("internal error")
@@ -281,6 +297,7 @@ func main() {
   optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
   optFormat       := options. StringLong("format",        0 , "",           "count matrix only shows the presence or absence of k-mers")
   optMeasure      := options. StringLong("measure",       0 , "cosine",     "similarity measure [dot-product, cosine (default)]")
+  optStepSize     := options.    IntLong("step-size",     0 , -1,           "moving window step size")
   optBinary       := options.   BoolLong("binary",        0 ,               "count matrix only shows the presence or absence of k-mers")
   optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length [MAX-K-MER-LENGTH]-[MIN-K-MER-LENGTH]+1)")
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
@@ -316,8 +333,14 @@ func main() {
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
+  config.StepSize     = *optStepSize
   config.Threads      = *optThreads
   config.Verbose      = *optVerbose
+  // check step size
+  if config.StepSize < -1 {
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
   // check format option
   switch config.Format {
   case "table":

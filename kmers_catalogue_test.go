@@ -23,8 +23,8 @@ import "testing"
 
 /* -------------------------------------------------------------------------- */
 
-func TestKmersSet1(test *testing.T) {
-  kmers, _ := NewKmersSet(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
+func TestKmersCatalogue1(test *testing.T) {
+  kmers, _ := NewKmersCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetId  ("anntc")
   i := kmers.GetId  ("anntc")
   s := kmers.GetName("anntc")
@@ -37,8 +37,8 @@ func TestKmersSet1(test *testing.T) {
   }
 }
 
-func TestKmersSet2(test *testing.T) {
-  kmers, _ := NewKmersSet(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
+func TestKmersCatalogue2(test *testing.T) {
+  kmers, _ := NewKmersCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetId  ("gannt")
   i := kmers.GetId  ("anntc")
   s := kmers.GetName("anntc")
@@ -51,8 +51,8 @@ func TestKmersSet2(test *testing.T) {
   }
 }
 
-func TestKmersSet3(test *testing.T) {
-  kmers, _ := NewKmersSet(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
+func TestKmersCatalogue3(test *testing.T) {
+  kmers, _ := NewKmersCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetId  ("tnnag")
   i := kmers.GetId  ("anntc")
   s := kmers.GetName("anntc")
@@ -65,8 +65,8 @@ func TestKmersSet3(test *testing.T) {
   }
 }
 
-func TestKmersSet4(test *testing.T) {
-  kmers, _ := NewKmersSet(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
+func TestKmersCatalogue4(test *testing.T) {
+  kmers, _ := NewKmersCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetId  ("ctnna")
   i := kmers.GetId  ("anntc")
   s := kmers.GetName("anntc")

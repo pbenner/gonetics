@@ -24,7 +24,7 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-type KmersSet struct {
+type KmersCatalogue struct {
   n, m        int              // min and max kmer size
   complement  bool
   reverse     bool
@@ -38,7 +38,7 @@ type KmersSet struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersSet(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmersSet, error) {
+func NewKmersCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmersCatalogue, error) {
   if len(maxAmbiguous) == 0 {
     maxAmbiguous = make([]int, m-n+1)
     for i := 0; i < m-n+1; i++ {
@@ -65,7 +65,7 @@ func NewKmersSet(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complement
     idmap[k-n] = make(map[string]int)
     names[k-n] = make(map[int]string)
   }
-  r := KmersSet{
+  r := KmersCatalogue{
     n         : n,
     m         : m,
     p         : p,
@@ -81,37 +81,37 @@ func NewKmersSet(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complement
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) MinKmerSize() int {
+func (obj *KmersCatalogue) MinKmerSize() int {
   return obj.n
 }
 
-func (obj *KmersSet) MaxKmerSize() int {
+func (obj *KmersCatalogue) MaxKmerSize() int {
   return obj.m
 }
 
-func (obj *KmersSet) MaxAmbiguous() []int {
+func (obj *KmersCatalogue) MaxAmbiguous() []int {
   return obj.ma
 }
 
-func (obj *KmersSet) Complement() bool {
+func (obj *KmersCatalogue) Complement() bool {
   return obj.complement
 }
 
-func (obj *KmersSet) Reverse() bool {
+func (obj *KmersCatalogue) Reverse() bool {
   return obj.reverse
 }
 
-func (obj *KmersSet) Revcomp() bool {
+func (obj *KmersCatalogue) Revcomp() bool {
   return obj.revcomp
 }
 
-func (obj *KmersSet) Alphabet() ComplementableAlphabet {
+func (obj *KmersCatalogue) Alphabet() ComplementableAlphabet {
   return obj.al
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) GetId(kmer string) int {
+func (obj *KmersCatalogue) GetId(kmer string) int {
   k := len(kmer)
   if k < obj.n || k > obj.m {
     panic("k-mer has invalid length")
@@ -124,14 +124,14 @@ func (obj *KmersSet) GetId(kmer string) int {
   }
 }
 
-func (obj *KmersSet) IdToName(k, id int) string {
+func (obj *KmersCatalogue) IdToName(k, id int) string {
   if name, ok := obj.names[k-obj.n][id]; ok {
     return name
   }
   panic("k-mer name not found")
 }
 
-func (obj *KmersSet) GetName(kmer string) string {
+func (obj *KmersCatalogue) GetName(kmer string) string {
   k := len(kmer)
   if k < obj.n || k > obj.m {
     panic("k-mer has invalid length")
@@ -144,11 +144,11 @@ func (obj *KmersSet) GetName(kmer string) string {
   }
 }
 
-func (obj *KmersSet) GetNames(kmer string) []string {
+func (obj *KmersCatalogue) GetNames(kmer string) []string {
   return strings.Split(obj.GetName(kmer), "|")
 }
 
-func (obj *KmersSet) ObservedKmers() int {
+func (obj *KmersCatalogue) ObservedKmers() int {
   r := 0
   for i := 0; i < len(obj.names); i++ {
     r += len(obj.names[i])
@@ -158,7 +158,7 @@ func (obj *KmersSet) ObservedKmers() int {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) computeId(c1 []byte) (int, string) {
+func (obj *KmersCatalogue) computeId(c1 []byte) (int, string) {
   k  := len(c1)
   c2 := make([]byte, k)
   c3 := make([]byte, k)
@@ -243,7 +243,7 @@ func (obj *KmersSet) computeId(c1 []byte) (int, string) {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) comp(dest, src []byte) error {
+func (obj *KmersCatalogue) comp(dest, src []byte) error {
   for j := 0; j < len(src); j++ {
     if x, err := obj.al.Complement(src[j]); err != nil {
       return err
@@ -254,7 +254,7 @@ func (obj *KmersSet) comp(dest, src []byte) error {
   return nil
 }
 
-func (obj *KmersSet) rev(dest, src []byte) {
+func (obj *KmersCatalogue) rev(dest, src []byte) {
   for i, j := 0, len(src)-1; i <= j; i, j = i+1, j-1 {
     dest[i], dest[j] = src[j], src[i]
   }
@@ -262,7 +262,7 @@ func (obj *KmersSet) rev(dest, src []byte) {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) scanSubKmers_(kmer []byte, k int) []int {
+func (obj *KmersCatalogue) scanSubKmers_(kmer []byte, k int) []int {
   idMap := make(map[int]struct{})
   // loop over sequence
   for i := 0; i < len(kmer); i++ {
@@ -284,7 +284,7 @@ func (obj *KmersSet) scanSubKmers_(kmer []byte, k int) []int {
   return ids
 }
 
-func (obj *KmersSet) scanSubKmers(kmer []byte) []string {
+func (obj *KmersCatalogue) scanSubKmers(kmer []byte) []string {
   names := []string{}
   for k := obj.n; k <= obj.m; k++ {
     ids := obj.scanSubKmers_(kmer, k)
@@ -297,7 +297,7 @@ func (obj *KmersSet) scanSubKmers(kmer []byte) []string {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersSet) relatedKmers(s []byte, m, k int) []int {
+func (obj *KmersCatalogue) relatedKmers(s []byte, m, k int) []int {
   idMap := make(map[int]struct{})
   // loop over positions where the k-mer can be fixed
   for j := 0; j <= k - len(s); j++ {
@@ -315,7 +315,7 @@ func (obj *KmersSet) relatedKmers(s []byte, m, k int) []int {
   return ids
 }
 
-func (obj *KmersSet) RelatedKmers(kmer string) []string {
+func (obj *KmersCatalogue) RelatedKmers(kmer string) []string {
   s := []byte(obj.GetNames(kmer)[0])
   m := obj.countAmbiguous(kmer)
   // scan k-mer for sub-k-mers
@@ -330,7 +330,7 @@ func (obj *KmersSet) RelatedKmers(kmer string) []string {
   return names
 }
 
-func (obj *KmersSet) countAmbiguous(kmer string) int {
+func (obj *KmersCatalogue) countAmbiguous(kmer string) int {
   m := 0
   s := []byte(kmer)
   for i := 0; i < len(s); i++ {

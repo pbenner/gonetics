@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-type KmersSetIterator struct {
+type KmersCatalogueIterator struct {
   names []string
   ids   []int
   i       int
@@ -30,7 +30,7 @@ type KmersSetIterator struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersSetIterator(kmersSet KmersSet) KmersSetIterator {
+func NewKmersCatalogueIterator(kmersSet KmersCatalogue) KmersCatalogueIterator {
   names := []string{}
   ids   := []int{}
   for k := 0; k < len(kmersSet.names); k++ {
@@ -44,23 +44,23 @@ func NewKmersSetIterator(kmersSet KmersSet) KmersSetIterator {
     names = append(names, n...)
     ids   = append(ids,   i...)
   }
-  return KmersSetIterator{names: names, ids: ids, i: 0}
+  return KmersCatalogueIterator{names: names, ids: ids, i: 0}
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersSetIterator) Ok() bool {
+func (obj KmersCatalogueIterator) Ok() bool {
   return obj.i < len(obj.names)
 }
 
-func (obj KmersSetIterator) Get() string {
+func (obj KmersCatalogueIterator) Get() string {
   return obj.names[obj.i]
 }
 
-func (obj KmersSetIterator) GetId() int {
+func (obj KmersCatalogueIterator) GetId() int {
   return obj.ids[obj.i]
 }
 
-func (obj *KmersSetIterator) Next() {
+func (obj *KmersCatalogueIterator) Next() {
   obj.i++
 }

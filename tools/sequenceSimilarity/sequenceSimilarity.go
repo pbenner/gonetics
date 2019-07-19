@@ -179,8 +179,11 @@ func computeSimilarity_cosine(config Config, countsSeq, countsRef KmerCounts) fl
     x := float64(countsRef.At(i))
     y := float64(countsSeq.GetCount(countsRef.GetKmer(i)))
     a += x*x
-    b += y*y
     r += x*y
+  }
+  for i := 0; i < countsSeq.Len(); i++ {
+    y := float64(countsSeq.At(i))
+    b += y*y
   }
   a = math.Sqrt(a)
   b = math.Sqrt(b)
@@ -199,8 +202,11 @@ func computeSimilarity_tanimoto(config Config, countsSeq, countsRef KmerCounts) 
     x := float64(countsRef.At(i))
     y := float64(countsSeq.GetCount(countsRef.GetKmer(i)))
     a += x*x
-    b += y*y
     r += x*y
+  }
+  for i := 0; i < countsSeq.Len(); i++ {
+    y := float64(countsSeq.At(i))
+    b += y*y
   }
   r = r / ( a + b - r)
   return r
@@ -258,7 +264,9 @@ func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameRefere
   }
   countsRef := scanSequence(config, kmersCounter, reference[0])
   // freeze k-mer set (i.e. do not consider any new k-mers)
-  kmersCounter.Freeze()
+  if config.Measure == "dot-product" {
+    kmersCounter.Freeze()
+  }
   // import target sequences
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
   // allocate result
@@ -272,13 +280,10 @@ func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameRefere
     if m <= 0 {
       return nil
     }    
-    r := make([]float64, m)
-    for j := 0; j < m; j += k {
+    r := make([]float64, m/k)
+    for j := 0; j < m-k+1; j += k {
       countsSeq := scanSequence(config, kmersCounter, sequences[i][j:j+n])
-      if countsSeq.Len() > countsRef.Len() {
-        panic("internal error")
-      }
-      r[j] = computeSimilarity(config, countsSeq, countsRef)
+      r[j/k] = computeSimilarity(config, countsSeq, countsRef)
     }
     result[i] = r
     return nil

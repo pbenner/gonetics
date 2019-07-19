@@ -193,7 +193,7 @@ func computeSimilarity_dotproduct(config Config, countsSeq, countsRef KmerCounts
     y := float64(countsRef.GetCount(countsSeq.GetKmer(i)))
     r += float64(x*y)
   }
-  return r
+  return r / float64(countsRef.Len())
 }
 
 func computeSimilarity(config Config, countsSeq, countsRef KmerCounts) float64 {

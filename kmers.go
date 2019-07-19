@@ -107,6 +107,18 @@ func (obj KmerCounts) At(i int) int {
   }
 }
 
+func (obj KmerCounts) GetCount(kmer Kmer) int {
+  if c, ok := obj.Counts[kmer]; ok {
+    return c
+  } else {
+    return 0
+  }
+}
+
+func (obj KmerCounts) GetKmer(i int) Kmer {
+  return obj.Kmers[i]
+}
+
 func (obj KmerCounts) Iterate() KmerCountsIterator {
   return KmerCountsIterator{obj, 0}
 }

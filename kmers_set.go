@@ -148,6 +148,14 @@ func (obj *KmersSet) GetNames(kmer string) []string {
   return strings.Split(obj.GetName(kmer), "|")
 }
 
+func (obj *KmersSet) ObservedKmers() int {
+  r := 0
+  for i := 0; i < len(obj.names); i++ {
+    r += len(obj.names[i])
+  }
+  return r
+}
+
 /* -------------------------------------------------------------------------- */
 
 func (obj *KmersSet) computeId(c1 []byte) (int, string) {

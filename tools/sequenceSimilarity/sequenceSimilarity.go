@@ -21,7 +21,7 @@ package main
 import   "fmt"
 import   "bufio"
 import   "log"
-//import   "math"
+import   "math"
 import   "io"
 import   "os"
 import   "strconv"
@@ -44,6 +44,8 @@ type Config struct {
   Human          bool
   Sparse         bool
   Header         bool
+  Format         string
+  Measure        string
   Threads        int
   Verbose        int
 }
@@ -103,10 +105,20 @@ func WriteResult(config Config, granges GRanges, similarities [][]float64, filen
     defer f.Close()
     defer buffer.Flush()
   }
-  granges.AddMeta("similarities", similarities)
+  if config.Format == "granges" || config.Format == "" {
+    granges.AddMeta("similarities", similarities)
 
-  if err := granges.WriteTable(writer, true, false); err != nil {
-    log.Fatal(err)
+    if err := granges.WriteTable(writer, true, false); err != nil {
+      log.Fatal(err)
+    }
+  }
+  if config.Format == "table" {
+    for _, x := range similarities {
+      for _, xi := range x {
+        fmt.Fprintf(writer, "%8.4f ", xi)
+      }
+      fmt.Fprintf(writer, "\n")
+    }
   }
 }
 
@@ -156,14 +168,43 @@ func scanSequence(config Config, kmersCounter *KmersCounter, sequence []byte) Km
 
 /* -------------------------------------------------------------------------- */
 
-func computeSimilarity(config Config, countsSeq, countsRef KmerCounts) float64 {
+func computeSimilarity_cosine(config Config, countsSeq, countsRef KmerCounts) float64 {
+  r := 0.0
+  a := 0.0
+  b := 0.0
+  for i := 0; i < countsSeq.Len(); i++ {
+    x := float64(countsSeq.At(i))
+    y := float64(countsRef.GetCount(countsSeq.GetKmer(i)))
+    a += math.Pow(x, 2.0)
+    b += math.Pow(y, 2.0)
+    r += float64(x*y)
+  }
+  a = math.Sqrt(a)
+  b = math.Sqrt(b)
+  r = r / a
+  r = r / b
+  return r
+}
+
+func computeSimilarity_dotproduct(config Config, countsSeq, countsRef KmerCounts) float64 {
   r := 0.0
   for i := 0; i < countsSeq.Len(); i++ {
-    x := countsRef.At(i)
-    y := countsSeq.At(i)
+    x := float64(countsSeq.At(i))
+    y := float64(countsRef.GetCount(countsSeq.GetKmer(i)))
     r += float64(x*y)
   }
   return r
+}
+
+func computeSimilarity(config Config, countsSeq, countsRef KmerCounts) float64 {
+  switch config.Measure {
+  case "cosine":
+    return computeSimilarity_cosine(config, countsSeq, countsRef)
+  case "dot-product":
+    return computeSimilarity_dotproduct(config, countsSeq, countsRef)
+  default:
+    panic("internal error")
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -197,7 +238,7 @@ func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameRefere
     r := make([]float64, m)
     for j := 0; j < m; j++ {
       countsSeq := scanSequence(config, kmersCounter, sequences[i][j:j+n])
-      if countsSeq.Len() != countsRef.Len() {
+      if countsSeq.Len() > countsRef.Len() {
         panic("internal error")
       }
       r[j] = computeSimilarity(config, countsSeq, countsRef)
@@ -217,6 +258,8 @@ func main() {
   options := getopt.New()
 
   optAlphabet     := options. StringLong("alphabet",      0 , "nucleotide", "nucleotide, gapped-nucleotide, or ambiguous-nucleotide")
+  optFormat       := options. StringLong("format",        0 , "",           "count matrix only shows the presence or absence of k-mers")
+  optMeasure      := options. StringLong("measure",       0 , "cosine",     "similarity measure [dot-product, cosine (default)]")
   optBinary       := options.   BoolLong("binary",        0 ,               "count matrix only shows the presence or absence of k-mers")
   optMaxAmbiguous := options. StringLong("max-ambiguous", 0 , "-1",         "maxum number of ambiguous positions (either a scalar to set a global maximum or a comma separated list of length [MAX-K-MER-LENGTH]-[MIN-K-MER-LENGTH]+1)")
   optRegions      := options. StringLong("regions",       0 , "",           "bed with with regions")
@@ -246,12 +289,32 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  config.Format       = strings.ToLower(*optFormat)
+  config.Measure      = strings.ToLower(*optMeasure)
   config.Binary       = *optBinary
   config.Complement   = *optComplement
   config.Reverse      = *optReverse
   config.Revcomp      = *optRevcomp
   config.Threads      = *optThreads
   config.Verbose      = *optVerbose
+  // check format option
+  switch config.Format {
+  case "table":
+  case "granges":
+  case "":
+  default:
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
+  // check measure option
+  switch config.Measure {
+  case "cosine":
+  case "dot-product":
+  case "":
+  default:
+    options.PrintUsage(os.Stderr)
+    os.Exit(1)
+  }
   // check required arguments
   n, err := strconv.ParseInt(options.Args()[0], 10, 64); if err != nil {
     options.PrintUsage(os.Stderr)

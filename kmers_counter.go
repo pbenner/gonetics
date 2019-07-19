@@ -99,18 +99,6 @@ func (obj *KmersCounter) matchingKmers(c []byte) []int {
   }
 }
 
-func (obj *KmersCounter) MatchingKmers(c []byte) KmerList {
-  k := len(c)
-  i := obj.matchingKmers(c)
-  r := make(KmerList, len(i))
-  for j, _ := range i {
-    r[j].K    = k
-    r[j].I    = i[j]
-    r[j].Name = obj.KmersSet.IdToName(k, i[j])
-  }
-  return r
-}
-
 /* -------------------------------------------------------------------------- */
 
 func (obj *KmersCounter) countKmers(sequence []byte, k int) KmerCounts {

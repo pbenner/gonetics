@@ -206,13 +206,19 @@ func countKmers(config Config, n, m int, filenameRegions, filenameFasta, filenam
   pool := threadpool.New(config.Threads, 100*config.Threads)
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
-  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); if err != nil {
-    log.Fatal(err)
+  // create a KmersCounter for each thread
+  kmersCounter := make([]*KmersCounter, pool.NumberOfThreads())
+  for i := 0; i < pool.NumberOfThreads(); i++ {
+    if r, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); err != nil {
+      log.Fatal(err)
+    } else {
+      kmersCounter[i] = r
+    }
   }
   counts := make([]KmerCounts, len(sequences))
 
   pool.RangeJob(0, len(sequences), func(i int, pool threadpool.ThreadPool, erf func() error) error {
-    counts[i] = scanSequence(config, kmersCounter, sequences[i])
+    counts[i] = scanSequence(config, kmersCounter[pool.GetThreadId()], sequences[i])
     return nil
   })
   countsList := NewKmerCountsList(counts...)

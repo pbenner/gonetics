@@ -31,6 +31,16 @@ type Kmer struct {
   Name string
 }
 
+func (obj Kmer) Equals(b Kmer) bool {
+  if obj.K != b.K {
+    return false
+  }
+  if obj.I != b.I {
+    return false
+  }
+  return true
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerList []Kmer
@@ -39,6 +49,18 @@ func (obj KmerList) Clone() KmerList {
   r := make(KmerList, len(obj))
   copy(r, obj)
   return r
+}
+
+func (obj KmerList) Equals(b KmerList) bool {
+  if len(obj) != len(b) {
+    return false
+  }
+  for i := 0; i < len(obj); i++ {
+    if !obj[i].Equals(b[i]) {
+      return false
+    }
+  }
+  return true
 }
 
 func (obj KmerList) Len() int {

@@ -35,6 +35,12 @@ type Kmer struct {
 
 type KmerList []Kmer
 
+func (obj KmerList) Clone() KmerList {
+  r := make(KmerList, len(obj))
+  copy(r, obj)
+  return r
+}
+
 func (obj KmerList) Len() int {
   return len(obj)
 }

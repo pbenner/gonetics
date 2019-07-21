@@ -25,8 +25,8 @@ import "strings"
 
 type KmerCounter struct {
   KmerCatalogue
-  kmap      []map[int][]int // for each k, map k-mer [ID] (with no
-                            // ambiguous characters) to matching k-mers [ID]
+  kmap      []map[int][]int // for each k, map k-mer class [ID] (with no
+                            // ambiguous characters) to matching k-mer classes [ID]
   frozen      bool
 }
 
@@ -50,8 +50,8 @@ func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complem
 
 func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]struct{}, i int) {
   if i == len(src) {
-    id := obj.KmerCatalogue.GetId(string(dest))
-    m[id] = struct{}{}
+    r := obj.KmerCatalogue.GetKmerClass(string(dest))
+    m[r.I] = struct{}{}
   } else {
     x, _ := obj.al.Matching(src[i])
     for _, k := range x {
@@ -75,7 +75,7 @@ func (obj *KmerCounter) addKmer(c []byte, id int) []int {
   d := make([]byte, k)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range obj.KmerCatalogue.GetNames(string(c)) {
+  for _, kmer := range obj.KmerCatalogue.GetEquivalentKmers(string(c)) {
     obj.generateMatchingKmers(d, []byte(kmer), m)
   }
   for id, _ := range m {
@@ -86,15 +86,14 @@ func (obj *KmerCounter) addKmer(c []byte, id int) []int {
 }
 
 func (obj *KmerCounter) matchingKmers(c []byte) []int {
-  k := len(c)
-  i := obj.KmerCatalogue.GetId(string(c))
-  if r, ok := obj.kmap[k-obj.n][i]; ok {
-    return r
+  r := obj.KmerCatalogue.GetKmerClass(string(c))
+  if i, ok := obj.kmap[r.K-obj.n][r.I]; ok {
+    return i
   } else {
     if obj.frozen {
       return []int(nil)
     } else {
-      return obj.addKmer(c, i)
+      return obj.addKmer(c, r.I)
     }
   }
 }
@@ -117,7 +116,7 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
   counts := make(map[KmerClass]int)
   i      := 0
   for id, c := range r {
-    kmers[i] = KmerClass{K: k, I: id, Name: obj.KmerCatalogue.IdToName(k, id) }
+    kmers[i] = obj.KmerCatalogue.GetKmerClassFromId(k, id)
     counts[kmers[i]] = c
     i++
   }
@@ -155,7 +154,7 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   counts := make(map[KmerClass]int)
   i      := 0
   for id, _ := range r {
-    kmers[i] = KmerClass{K: k, I: id, Name: obj.KmerCatalogue.IdToName(k, id) }
+    kmers[i] = obj.KmerCatalogue.GetKmerClassFromId(k, id)
     counts[kmers[i]] = 1
     i++
   }

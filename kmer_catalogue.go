@@ -52,52 +52,36 @@ func NewKmerCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Compl
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerCatalogue) GetId(kmer string) int {
+func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
   k := len(kmer)
   if k < obj.n || k > obj.m {
     panic("k-mer has invalid length")
   }
   if i, ok := obj.idmap[k-obj.n][kmer]; ok {
-    return i
+    return KmerClass{K: k, I: i, Name: obj.names[k-obj.n][i]}
   } else {
     r := obj.EquivalenceClass(kmer)
     for _, kmer := range strings.Split(r.Name, "|") {
       obj.idmap[k-obj.n][kmer] = r.I
     }
     obj.names[k-obj.n][r.I] = r.Name
-    return r.I
+    return r
   }
 }
 
-func (obj *KmerCatalogue) GetName(kmer string) string {
-  k := len(kmer)
-  if k < obj.n || k > obj.m {
-    panic("k-mer has invalid length")
-  }
-  if i, ok := obj.idmap[k-obj.n][kmer]; ok {
-    return obj.names[k-obj.n][i]
-  } else {
-    r := obj.EquivalenceClass(kmer)
-    for _, kmer := range strings.Split(r.Name, "|") {
-      obj.idmap[k-obj.n][kmer] = r.I
-    }
-    obj.names[k-obj.n][r.I] = r.Name
-    return r.Name
-  }
-}
-
-func (obj *KmerCatalogue) IdToName(k, id int) string {
+func (obj *KmerCatalogue) GetKmerClassFromId(k, id int) KmerClass {
   if name, ok := obj.names[k-obj.n][id]; ok {
-    return name
+    return KmerClass{K: k, I: id, Name: name}
   }
   panic("k-mer name not found")
 }
 
-func (obj *KmerCatalogue) GetNames(kmer string) []string {
-  return strings.Split(obj.GetName(kmer), "|")
+func (obj *KmerCatalogue) GetEquivalentKmers(kmer string) []string {
+  r := obj.GetKmerClass(kmer)
+  return strings.Split(r.Name, "|")
 }
 
-func (obj *KmerCatalogue) ObservedKmers() int {
+func (obj *KmerCatalogue) CatalogueSize() int {
   r := 0
   for i := 0; i < len(obj.names); i++ {
     r += len(obj.names[i])
@@ -105,7 +89,8 @@ func (obj *KmerCatalogue) ObservedKmers() int {
   return r
 }
 
-/* -------------------------------------------------------------------------- */
+/* TODO: extend code below to k-mer equivalence graph
+ * -------------------------------------------------------------------------- */
 
 func (obj *KmerCatalogue) scanSubKmers_(kmer []byte, k int) []int {
   idMap := make(map[int]struct{})
@@ -134,7 +119,8 @@ func (obj *KmerCatalogue) scanSubKmers(kmer []byte) []string {
   for k := obj.n; k <= obj.m; k++ {
     ids := obj.scanSubKmers_(kmer, k)
     for _, id := range ids {
-      names = append(names , obj.IdToName(k, id))
+      r := obj.GetKmerClassFromId(k, id)
+      names = append(names , r.Name)
     }
   }
   return names
@@ -161,7 +147,7 @@ func (obj *KmerCatalogue) relatedKmers(s []byte, m, k int) []int {
 }
 
 func (obj *KmerCatalogue) RelatedKmers(kmer string) []string {
-  s := []byte(obj.GetNames(kmer)[0])
+  s := []byte(obj.GetEquivalentKmers(kmer)[0])
   m := obj.countAmbiguous(kmer)
   // scan k-mer for sub-k-mers
   names := obj.scanSubKmers(s)
@@ -169,7 +155,8 @@ func (obj *KmerCatalogue) RelatedKmers(kmer string) []string {
   for k := len(s)+1; k <= obj.m; k++ {
     ids := obj.relatedKmers(s, m, k)
     for _, id := range ids {
-      names = append(names , obj.IdToName(k, id))
+      r := obj.GetKmerClassFromId(k, id)
+      names = append(names , r.Name)
     }
   }
   return names

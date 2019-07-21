@@ -25,10 +25,10 @@ import "testing"
 
 func TestKmerCatalogue1(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
-  j := kmers.GetId  ("anntc")
-  i := kmers.GetId  ("anntc")
-  s := kmers.GetName("anntc")
-  t := kmers.GetName("gannt")
+  j := kmers.GetKmerClass("anntc").I
+  i := kmers.GetKmerClass("anntc").I
+  s := kmers.GetKmerClass("anntc").Name
+  t := kmers.GetKmerClass("gannt").Name
   if i != j {
     test.Error("test failed")
   }
@@ -39,10 +39,10 @@ func TestKmerCatalogue1(test *testing.T) {
 
 func TestKmerCatalogue2(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
-  j := kmers.GetId  ("gannt")
-  i := kmers.GetId  ("anntc")
-  s := kmers.GetName("anntc")
-  t := kmers.GetName("gannt")
+  j := kmers.GetKmerClass("gannt").I
+  i := kmers.GetKmerClass("anntc").I
+  s := kmers.GetKmerClass("anntc").Name
+  t := kmers.GetKmerClass("gannt").Name
   if i != j {
     test.Error("test failed")
   }
@@ -53,10 +53,10 @@ func TestKmerCatalogue2(test *testing.T) {
 
 func TestKmerCatalogue3(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
-  j := kmers.GetId  ("tnnag")
-  i := kmers.GetId  ("anntc")
-  s := kmers.GetName("anntc")
-  t := kmers.GetName("gannt")
+  j := kmers.GetKmerClass("tnnag").I
+  i := kmers.GetKmerClass("anntc").I
+  s := kmers.GetKmerClass("anntc").Name
+  t := kmers.GetKmerClass("gannt").Name
   if i != j {
     test.Error("test failed")
   }
@@ -67,10 +67,10 @@ func TestKmerCatalogue3(test *testing.T) {
 
 func TestKmerCatalogue4(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
-  j := kmers.GetId  ("ctnna")
-  i := kmers.GetId  ("anntc")
-  s := kmers.GetName("anntc")
-  t := kmers.GetName("gannt")
+  j := kmers.GetKmerClass("ctnna").I
+  i := kmers.GetKmerClass("anntc").I
+  s := kmers.GetKmerClass("anntc").Name
+  t := kmers.GetKmerClass("gannt").Name
   if i != j {
     test.Error("test failed")
   }

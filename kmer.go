@@ -25,7 +25,7 @@ import "sort"
  * -------------------------------------------------------------------------- */
 
 type KmerClass struct {
-  // K-mer ID
+  // K-mer equivalence class ID
   K    int
   I    int
   // K-mer string representation

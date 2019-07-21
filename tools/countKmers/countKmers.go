@@ -105,7 +105,7 @@ func WriteResult(config Config, granges GRanges, countsList KmerCountsList, file
   // write header
   if config.Header {
     for i := 0; i < countsList.Kmers.Len(); i++ {
-      fmt.Fprintf(writer, "# %s\n", countsList.Kmers[i].Name)
+      fmt.Fprintf(writer, "# %s\n", countsList.Kmers[i].String())
     }
   }
   // convert kmer counts to human readable string
@@ -115,9 +115,9 @@ func WriteResult(config Config, granges GRanges, countsList KmerCountsList, file
       counts := countsList.At(i)
       for it := counts.Iterate(); it.Ok(); it.Next() {
         if len(kmersMeta[i]) == 0 {
-          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetName(), it.GetCount())
+          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetKmer(), it.GetCount())
         } else {
-          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetName(), it.GetCount())
+          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetKmer(), it.GetCount())
         }
       }
     }
@@ -132,9 +132,9 @@ func WriteResult(config Config, granges GRanges, countsList KmerCountsList, file
           continue
         }
         if len(kmersMeta[i]) == 0 {
-          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetName(), it.GetCount())
+          kmersMeta[i] = fmt.Sprintf("%s=%d", it.GetKmer(), it.GetCount())
         } else {
-          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetName(), it.GetCount())
+          kmersMeta[i] = fmt.Sprintf("%s,%s=%d", kmersMeta[i], it.GetKmer(), it.GetCount())
         }
       }
     }

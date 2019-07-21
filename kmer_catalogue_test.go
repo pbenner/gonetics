@@ -27,8 +27,8 @@ func TestKmerCatalogue1(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetKmerClass("anntc").I
   i := kmers.GetKmerClass("anntc").I
-  s := kmers.GetKmerClass("anntc").Name
-  t := kmers.GetKmerClass("gannt").Name
+  s := kmers.GetKmerClass("anntc").String()
+  t := kmers.GetKmerClass("gannt").String()
   if i != j {
     test.Error("test failed")
   }
@@ -41,8 +41,8 @@ func TestKmerCatalogue2(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, false, false, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetKmerClass("gannt").I
   i := kmers.GetKmerClass("anntc").I
-  s := kmers.GetKmerClass("anntc").Name
-  t := kmers.GetKmerClass("gannt").Name
+  s := kmers.GetKmerClass("anntc").String()
+  t := kmers.GetKmerClass("gannt").String()
   if i != j {
     test.Error("test failed")
   }
@@ -55,8 +55,8 @@ func TestKmerCatalogue3(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetKmerClass("tnnag").I
   i := kmers.GetKmerClass("anntc").I
-  s := kmers.GetKmerClass("anntc").Name
-  t := kmers.GetKmerClass("gannt").Name
+  s := kmers.GetKmerClass("anntc").String()
+  t := kmers.GetKmerClass("gannt").String()
   if i != j {
     test.Error("test failed")
   }
@@ -69,8 +69,8 @@ func TestKmerCatalogue4(test *testing.T) {
   kmers, _ := NewKmerCatalogue(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   j := kmers.GetKmerClass("ctnna").I
   i := kmers.GetKmerClass("anntc").I
-  s := kmers.GetKmerClass("anntc").Name
-  t := kmers.GetKmerClass("gannt").Name
+  s := kmers.GetKmerClass("anntc").String()
+  t := kmers.GetKmerClass("gannt").String()
   if i != j {
     test.Error("test failed")
   }

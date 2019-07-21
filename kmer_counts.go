@@ -22,9 +22,50 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
+type KmerCounts struct {
+  // this is a sorted list of k-mers and might contain more entries than
+  // the counts map
+  Kmers  KmerList
+  Counts map[KmerClassId]int
+}
+
+func (obj KmerCounts) Len() int {
+  return len(obj.Kmers)
+}
+
+func (obj KmerCounts) N() int {
+  return len(obj.Counts)
+}
+
+func (obj KmerCounts) At(i int) int {
+  if c, ok := obj.Counts[obj.Kmers[i].KmerClassId]; ok {
+    return c
+  } else {
+    return 0
+  }
+}
+
+func (obj KmerCounts) GetCount(kmer KmerClass) int {
+  if c, ok := obj.Counts[kmer.KmerClassId]; ok {
+    return c
+  } else {
+    return 0
+  }
+}
+
+func (obj KmerCounts) GetKmer(i int) KmerClass {
+  return obj.Kmers[i]
+}
+
+func (obj KmerCounts) Iterate() KmerCountsIterator {
+  return KmerCountsIterator{obj, 0}
+}
+
+/* -------------------------------------------------------------------------- */
+
 type KmerCountsList struct {
   Kmers    KmerList
-  Counts []map[KmerClass]int
+  Counts []map[KmerClassId]int
 }
 
 func NewKmerCountsList(counts ...KmerCounts) KmerCountsList {
@@ -71,10 +112,6 @@ func (obj KmerCountsIterator) Ok() bool {
 
 func (obj KmerCountsIterator) GetKmer() KmerClass {
   return obj.Kmers[obj.i]
-}
-
-func (obj KmerCountsIterator) GetName() string {
-  return obj.Kmers[obj.i].Name
 }
 
 func (obj KmerCountsIterator) GetCount() int {

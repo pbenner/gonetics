@@ -75,7 +75,7 @@ func (obj *KmerCounter) addKmer(c []byte, id int) []int {
   d := make([]byte, k)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range obj.KmerCatalogue.GetEquivalentKmers(string(c)) {
+  for _, kmer := range obj.KmerCatalogue.GetKmerClass(string(c)).Elements {
     obj.generateMatchingKmers(d, []byte(kmer), m)
   }
   for id, _ := range m {
@@ -113,11 +113,11 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
   }
   // construct a list of k-mers
   kmers  := make(KmerList, len(r))
-  counts := make(map[KmerClass]int)
+  counts := make(map[KmerClassId]int)
   i      := 0
   for id, c := range r {
     kmers[i] = obj.KmerCatalogue.GetKmerClassFromId(k, id)
-    counts[kmers[i]] = c
+    counts[kmers[i].KmerClassId] = c
     i++
   }
   kmers.Sort()
@@ -126,12 +126,12 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
 
 func (obj *KmerCounter) CountKmers(sequence []byte) KmerCounts {
   kmers  := KmerList{}
-  counts := make(map[KmerClass]int)
+  counts := make(map[KmerClassId]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.countKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
-    for kmer, c := range kmerCounts.Counts {
-      counts[kmer] = c
+    for kmerId, c := range kmerCounts.Counts {
+      counts[kmerId] = c
     }
   }
   return KmerCounts{Kmers: kmers, Counts: counts}
@@ -151,11 +151,11 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   }
   // construct a list of k-mers
   kmers  := make(KmerList, len(r))
-  counts := make(map[KmerClass]int)
+  counts := make(map[KmerClassId]int)
   i      := 0
   for id, _ := range r {
     kmers[i] = obj.KmerCatalogue.GetKmerClassFromId(k, id)
-    counts[kmers[i]] = 1
+    counts[kmers[i].KmerClassId] = 1
     i++
   }
   kmers.Sort()
@@ -164,12 +164,12 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
 
 func (obj *KmerCounter) IdentifyKmers(sequence []byte) KmerCounts {
   kmers  := KmerList{}
-  counts := make(map[KmerClass]int)
+  counts := make(map[KmerClassId]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.identifyKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
-    for kmer, c := range kmerCounts.Counts {
-      counts[kmer] = c
+    for kmerId, c := range kmerCounts.Counts {
+      counts[kmerId] = c
     }
   }
   return KmerCounts{Kmers: kmers, Counts: counts}

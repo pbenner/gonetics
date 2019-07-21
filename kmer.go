@@ -18,18 +18,42 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-//import "fmt"
+import "fmt"
 import "sort"
 
 /* K-mer equivalence class
  * -------------------------------------------------------------------------- */
 
+type KmerClassId struct {
+  K int
+  I int
+}
+
+/* -------------------------------------------------------------------------- */
+
 type KmerClass struct {
-  // K-mer equivalence class ID
-  K    int
-  I    int
-  // K-mer string representation
-  Name string
+  KmerClassId
+  // list of equivalent K-mers
+  Elements []string
+}
+
+/* -------------------------------------------------------------------------- */
+
+func NewKmerClass(k, i int, elements []string) KmerClass {
+  return KmerClass{KmerClassId{K: k, I: i}, elements}
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj KmerClass) String() string {
+  if len(obj.Elements) == 0 {
+    return ""
+  }
+  str := obj.Elements[0]
+  for i := 1; i < len(obj.Elements); i++ {
+    str = fmt.Sprintf("%s|%s", str, obj.Elements[i])
+  }
+  return str
 }
 
 func (obj KmerClass) Equals(b KmerClass) bool {
@@ -86,12 +110,12 @@ func (obj KmerList) Sort() {
 
 func (obj KmerList) Union(b ...KmerList) KmerList {
   m := make(KmerSet)
-  for _, id := range obj {
-    m[id] = struct{}{}
+  for _, class := range obj {
+    m[class.KmerClassId] = class.Elements
   }
   for _, bi := range b {
-    for _, id := range bi {
-      m[id] = struct{}{}
+    for _, class := range bi {
+      m[class.KmerClassId] = class.Elements
     }
   }
   return m.AsList()
@@ -99,55 +123,17 @@ func (obj KmerList) Union(b ...KmerList) KmerList {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerSet map[KmerClass]struct{}
+type KmerSet map[KmerClassId][]string
 
 func (obj KmerSet) AsList() KmerList {
   r := make(KmerList, len(obj))
   i := 0
-  for id, _ := range obj {
-    r[i] = id; i++
+  for id, elements := range obj {
+    r[i].K = id.K
+    r[i].I = id.I
+    r[i].Elements = elements
+    i++
   }
   r.Sort()
   return r
-}
-
-/* -------------------------------------------------------------------------- */
-
-type KmerCounts struct {
-  // this is a sorted list of k-mers and might contain more entries than
-  // the counts map
-  Kmers  KmerList
-  Counts map[KmerClass]int
-}
-
-func (obj KmerCounts) Len() int {
-  return len(obj.Kmers)
-}
-
-func (obj KmerCounts) N() int {
-  return len(obj.Counts)
-}
-
-func (obj KmerCounts) At(i int) int {
-  if c, ok := obj.Counts[obj.Kmers[i]]; ok {
-    return c
-  } else {
-    return 0
-  }
-}
-
-func (obj KmerCounts) GetCount(kmer KmerClass) int {
-  if c, ok := obj.Counts[kmer]; ok {
-    return c
-  } else {
-    return 0
-  }
-}
-
-func (obj KmerCounts) GetKmer(i int) KmerClass {
-  return obj.Kmers[i]
-}
-
-func (obj KmerCounts) Iterate() KmerCountsIterator {
-  return KmerCountsIterator{obj, 0}
 }

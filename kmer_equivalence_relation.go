@@ -165,17 +165,17 @@ func (obj KmerEquivalenceRelation) EquivalenceClass(kmer string) KmerClass {
   if !b_c4 && obj.Revcomp() {
     obj.rev (c4, c2)
   }
-  name := string(c1)
+  elements := []string{string(c1)}
   if obj.Complement() {
-    name = fmt.Sprintf("%s|%s", name, string(c2))
+    elements = append(elements, string(c2))
   }
   if obj.Reverse() {
-    name = fmt.Sprintf("%s|%s", name, string(c3))
+    elements = append(elements, string(c3))
   }
   if obj.Revcomp() {
-    name = fmt.Sprintf("%s|%s", name, string(c4))
+    elements = append(elements, string(c4))
   }
-  return KmerClass{K: k, I: i, Name: name}
+  return NewKmerClass(k, i, elements)
 }
 
 /* -------------------------------------------------------------------------- */

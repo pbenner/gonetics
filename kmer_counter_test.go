@@ -78,7 +78,7 @@ func TestKmerCounter1(test *testing.T) {
   kmersCounter, _ := NewKmerCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
   for i, it := 0, counts.Iterate(); it.Ok(); it.Next() {
-    if it.GetName() != r[i] {
+    if it.GetKmer().String() != r[i] {
       test.Error("test failed")
     }
     if it.GetCount() != s[i] {

@@ -23,7 +23,7 @@ import "testing"
 
 /* -------------------------------------------------------------------------- */
 
-func TestKmersCounter1(test *testing.T) {
+func TestKmerCounter1(test *testing.T) {
   r := []string{
     "acgt|tgca|tgca|acgt",
     "acnt|tgna|tnca|angt",
@@ -75,7 +75,7 @@ func TestKmersCounter1(test *testing.T) {
     1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 2, 1, 1, 2 }
 
-  kmersCounter, _ := NewKmersCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
+  kmersCounter, _ := NewKmerCounter(4, 5, true, true, true, nil, GappedNucleotideAlphabet{})
   counts := kmersCounter.CountKmers([]byte("acgtcgcg"))
   for i, it := 0, counts.Iterate(); it.Ok(); it.Next() {
     if it.GetName() != r[i] {

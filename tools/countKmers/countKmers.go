@@ -192,7 +192,7 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(config Config, kmersCounter *KmersCounter, sequence []byte) KmerCounts {
+func scanSequence(config Config, kmersCounter *KmerCounter, sequence []byte) KmerCounts {
   if config.Binary {
     return kmersCounter.IdentifyKmers(sequence)
   } else {
@@ -207,9 +207,9 @@ func countKmers(config Config, n, m int, filenameRegions, filenameFasta, filenam
   granges, sequences := ImportData(config, filenameRegions, filenameFasta)
 
   // create a KmersCounter for each thread
-  kmersCounter := make([]*KmersCounter, pool.NumberOfThreads())
+  kmersCounter := make([]*KmerCounter, pool.NumberOfThreads())
   for i := 0; i < pool.NumberOfThreads(); i++ {
-    if r, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); err != nil {
+    if r, err := NewKmerCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); err != nil {
       log.Fatal(err)
     } else {
       kmersCounter[i] = r

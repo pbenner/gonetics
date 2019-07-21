@@ -21,9 +21,10 @@ package gonetics
 //import "fmt"
 import "sort"
 
-/* -------------------------------------------------------------------------- */
+/* K-mer equivalence class
+ * -------------------------------------------------------------------------- */
 
-type Kmer struct {
+type KmerClass struct {
   // K-mer ID
   K    int
   I    int
@@ -31,7 +32,7 @@ type Kmer struct {
   Name string
 }
 
-func (obj Kmer) Equals(b Kmer) bool {
+func (obj KmerClass) Equals(b KmerClass) bool {
   if obj.K != b.K {
     return false
   }
@@ -43,7 +44,7 @@ func (obj Kmer) Equals(b Kmer) bool {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerList []Kmer
+type KmerList []KmerClass
 
 func (obj KmerList) Clone() KmerList {
   r := make(KmerList, len(obj))
@@ -98,7 +99,7 @@ func (obj KmerList) Union(b ...KmerList) KmerList {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerSet map[Kmer]struct{}
+type KmerSet map[KmerClass]struct{}
 
 func (obj KmerSet) AsList() KmerList {
   r := make(KmerList, len(obj))
@@ -116,7 +117,7 @@ type KmerCounts struct {
   // this is a sorted list of k-mers and might contain more entries than
   // the counts map
   Kmers  KmerList
-  Counts map[Kmer]int
+  Counts map[KmerClass]int
 }
 
 func (obj KmerCounts) Len() int {
@@ -135,7 +136,7 @@ func (obj KmerCounts) At(i int) int {
   }
 }
 
-func (obj KmerCounts) GetCount(kmer Kmer) int {
+func (obj KmerCounts) GetCount(kmer KmerClass) int {
   if c, ok := obj.Counts[kmer]; ok {
     return c
   } else {
@@ -143,75 +144,10 @@ func (obj KmerCounts) GetCount(kmer Kmer) int {
   }
 }
 
-func (obj KmerCounts) GetKmer(i int) Kmer {
+func (obj KmerCounts) GetKmer(i int) KmerClass {
   return obj.Kmers[i]
 }
 
 func (obj KmerCounts) Iterate() KmerCountsIterator {
   return KmerCountsIterator{obj, 0}
-}
-
-/* -------------------------------------------------------------------------- */
-
-type KmerCountsList struct {
-  Kmers    KmerList
-  Counts []map[Kmer]int
-}
-
-func NewKmerCountsList(counts ...KmerCounts) KmerCountsList {
-  r := KmerCountsList{}
-  return r.Append(counts...)
-}
-
-func (obj KmerCountsList) Append(args ...KmerCounts) KmerCountsList {
-  if len(args) == 0 {
-    return obj
-  }
-  idLists := make([]KmerList, len(args))
-  counts  := obj.Counts
-  for i, c := range args {
-    idLists[i] = c.Kmers
-    counts = append(counts, c.Counts)
-  }
-  ids := obj.Kmers.Union(idLists...)
-  return KmerCountsList{Kmers: ids, Counts: counts}
-}
-
-func (obj KmerCountsList) Len() int {
-  return len(obj.Counts)
-}
-
-func (obj KmerCountsList) At(i int) KmerCounts {
-  return KmerCounts{Kmers: obj.Kmers, Counts: obj.Counts[i]}
-}
-
-func (obj *KmerCountsList) Slice(i, j int) KmerCountsList {
-  return KmerCountsList{Kmers: obj.Kmers, Counts: obj.Counts[i:j]}
-}
-
-/* -------------------------------------------------------------------------- */
-
-type KmerCountsIterator struct {
-  KmerCounts
-  i int
-}
-
-func (obj KmerCountsIterator) Ok() bool {
-  return obj.i < obj.Len()
-}
-
-func (obj KmerCountsIterator) GetKmer() Kmer {
-  return obj.Kmers[obj.i]
-}
-
-func (obj KmerCountsIterator) GetName() string {
-  return obj.Kmers[obj.i].Name
-}
-
-func (obj KmerCountsIterator) GetCount() int {
-  return obj.At(obj.i)
-}
-
-func (obj *KmerCountsIterator) Next() {
-  obj.i++
 }

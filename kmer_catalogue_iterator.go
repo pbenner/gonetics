@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-type KmersCatalogueIterator struct {
+type KmerCatalogueIterator struct {
   names []string
   ids   []int
   i       int
@@ -30,7 +30,7 @@ type KmersCatalogueIterator struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersCatalogueIterator(kmersSet KmersCatalogue) KmersCatalogueIterator {
+func NewKmerCatalogueIterator(kmersSet KmerCatalogue) KmerCatalogueIterator {
   names := []string{}
   ids   := []int{}
   for k := 0; k < len(kmersSet.names); k++ {
@@ -44,23 +44,23 @@ func NewKmersCatalogueIterator(kmersSet KmersCatalogue) KmersCatalogueIterator {
     names = append(names, n...)
     ids   = append(ids,   i...)
   }
-  return KmersCatalogueIterator{names: names, ids: ids, i: 0}
+  return KmerCatalogueIterator{names: names, ids: ids, i: 0}
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmersCatalogueIterator) Ok() bool {
+func (obj KmerCatalogueIterator) Ok() bool {
   return obj.i < len(obj.names)
 }
 
-func (obj KmersCatalogueIterator) Get() string {
+func (obj KmerCatalogueIterator) Get() string {
   return obj.names[obj.i]
 }
 
-func (obj KmersCatalogueIterator) GetId() int {
+func (obj KmerCatalogueIterator) GetId() int {
   return obj.ids[obj.i]
 }
 
-func (obj *KmersCatalogueIterator) Next() {
+func (obj *KmerCatalogueIterator) Next() {
   obj.i++
 }

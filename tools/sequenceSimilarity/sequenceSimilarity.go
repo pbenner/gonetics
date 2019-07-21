@@ -159,7 +159,7 @@ func ImportData(config Config, filenameRegions, filenameFasta string) (GRanges, 
 
 /* -------------------------------------------------------------------------- */
 
-func scanSequence(config Config, kmersCounter *KmersCounter, sequence []byte) KmerCounts {
+func scanSequence(config Config, kmersCounter *KmerCounter, sequence []byte) KmerCounts {
   if config.Binary {
     return kmersCounter.IdentifyKmers(sequence)
   } else {
@@ -253,7 +253,7 @@ func computeStepSize(config Config, n int) int {
 func sequenceSimilarity(config Config, n, m int, filenameRegions, filenameReference, filenameFasta, filenameOut string) {
   pool := threadpool.New(config.Threads, 100*config.Threads)
 
-  kmersCounter, err := NewKmersCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); if err != nil {
+  kmersCounter, err := NewKmerCounter(n, m, config.Complement, config.Reverse, config.Revcomp, config.MaxAmbiguous, config.Alphabet); if err != nil {
     log.Fatal(err)
   }
   // import reference sequence

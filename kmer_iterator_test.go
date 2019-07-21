@@ -23,7 +23,7 @@ import "testing"
 
 /* -------------------------------------------------------------------------- */
 
-func TestKmersIterator1(t *testing.T) {
+func TestKmerIterator1(t *testing.T) {
   c := "cgta"
   r := []string{
     "acgtaa",
@@ -44,7 +44,7 @@ func TestKmersIterator1(t *testing.T) {
     "tcgtat" }
 
   i := 0
-  for it := NewKmersCylinderIterator(6, 2, NucleotideAlphabet{}, 1, c); it.Ok(); it.Next() {
+  for it := NewKmerCylinderIterator(6, 2, NucleotideAlphabet{}, 1, c); it.Ok(); it.Next() {
     if r[i] != it.Get() {
       t.Error("test failed")
     }
@@ -52,7 +52,7 @@ func TestKmersIterator1(t *testing.T) {
   }
 }
 
-func TestKmersIterator2(test *testing.T) {
+func TestKmerIterator2(test *testing.T) {
   r := []string{
     "ctaaa",
     "ctaca",
@@ -71,7 +71,7 @@ func TestKmersIterator2(test *testing.T) {
     "cttga",
     "cttta" }
 
-  it := NewKmersInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", false)
+  it := NewKmerInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", false)
   for i := 0; it.Ok(); it.Next() {
     if it.Get() != r[i] {
       test.Error("test failed")
@@ -80,7 +80,7 @@ func TestKmersIterator2(test *testing.T) {
   }
 }
 
-func TestKmersIterator3(test *testing.T) {
+func TestKmerIterator3(test *testing.T) {
   r := []string{
     "ctnna",
     "ctnaa",
@@ -108,7 +108,7 @@ func TestKmersIterator3(test *testing.T) {
     "cttga",
     "cttta" }
 
-  it := NewKmersInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", true)
+  it := NewKmerInstantiationIterator(GappedNucleotideAlphabet{}, "ctnna", true)
   for i := 0; it.Ok(); it.Next() {
     if it.Get() != r[i] {
       test.Error("test failed")

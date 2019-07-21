@@ -22,7 +22,7 @@ package gonetics
 
 /* -------------------------------------------------------------------------- */
 
-type KmersIterator struct {
+type KmerIterator struct {
   c  []byte
   al   ComplementableAlphabet
   ok   bool
@@ -30,23 +30,23 @@ type KmersIterator struct {
   na   int
 }
 
-func NewKmersIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet) KmersIterator {
+func NewKmerIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet) KmerIterator {
   c := make([]byte, k)
   for i := 0; i < k; i++ {
     c[i], _ = alphabet.Decode(0)
   }
-  return KmersIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous}
+  return KmerIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous}
 }
 
-func (obj KmersIterator) Get() string {
+func (obj KmerIterator) Get() string {
   return string(obj.c)
 }
 
-func (obj KmersIterator) Ok() bool {
+func (obj KmerIterator) Ok() bool {
   return obj.ok
 }
 
-func (obj *KmersIterator) Next() {
+func (obj *KmerIterator) Next() {
   k := len(obj.c)
   // increment d
   for i := 0; i < k; {
@@ -73,7 +73,7 @@ func (obj *KmersIterator) Next() {
   obj.ok = false
 }
 
-func (obj KmersIterator) incrementPosition(i int) bool {
+func (obj KmerIterator) incrementPosition(i int) bool {
   if c, _ := obj.al.Code(obj.c[i]); int(c+1) < obj.al.Length() {
     obj.c[i], _ = obj.al.Decode(c+1)
     return true
@@ -85,7 +85,7 @@ func (obj KmersIterator) incrementPosition(i int) bool {
 
 /* -------------------------------------------------------------------------- */
 
-type KmersCylinderIterator struct {
+type KmerCylinderIterator struct {
   c  []byte
   al   ComplementableAlphabet
   ok   bool
@@ -95,7 +95,7 @@ type KmersCylinderIterator struct {
   m    int
 }
 
-func NewKmersCylinderIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet, j int, a_ string) KmersCylinderIterator {
+func NewKmerCylinderIterator(k int, maxAmbiguous int, alphabet ComplementableAlphabet, j int, a_ string) KmerCylinderIterator {
   a := []byte(a_)
   m := j + len(a)
   c := make([]byte, k)
@@ -108,18 +108,18 @@ func NewKmersCylinderIterator(k int, maxAmbiguous int, alphabet ComplementableAl
   for i := j; i < m; i++ {
     c[i] = a[i-j]
   }
-  return KmersCylinderIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous, j: j, m: m}
+  return KmerCylinderIterator{c: c, al: alphabet, ok: true, ma: maxAmbiguous, j: j, m: m}
 }
 
-func (obj KmersCylinderIterator) Get() string {
+func (obj KmerCylinderIterator) Get() string {
   return string(obj.c)
 }
 
-func (obj KmersCylinderIterator) Ok() bool {
+func (obj KmerCylinderIterator) Ok() bool {
   return obj.ok
 }
 
-func (obj *KmersCylinderIterator) Next() {
+func (obj *KmerCylinderIterator) Next() {
   k := len(obj.c)
   i := k-1
   // skip fixed sub-k-mer
@@ -155,7 +155,7 @@ func (obj *KmersCylinderIterator) Next() {
   obj.ok = false
 }
 
-func (obj KmersCylinderIterator) incrementPosition(i int) bool {
+func (obj KmerCylinderIterator) incrementPosition(i int) bool {
   if c, _ := obj.al.Code(obj.c[i]); int(c+1) < obj.al.Length() {
     obj.c[i], _ = obj.al.Decode(c+1)
     return true
@@ -167,7 +167,7 @@ func (obj KmersCylinderIterator) incrementPosition(i int) bool {
 
 /* -------------------------------------------------------------------------- */
 
-type KmersInstantiationIterator struct {
+type KmerInstantiationIterator struct {
   a     []byte
   c     []byte
   b   [][]byte
@@ -177,7 +177,7 @@ type KmersInstantiationIterator struct {
   al      ComplementableAlphabet
 }
 
-func NewKmersInstantiationIterator(alphabet ComplementableAlphabet, a_ string, partial bool) KmersInstantiationIterator {
+func NewKmerInstantiationIterator(alphabet ComplementableAlphabet, a_ string, partial bool) KmerInstantiationIterator {
   a  := []byte(a_)
   k  := len(a)
   c  := make(  []byte, k)
@@ -208,18 +208,18 @@ func NewKmersInstantiationIterator(alphabet ComplementableAlphabet, a_ string, p
     ok = true
   }
   
-  return KmersInstantiationIterator{a: a, c: c, b: b, j: j, ok: ok, partial: partial, al: alphabet}
+  return KmerInstantiationIterator{a: a, c: c, b: b, j: j, ok: ok, partial: partial, al: alphabet}
 }
 
-func (obj KmersInstantiationIterator) Get() string {
+func (obj KmerInstantiationIterator) Get() string {
   return string(obj.c)
 }
 
-func (obj KmersInstantiationIterator) Ok() bool {
+func (obj KmerInstantiationIterator) Ok() bool {
   return obj.ok
 }
 
-func (obj *KmersInstantiationIterator) Next() {
+func (obj *KmerInstantiationIterator) Next() {
   // find next position where an update is possible
   i := len(obj.b)-1
   for i >= 0 && (len(obj.b[i]) == 0 || len(obj.b[i]) == obj.j[i]) {

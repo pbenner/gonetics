@@ -23,8 +23,8 @@ import "strings"
 
 /* -------------------------------------------------------------------------- */
 
-type KmersCounter struct {
-  KmersCatalogue
+type KmerCounter struct {
+  KmerCatalogue
   kmap      []map[int][]int // for each k, map k-mer [ID] (with no
                             // ambiguous characters) to matching k-mers [ID]
   frozen      bool
@@ -32,12 +32,12 @@ type KmersCounter struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmersCounter, error) {
-  r := KmersCounter{}
-  if s, err := NewKmersCatalogue(n, m, comp, rev, rc, maxAmbiguous, al); err != nil {
+func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmerCounter, error) {
+  r := KmerCounter{}
+  if s, err := NewKmerCatalogue(n, m, comp, rev, rc, maxAmbiguous, al); err != nil {
     return nil, err
   } else {
-    r.KmersCatalogue = *s
+    r.KmerCatalogue = *s
   }
   r.kmap = make([]map[int][]int, m-n+1)
   for k := n; k <= m; k++ {
@@ -48,9 +48,9 @@ func NewKmersCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Comple
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersCounter) generateMatchingKmersRec(dest, src []byte, m map[int]struct{}, i int) {
+func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]struct{}, i int) {
   if i == len(src) {
-    id := obj.KmersCatalogue.GetId(string(dest))
+    id := obj.KmerCatalogue.GetId(string(dest))
     m[id] = struct{}{}
   } else {
     x, _ := obj.al.Matching(src[i])
@@ -64,18 +64,18 @@ func (obj *KmersCounter) generateMatchingKmersRec(dest, src []byte, m map[int]st
   }
 }
 
-func (obj *KmersCounter) generateMatchingKmers(dest, src []byte, m map[int]struct{}) {
+func (obj *KmerCounter) generateMatchingKmers(dest, src []byte, m map[int]struct{}) {
   obj.generateMatchingKmersRec(dest, src, m, 0)
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersCounter) addKmer(c []byte, id int) []int {
+func (obj *KmerCounter) addKmer(c []byte, id int) []int {
   k := len(c)
   d := make([]byte, k)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range obj.KmersCatalogue.GetNames(string(c)) {
+  for _, kmer := range obj.KmerCatalogue.GetNames(string(c)) {
     obj.generateMatchingKmers(d, []byte(kmer), m)
   }
   for id, _ := range m {
@@ -85,9 +85,9 @@ func (obj *KmersCounter) addKmer(c []byte, id int) []int {
   return i
 }
 
-func (obj *KmersCounter) matchingKmers(c []byte) []int {
+func (obj *KmerCounter) matchingKmers(c []byte) []int {
   k := len(c)
-  i := obj.KmersCatalogue.GetId(string(c))
+  i := obj.KmerCatalogue.GetId(string(c))
   if r, ok := obj.kmap[k-obj.n][i]; ok {
     return r
   } else {
@@ -101,7 +101,7 @@ func (obj *KmersCounter) matchingKmers(c []byte) []int {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersCounter) countKmers(sequence []byte, k int) KmerCounts {
+func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
   c := []byte(strings.ToLower(string(sequence)))
   r := make(map[int]int)
   // loop over sequence
@@ -114,10 +114,10 @@ func (obj *KmersCounter) countKmers(sequence []byte, k int) KmerCounts {
   }
   // construct a list of k-mers
   kmers  := make(KmerList, len(r))
-  counts := make(map[Kmer]int)
+  counts := make(map[KmerClass]int)
   i      := 0
   for id, c := range r {
-    kmers[i] = Kmer{K: k, I: id, Name: obj.KmersCatalogue.IdToName(k, id) }
+    kmers[i] = KmerClass{K: k, I: id, Name: obj.KmerCatalogue.IdToName(k, id) }
     counts[kmers[i]] = c
     i++
   }
@@ -125,9 +125,9 @@ func (obj *KmersCounter) countKmers(sequence []byte, k int) KmerCounts {
   return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) CountKmers(sequence []byte) KmerCounts {
+func (obj *KmerCounter) CountKmers(sequence []byte) KmerCounts {
   kmers  := KmerList{}
-  counts := make(map[Kmer]int)
+  counts := make(map[KmerClass]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.countKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
@@ -138,7 +138,7 @@ func (obj *KmersCounter) CountKmers(sequence []byte) KmerCounts {
   return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) identifyKmers(sequence []byte, k int) KmerCounts {
+func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   c := []byte(strings.ToLower(string(sequence)))
   r := make(map[int]struct{})
   // loop over sequence
@@ -152,10 +152,10 @@ func (obj *KmersCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   }
   // construct a list of k-mers
   kmers  := make(KmerList, len(r))
-  counts := make(map[Kmer]int)
+  counts := make(map[KmerClass]int)
   i      := 0
   for id, _ := range r {
-    kmers[i] = Kmer{K: k, I: id, Name: obj.KmersCatalogue.IdToName(k, id) }
+    kmers[i] = KmerClass{K: k, I: id, Name: obj.KmerCatalogue.IdToName(k, id) }
     counts[kmers[i]] = 1
     i++
   }
@@ -163,9 +163,9 @@ func (obj *KmersCounter) identifyKmers(sequence []byte, k int) KmerCounts {
   return KmerCounts{Kmers: kmers, Counts: counts}
 }
 
-func (obj *KmersCounter) IdentifyKmers(sequence []byte) KmerCounts {
+func (obj *KmerCounter) IdentifyKmers(sequence []byte) KmerCounts {
   kmers  := KmerList{}
-  counts := make(map[Kmer]int)
+  counts := make(map[KmerClass]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.identifyKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
@@ -178,34 +178,34 @@ func (obj *KmersCounter) IdentifyKmers(sequence []byte) KmerCounts {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmersCounter) MinKmerSize() int {
+func (obj *KmerCounter) MinKmerSize() int {
   return obj.n
 }
 
-func (obj *KmersCounter) MaxKmerSize() int {
+func (obj *KmerCounter) MaxKmerSize() int {
   return obj.m
 }
 
-func (obj *KmersCounter) MaxAmbiguous() []int {
+func (obj *KmerCounter) MaxAmbiguous() []int {
   return obj.ma
 }
 
-func (obj *KmersCounter) Complement() bool {
+func (obj *KmerCounter) Complement() bool {
   return obj.complement
 }
 
-func (obj *KmersCounter) Reverse() bool {
+func (obj *KmerCounter) Reverse() bool {
   return obj.reverse
 }
 
-func (obj *KmersCounter) Revcomp() bool {
+func (obj *KmerCounter) Revcomp() bool {
   return obj.revcomp
 }
 
-func (obj *KmersCounter) Alphabet() ComplementableAlphabet {
+func (obj *KmerCounter) Alphabet() ComplementableAlphabet {
   return obj.al
 }
 
-func (obj *KmersCounter) Freeze() {
+func (obj *KmerCounter) Freeze() {
   obj.frozen = true
 }

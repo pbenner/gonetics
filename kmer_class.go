@@ -68,15 +68,15 @@ func (obj KmerClass) Equals(b KmerClass) bool {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerList []KmerClass
+type KmerClassList []KmerClass
 
-func (obj KmerList) Clone() KmerList {
-  r := make(KmerList, len(obj))
+func (obj KmerClassList) Clone() KmerClassList {
+  r := make(KmerClassList, len(obj))
   copy(r, obj)
   return r
 }
 
-func (obj KmerList) Equals(b KmerList) bool {
+func (obj KmerClassList) Equals(b KmerClassList) bool {
   if len(obj) != len(b) {
     return false
   }
@@ -88,11 +88,11 @@ func (obj KmerList) Equals(b KmerList) bool {
   return true
 }
 
-func (obj KmerList) Len() int {
+func (obj KmerClassList) Len() int {
   return len(obj)
 }
 
-func (obj KmerList) Less(i, j int) bool {
+func (obj KmerClassList) Less(i, j int) bool {
   if obj[i].K != obj[j].K {
     return obj[i].K < obj[j].K
   } else {
@@ -100,16 +100,16 @@ func (obj KmerList) Less(i, j int) bool {
   }
 }
 
-func (obj KmerList) Swap(i, j int) {
+func (obj KmerClassList) Swap(i, j int) {
   obj[i], obj[j] = obj[j], obj[i]
 }
 
-func (obj KmerList) Sort() {
+func (obj KmerClassList) Sort() {
   sort.Sort(obj)
 }
 
-func (obj KmerList) Union(b ...KmerList) KmerList {
-  m := make(KmerSet)
+func (obj KmerClassList) Union(b ...KmerClassList) KmerClassList {
+  m := make(KmerClassSet)
   for _, class := range obj {
     m[class.KmerClassId] = class.Elements
   }
@@ -123,10 +123,10 @@ func (obj KmerList) Union(b ...KmerList) KmerList {
 
 /* -------------------------------------------------------------------------- */
 
-type KmerSet map[KmerClassId][]string
+type KmerClassSet map[KmerClassId][]string
 
-func (obj KmerSet) AsList() KmerList {
-  r := make(KmerList, len(obj))
+func (obj KmerClassSet) AsList() KmerClassList {
+  r := make(KmerClassList, len(obj))
   i := 0
   for id, elements := range obj {
     r[i].K = id.K

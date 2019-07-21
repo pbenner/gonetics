@@ -25,7 +25,7 @@ package gonetics
 type KmerCounts struct {
   // this is a sorted list of k-mers and might contain more entries than
   // the counts map
-  Kmers  KmerList
+  Kmers  KmerClassList
   Counts map[KmerClassId]int
 }
 
@@ -64,7 +64,7 @@ func (obj KmerCounts) Iterate() KmerCountsIterator {
 /* -------------------------------------------------------------------------- */
 
 type KmerCountsList struct {
-  Kmers    KmerList
+  Kmers    KmerClassList
   Counts []map[KmerClassId]int
 }
 
@@ -77,7 +77,7 @@ func (obj KmerCountsList) Append(args ...KmerCounts) KmerCountsList {
   if len(args) == 0 {
     return obj
   }
-  idLists := make([]KmerList, len(args))
+  idLists := make([]KmerClassList, len(args))
   counts  := obj.Counts
   for i, c := range args {
     idLists[i] = c.Kmers

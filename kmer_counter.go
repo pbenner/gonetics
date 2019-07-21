@@ -112,7 +112,7 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
     }
   }
   // construct a list of k-mers
-  kmers  := make(KmerList, len(r))
+  kmers  := make(KmerClassList, len(r))
   counts := make(map[KmerClassId]int)
   i      := 0
   for id, c := range r {
@@ -125,7 +125,7 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
 }
 
 func (obj *KmerCounter) CountKmers(sequence []byte) KmerCounts {
-  kmers  := KmerList{}
+  kmers  := KmerClassList{}
   counts := make(map[KmerClassId]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.countKmers(sequence, k)
@@ -150,7 +150,7 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
     }
   }
   // construct a list of k-mers
-  kmers  := make(KmerList, len(r))
+  kmers  := make(KmerClassList, len(r))
   counts := make(map[KmerClassId]int)
   i      := 0
   for id, _ := range r {
@@ -163,7 +163,7 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
 }
 
 func (obj *KmerCounter) IdentifyKmers(sequence []byte) KmerCounts {
-  kmers  := KmerList{}
+  kmers  := KmerClassList{}
   counts := make(map[KmerClassId]int)
   for k := obj.n; k <= obj.m; k++ {
     kmerCounts := obj.identifyKmers(sequence, k)

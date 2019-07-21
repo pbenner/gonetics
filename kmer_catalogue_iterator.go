@@ -23,7 +23,7 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 type KmerCatalogueIterator struct {
-  kmers KmerList
+  kmers KmerClassList
   ids   []int
   i       int
 }
@@ -31,7 +31,7 @@ type KmerCatalogueIterator struct {
 /* -------------------------------------------------------------------------- */
 
 func NewKmerCatalogueIterator(catalogue KmerCatalogue) KmerCatalogueIterator {
-  kmers := KmerList{}
+  kmers := KmerClassList{}
   for k := 0; k < len(catalogue.elements); k++ {
     for i, elements := range catalogue.elements[k] {
       kmers = append(kmers, NewKmerClass(k, i, elements))

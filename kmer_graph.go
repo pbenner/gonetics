@@ -90,11 +90,14 @@ func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
   // first add observed k-mers (i.e. those without any
   // ambiguous characters)
   for _, kmer := range kmers[0] {
-    nodes[0] = append(nodes[0], obj.newNode(kmer))
+    nodes[0] = append(nodes[0], obj.newNode1(kmer))
   }
   // add k-mers with ambiguous characters to the graph
   for j := 1; j < k; j++ {
-    // TODO
+    // loop over k-mers with j ambiguous characters
+    for _, kmer := range kmers[j] {
+      nodes[j] = append(nodes[j], obj.newNode2(kmer, nodes[j-1]))
+    }
   }
 }
 
@@ -107,23 +110,15 @@ func (obj *KmerGraph) constructGraph() {
   }
 }
 
-func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
-  if node, ok := obj.nodes[kmer.KmerClassId]; ok {
-    return node
-  }
-  r := KmerGraphNode{}
-  m := kmer.CountAmbiguous(obj.catalogue.al)
-  if m == 0 {
-    // this k-mer has no ambiguous positions, fill
-    // intra, extra, and infra k-mers
-    obj.computeIntraAndExtra(&r, kmer)
-    //r.Infra = obj.computeInfra(kmer)
-  } else {
-    // this k-mer has ambiguous entries, fill
-    // infra and supra k-mers
-    //obj.computeInfra(kmer)
-    //obj.computeSupra(kmer)
-  }
+func (obj *KmerGraph) newNode1(kmer KmerClass) *KmerGraphNode {
+  r := KmerGraphNode{Kmer: kmer}
+  obj.computeIntraAndExtra(&r, kmer)
+  obj.nodes[kmer.KmerClassId] = &r
+  return &r
+}
+
+func (obj *KmerGraph) newNode2(kmer KmerClass, nodes []*KmerGraphNode) *KmerGraphNode {
+  r := KmerGraphNode{Kmer: kmer}
   obj.nodes[kmer.KmerClassId] = &r
   return &r
 }

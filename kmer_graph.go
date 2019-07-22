@@ -43,12 +43,20 @@ type KmerGraphNode struct {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerGraph) RelatedKmers(kmer string) KmerClassList {
+func (obj *KmerGraph) GetNode(kmer string) *KmerGraphNode {
   cl, ok := obj.catalogue.GetKmerClassIfPresent(kmer)
   if !ok {
     return nil
   }
   if node, ok := obj.nodes[cl.KmerClassId]; !ok {
+    return nil
+  } else {
+    return node
+  }
+}
+
+func (obj *KmerGraph) RelatedKmers(kmer string) KmerClassList {
+  if node := obj.GetNode(kmer); node == nil {
     return nil
   } else {
     r := KmerClassList(nil)

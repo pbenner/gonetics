@@ -79,7 +79,8 @@ func (obj *KmerGraph) RelatedKmers(kmer string) KmerClassList {
 /* -------------------------------------------------------------------------- */
 
 func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
-  kmers := make([]KmerClassList, k)
+  kmers := make(  [] KmerClassList, k)
+  nodes := make([][]*KmerGraphNode, k)
   // sort k-mers by number of ambiguous characters
   for i, elements := range obj.catalogue.elements[k-n] {
     kmer := NewKmerClass(k, i, elements)
@@ -89,7 +90,7 @@ func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
   // first add observed k-mers (i.e. those without any
   // ambiguous characters)
   for _, kmer := range kmers[0] {
-    obj.newNode(kmer)
+    nodes[0] = append(nodes[0], obj.newNode(kmer))
   }
   // add k-mers with ambiguous characters to the graph
   for j := 1; j < k; j++ {

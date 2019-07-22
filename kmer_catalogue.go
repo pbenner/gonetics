@@ -25,8 +25,8 @@ import "sort"
 
 type KmerCatalogue struct {
   KmerEquivalenceRelation
-  elements []map[int][]string   // k-mer names (equivalent k-mers separated by pipe)
-  idmap    []map[string]int     // unique k-mer IDs
+  elements []map[int][]string   // map k-mer class ID (k,i) to class elements
+  idmap    []map[string]int     // map k-mer (class instances) to class ID (k,i)
 }
 
 /* -------------------------------------------------------------------------- */

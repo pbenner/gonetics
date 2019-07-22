@@ -70,6 +70,22 @@ func (obj *KmerGraph) RelatedKmers(kmer string) KmerClassList {
 
 /* -------------------------------------------------------------------------- */
 
+func (obj *KmerGraph) constructGraph() {
+  n := obj.catalogue.n
+  m := obj.catalogue.m
+  // construct graph of observed k-mers (i.e. those without any
+  // ambiguous characters)
+  for k := n; k <= m; k++ {
+    for i, elements := range obj.catalogue.elements[k-n] {
+      kmer := NewKmerClass(k, i, elements)
+      if kmer.CountAmbiguous(obj.catalogue.al) == 0 {
+        obj.newNode(kmer)
+      }
+    }
+  }
+  // add k-mers with ambiguous characters to the graph
+}
+
 func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
   if node, ok := obj.nodes[kmer.KmerClassId]; ok {
     return node

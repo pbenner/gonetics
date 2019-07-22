@@ -25,8 +25,9 @@ import "strings"
 
 type KmerCounter struct {
   KmerCatalogue
-  kmap      []map[int][]int // for each k, map k-mer class [ID] (with no
-                            // ambiguous characters) to matching k-mer classes [ID]
+  // map of observed k-mers (i.e. k-mers without any ambiguous characters)
+  // to matching k-mers
+  kmap      []map[int][]int
   frozen      bool
 }
 

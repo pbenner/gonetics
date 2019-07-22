@@ -66,6 +66,17 @@ func (obj KmerClass) Equals(b KmerClass) bool {
   return true
 }
 
+func (obj KmerClass) Matches(b KmerClass, alphabet ComplementableAlphabet) bool {
+  for _, elem1 := range obj.Elements {
+    for _, elem2 := range b.Elements {
+      if Kmer(elem1).Matches(Kmer(elem2), alphabet) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 func (obj KmerClass) CountAmbiguous(alphabet ComplementableAlphabet) int {
   m := 0
   s := []byte(obj.Elements[0])

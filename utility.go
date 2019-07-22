@@ -26,7 +26,6 @@ import "io/ioutil"
 import "math"
 import "regexp"
 import "strings"
-import "sort"
 import "os"
 import "unicode"
 
@@ -161,56 +160,15 @@ func bufioReadLine(reader *bufio.Reader) (string, error) {
 
 /* -------------------------------------------------------------------------- */
 
-type sortIntPairs struct {
-  a []int
-  b []int
-}
-
-func (obj sortIntPairs) Len() int {
-  return len(obj.a)
-}
-
-func (obj sortIntPairs) Less(i, j int) bool {
-  return obj.a[i] < obj.a[j]
-}
-
-func (obj sortIntPairs) Swap(i, j int) {
-  obj.a[i], obj.a[j] = obj.a[j], obj.a[i]
-  obj.b[i], obj.b[j] = obj.b[j], obj.b[i]
-}
-
-func (obj sortIntPairs) Sort() {
-  sort.Sort(obj)
-}
-
-func (obj sortIntPairs) SortRev() {
-  sort.Sort(sort.Reverse(obj))
-}
-
-/* -------------------------------------------------------------------------- */
-
-type sortIntStringPairs struct {
-  a []int
-  b []string
-}
-
-func (obj sortIntStringPairs) Len() int {
-  return len(obj.a)
-}
-
-func (obj sortIntStringPairs) Less(i, j int) bool {
-  return obj.a[i] < obj.a[j]
-}
-
-func (obj sortIntStringPairs) Swap(i, j int) {
-  obj.a[i], obj.a[j] = obj.a[j], obj.a[i]
-  obj.b[i], obj.b[j] = obj.b[j], obj.b[i]
-}
-
-func (obj sortIntStringPairs) Sort() {
-  sort.Sort(obj)
-}
-
-func (obj sortIntStringPairs) SortRev() {
-  sort.Sort(sort.Reverse(obj))
+func byteSuperset(a, b []byte) bool {
+  m := make(map[byte]struct{})
+  for _, c := range a {
+    m[c] = struct{}{}
+  }
+  for _, c := range b {
+    if _, ok := m[c]; !ok {
+      return false
+    }
+  }
+  return true
 }

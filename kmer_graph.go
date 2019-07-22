@@ -112,26 +112,27 @@ func (obj *KmerGraph) constructGraph() {
 
 func (obj *KmerGraph) newNode1(kmer KmerClass) *KmerGraphNode {
   r := KmerGraphNode{Kmer: kmer}
-  obj.computeIntraAndExtra(&r, kmer)
+  obj.computeIntraAndExtra(&r)
   obj.nodes[kmer.KmerClassId] = &r
   return &r
 }
 
 func (obj *KmerGraph) newNode2(kmer KmerClass, nodes []*KmerGraphNode) *KmerGraphNode {
   r := KmerGraphNode{Kmer: kmer}
+  obj.computeInfraAndSupra(&r, nodes)
   obj.nodes[kmer.KmerClassId] = &r
   return &r
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode, kmer KmerClass) {
-  if obj.catalogue.n > kmer.K-1 {
+func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode) {
+  if obj.catalogue.n > node1.Kmer.K-1 {
     return
   }
   // two possible intra-k-mers
-  s1 := kmer.Elements[0][0:kmer.K-1]
-  s2 := kmer.Elements[0][1:kmer.K]
+  s1 := node1.Kmer.Elements[0][0:node1.Kmer.K-1]
+  s2 := node1.Kmer.Elements[0][1:node1.Kmer.K]
   if node2 := obj.GetNode(s1); node2 != nil {
     node2.Extra = append(node2.Extra, node1)
     node1.Intra = append(node1.Intra, node2)
@@ -139,5 +140,14 @@ func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode, kmer KmerClass)
   if node2 := obj.GetNode(s2); node2 != nil {
     node2.Extra = append(node2.Extra, node1)
     node1.Intra = append(node1.Intra, node2)
+  }
+}
+
+func (obj *KmerGraph) computeInfraAndSupra(node1 *KmerGraphNode, nodes []*KmerGraphNode) {
+  for _, node2 := range nodes {
+    if node1.Kmer.Matches(node2.Kmer, obj.catalogue.al) {
+      node1.Supra = append(node1.Supra, node2)
+      node2.Infra = append(node2.Infra, node1)
+    }
   }
 }

@@ -51,6 +51,18 @@ func NewKmerCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Compl
 
 /* -------------------------------------------------------------------------- */
 
+func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
+  k := len(kmer)
+  if k < obj.n || k > obj.m {
+    panic("k-mer has invalid length")
+  }
+  if i, ok := obj.idmap[k-obj.n][kmer]; ok {
+    return NewKmerClass(k, i, obj.elements[k-obj.n][i]), true
+  } else {
+    return KmerClass{}, false
+  }
+}
+
 func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
   k := len(kmer)
   if k < obj.n || k > obj.m {

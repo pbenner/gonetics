@@ -66,6 +66,36 @@ func (obj KmerClass) Equals(b KmerClass) bool {
   return true
 }
 
+func (obj KmerClass) CountAmbiguous(alphabet ComplementableAlphabet) int {
+  m := 0
+  s := []byte(obj.Elements[0])
+  for i := 0; i < len(s); i++ {
+    if ok, err := alphabet.IsAmbiguous(s[i]); err != nil {
+      panic(err)
+    } else {
+      if ok {
+        m++
+      }
+    }
+  }
+  return m
+}
+
+func (obj KmerClass) CountWildcard(alphabet ComplementableAlphabet) int {
+  m := 0
+  s := []byte(obj.Elements[0])
+  for i := 0; i < len(s); i++ {
+    if ok, err := alphabet.IsWildcard(s[i]); err != nil {
+      panic(err)
+    } else {
+      if ok {
+        m++
+      }
+    }
+  }
+  return m
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerClassList []KmerClass

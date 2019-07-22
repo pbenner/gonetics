@@ -84,6 +84,7 @@ func (obj *KmerGraph) constructGraph() {
   // construct graph of observed k-mers (i.e. those without any
   // ambiguous characters)
   for k := n; k <= m; k++ {
+    // smaller k-mers must be added first
     for i, elements := range obj.catalogue.elements[k-n] {
       kmer := NewKmerClass(k, i, elements)
       if kmer.CountAmbiguous(obj.catalogue.al) == 0 {
@@ -103,14 +104,13 @@ func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
   if m == 0 {
     // this k-mer has no ambiguous positions, fill
     // intra, extra, and infra k-mers
-    r.Intra = obj.computeIntra(kmer)
-    r.Extra = obj.computeExtra(kmer)
+    obj.computeIntraAndExtra(&r, kmer)
     //r.Infra = obj.computeInfra(kmer)
   } else {
     // this k-mer has ambiguous entries, fill
     // infra and supra k-mers
-    //r.Infra = obj.computeInfra(kmer)
-    //r.Supra = obj.computeSupra(kmer)
+    //obj.computeInfra(kmer)
+    //obj.computeSupra(kmer)
   }
   obj.nodes[kmer.KmerClassId] = &r
   return &r
@@ -118,39 +118,19 @@ func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerGraph) computeIntra(kmer KmerClass) []*KmerGraphNode {
+func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode, kmer KmerClass) {
   if obj.catalogue.n > kmer.K-1 {
-    return nil
+    return
   }
   // two possible intra-k-mers
   s1 := kmer.Elements[0][0:kmer.K-1]
   s2 := kmer.Elements[0][1:kmer.K]
-  r  := []*KmerGraphNode(nil)
-  if cl, ok := obj.catalogue.GetKmerClassIfPresent(s1); ok {
-    r = append(r, obj.newNode(cl))
+  if node2 := obj.GetNode(s1); node2 != nil {
+    node2.Extra = append(node2.Extra, node1)
+    node1.Intra = append(node1.Intra, node2)
   }
-  if cl, ok := obj.catalogue.GetKmerClassIfPresent(s2); ok {
-    r = append(r, obj.newNode(cl))
+  if node2 := obj.GetNode(s2); node2 != nil {
+    node2.Extra = append(node2.Extra, node1)
+    node1.Intra = append(node1.Intra, node2)
   }
-  return r
-}
-
-func (obj *KmerGraph) computeExtra(kmer KmerClass) []*KmerGraphNode {
-  if obj.catalogue.m < kmer.K+1 {
-    return nil
-  }
-  r   := []*KmerGraphNode(nil)
-  it1 := NewKmerCylinderIterator(kmer.K+1, 0, obj.catalogue.al, 0, kmer.Elements[0])
-  it2 := NewKmerCylinderIterator(kmer.K+1, 0, obj.catalogue.al, 1, kmer.Elements[0])
-  for ; it1.Ok(); it1.Next() {
-    if cl, ok := obj.catalogue.GetKmerClassIfPresent(it1.Get()); ok {
-      r = append(r, obj.newNode(cl))
-    }
-  }
-  for ; it2.Ok(); it2.Next() {
-    if cl, ok := obj.catalogue.GetKmerClassIfPresent(it2.Get()); ok {
-      r = append(r, obj.newNode(cl))
-    }
-  }
-  return r
 }

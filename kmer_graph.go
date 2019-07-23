@@ -73,17 +73,34 @@ func (obj KmerGraph) RelatedKmers(kmer string) KmerClassList {
     for _, n := range node.Intra {
       r = append(r, n.Kmer)
     }
+    {
+      r = append(r, obj.relatedKmersSupra(node)...)
+      r = append(r, obj.relatedKmersInfra(node)...)
+    }
     for _, n := range node.Extra {
       r = append(r, n.Kmer)
     }
-    for _, n := range node.Infra {
-      r = append(r, n.Kmer)
-    }
-    for _, n := range node.Supra {
-      r = append(r, n.Kmer)
-    }
+    r.Sort()
     return r
   }
+}
+
+func (obj KmerGraph) relatedKmersInfra(node *KmerGraphNode) KmerClassList {
+  r := KmerClassList(nil)
+  for _, n := range node.Infra {
+    r = append(r, n.Kmer)
+    r = append(r, obj.relatedKmersInfra(n)...)
+  }
+  return r
+}
+
+func (obj KmerGraph) relatedKmersSupra(node *KmerGraphNode) KmerClassList {
+  r := KmerClassList(nil)
+  for _, n := range node.Supra {
+    r = append(r, n.Kmer)
+    r = append(r, obj.relatedKmersSupra(n)...)
+  }
+  return r
 }
 
 /* -------------------------------------------------------------------------- */

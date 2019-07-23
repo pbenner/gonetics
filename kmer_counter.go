@@ -54,6 +54,7 @@ func (obj *KmerCounter) Clone() *KmerCounter {
   r.KmerCatalogue = *obj.KmerCatalogue.Clone()
   r.kmap = make([]map[int][]int, len(obj.kmap))
   for i := 0; i < len(obj.kmap); i++ {
+    r.kmap[i] = make(map[int][]int)
     for k, v := range obj.kmap[i] {
       r.kmap[i][k] = v
     }

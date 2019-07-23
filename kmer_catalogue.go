@@ -56,11 +56,13 @@ func (obj *KmerCatalogue) Clone() *KmerCatalogue {
   r.idmap    = make([]map[string]int  , len(obj.idmap))
   r.elements = make([]map[int][]string, len(obj.elements))
   for i := 0; i < len(obj.idmap); i++ {
+    r.idmap[i] = make(map[string]int)
     for k, v := range obj.idmap[i] {
       r.idmap[i][k] = v
     }
   }
   for i := 0; i < len(obj.elements); i++ {
+    r.elements[i] = make(map[int][]string)
     for k, v := range obj.elements[i] {
       r.elements[i][k] = v
     }

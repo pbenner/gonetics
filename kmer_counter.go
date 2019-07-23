@@ -178,34 +178,6 @@ func (obj *KmerCounter) IdentifyKmers(sequence []byte) KmerCounts {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerCounter) MinKmerSize() int {
-  return obj.n
-}
-
-func (obj *KmerCounter) MaxKmerSize() int {
-  return obj.m
-}
-
-func (obj *KmerCounter) MaxAmbiguous() []int {
-  return obj.ma
-}
-
-func (obj *KmerCounter) Complement() bool {
-  return obj.complement
-}
-
-func (obj *KmerCounter) Reverse() bool {
-  return obj.reverse
-}
-
-func (obj *KmerCounter) Revcomp() bool {
-  return obj.revcomp
-}
-
-func (obj *KmerCounter) Alphabet() ComplementableAlphabet {
-  return obj.al
-}
-
 func (obj *KmerCounter) Freeze() {
   obj.frozen = true
 }

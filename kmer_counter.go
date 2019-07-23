@@ -69,9 +69,9 @@ func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]str
     r := obj.KmerCatalogue.GetKmerClass(string(dest))
     m[r.I] = struct{}{}
   } else {
-    x, _ := obj.alphabet.Matching(src[i])
+    x, _ := obj.Alphabet.Matching(src[i])
     for _, k := range x {
-      if ok, _ := obj.alphabet.IsWildcard(k); ok && (i == 0 || i == len(src)-1) {
+      if ok, _ := obj.Alphabet.IsWildcard(k); ok && (i == 0 || i == len(src)-1) {
         continue
       }
       dest[i] = k
@@ -97,13 +97,13 @@ func (obj *KmerCounter) addKmer(c []byte, id int) []int {
   for id, _ := range m {
     i = append(i, id)
   }
-  obj.kmap[k-obj.n][id] = i
+  obj.kmap[k-obj.N][id] = i
   return i
 }
 
 func (obj *KmerCounter) matchingKmers(c []byte) []int {
   r := obj.KmerCatalogue.GetKmerClass(string(c))
-  if i, ok := obj.kmap[r.K-obj.n][r.I]; ok {
+  if i, ok := obj.kmap[r.K-obj.N][r.I]; ok {
     return i
   } else {
     if obj.frozen {
@@ -143,7 +143,7 @@ func (obj *KmerCounter) countKmers(sequence []byte, k int) KmerCounts {
 func (obj *KmerCounter) CountKmers(sequence []byte) KmerCounts {
   kmers  := KmerClassList{}
   counts := make(map[KmerClassId]int)
-  for k := obj.n; k <= obj.m; k++ {
+  for k := obj.N; k <= obj.M; k++ {
     kmerCounts := obj.countKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
     for kmerId, c := range kmerCounts.Counts {
@@ -181,7 +181,7 @@ func (obj *KmerCounter) identifyKmers(sequence []byte, k int) KmerCounts {
 func (obj *KmerCounter) IdentifyKmers(sequence []byte) KmerCounts {
   kmers  := KmerClassList{}
   counts := make(map[KmerClassId]int)
-  for k := obj.n; k <= obj.m; k++ {
+  for k := obj.N; k <= obj.M; k++ {
     kmerCounts := obj.identifyKmers(sequence, k)
     kmers = append(kmers, kmerCounts.Kmers...)
     for kmerId, c := range kmerCounts.Counts {

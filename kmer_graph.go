@@ -120,7 +120,7 @@ func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
   // sort k-mers by number of ambiguous characters
   for i, elements := range obj.catalogue.elements[k-n] {
     kmer := NewKmerClass(k, i, elements)
-    j    := kmer.CountAmbiguous(obj.catalogue.alphabet)
+    j    := kmer.CountAmbiguous(obj.catalogue.Alphabet)
     kmers[j] = append(kmers[j], kmer)
   }
   // first add observed k-mers (i.e. those without any
@@ -138,8 +138,8 @@ func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
 }
 
 func (obj *KmerGraph) constructGraph() {
-  n := obj.catalogue.n
-  m := obj.catalogue.m
+  n := obj.catalogue.N
+  m := obj.catalogue.M
   // loop over k-mer sizes, smaller k-mers must be added first
   for k := n; k <= m; k++ {
     obj.constructGraphLoop(k, n, m)
@@ -163,7 +163,7 @@ func (obj *KmerGraph) newNode2(kmer KmerClass, nodes []*KmerGraphNode) *KmerGrap
 /* -------------------------------------------------------------------------- */
 
 func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode) {
-  if obj.catalogue.n > node1.Kmer.K-1 {
+  if obj.catalogue.N > node1.Kmer.K-1 {
     return
   }
   // two possible intra-k-mers
@@ -181,7 +181,7 @@ func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode) {
 
 func (obj *KmerGraph) computeInfraAndSupra(node1 *KmerGraphNode, nodes []*KmerGraphNode) {
   for _, node2 := range nodes {
-    if node1.Kmer.Matches(node2.Kmer, obj.catalogue.alphabet) {
+    if node1.Kmer.Matches(node2.Kmer, obj.catalogue.Alphabet) {
       node1.Supra = append(node1.Supra, node2)
       node2.Infra = append(node2.Infra, node1)
     }

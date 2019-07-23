@@ -39,11 +39,11 @@ func NewKmerCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Compl
 }
 
 func newKmerCatalogue(rel KmerEquivalenceRelation) *KmerCatalogue {
-  idmap    := make([]map[string]int  , rel.m-rel.n+1)
-  elements := make([]map[int][]string, rel.m-rel.n+1)
-  for k := rel.n; k <= rel.m; k++ {
-    idmap   [k-rel.n] = make(map[string]int)
-    elements[k-rel.n] = make(map[int][]string)
+  idmap    := make([]map[string]int  , rel.M-rel.N+1)
+  elements := make([]map[int][]string, rel.M-rel.N+1)
+  for k := rel.N; k <= rel.M; k++ {
+    idmap   [k-rel.N] = make(map[string]int)
+    elements[k-rel.N] = make(map[int][]string)
   }
   r := KmerCatalogue{}
   r.KmerEquivalenceRelation = rel
@@ -78,11 +78,11 @@ func (obj *KmerCatalogue) Clone() *KmerCatalogue {
 
 func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
   k := len(kmer)
-  if k < obj.n || k > obj.m {
+  if k < obj.N || k > obj.M {
     panic("k-mer has invalid length")
   }
-  if i, ok := obj.idmap[k-obj.n][kmer]; ok {
-    return NewKmerClass(k, i, obj.elements[k-obj.n][i]), true
+  if i, ok := obj.idmap[k-obj.N][kmer]; ok {
+    return NewKmerClass(k, i, obj.elements[k-obj.N][i]), true
   } else {
     return KmerClass{}, false
   }
@@ -90,18 +90,18 @@ func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
 
 func (obj *KmerCatalogue) AddKmerClass(kmer KmerClass) {
   for _, s := range kmer.Elements {
-    obj.idmap[kmer.K-obj.n][s] = kmer.I
+    obj.idmap[kmer.K-obj.N][s] = kmer.I
   }
-  obj.elements[kmer.K-obj.n][kmer.I] = kmer.Elements
+  obj.elements[kmer.K-obj.N][kmer.I] = kmer.Elements
 }
 
 func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
   k := len(kmer)
-  if k < obj.n || k > obj.m {
+  if k < obj.N || k > obj.M {
     panic("k-mer has invalid length")
   }
-  if i, ok := obj.idmap[k-obj.n][kmer]; ok {
-    return NewKmerClass(k, i, obj.elements[k-obj.n][i])
+  if i, ok := obj.idmap[k-obj.N][kmer]; ok {
+    return NewKmerClass(k, i, obj.elements[k-obj.N][i])
   } else {
     r := obj.EquivalenceClass(kmer)
     obj.AddKmerClass(r)
@@ -110,7 +110,7 @@ func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
 }
 
 func (obj *KmerCatalogue) GetKmerClassFromId(k, id int) KmerClass {
-  if elements, ok := obj.elements[k-obj.n][id]; ok {
+  if elements, ok := obj.elements[k-obj.N][id]; ok {
     return NewKmerClass(k, id, elements)
   }
   panic("k-mer name not found")

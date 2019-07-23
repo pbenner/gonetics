@@ -43,7 +43,16 @@ type KmerGraphNode struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmerGraph(catalogue *KmerCatalogue) KmerGraph {
+func NewKmerGraph(kmers KmerClassList, rel KmerEquivalenceRelation) KmerGraph {
+  catalogue := newKmerCatalogue(rel)
+  // insert k-mers into the catalogue
+  for _, kmer := range kmers {
+    catalogue.AddKmerClass(kmer)
+  }
+  return NewKmerGraphFromCatalogue(catalogue)
+}
+
+func NewKmerGraphFromCatalogue(catalogue *KmerCatalogue) KmerGraph {
   r := KmerGraph{}
   r.catalogue = *catalogue
   r.nodes     = make(map[KmerClassId]*KmerGraphNode)

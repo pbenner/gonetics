@@ -33,7 +33,7 @@ func TestKmerGraph1(test *testing.T) {
   kmers.GetKmerClass("aagctc")
   kmers.GetKmerClass("agctca")
 
-  graph := NewKmerGraph(kmers)
+  graph := NewKmerGraphFromCatalogue(kmers)
 
   r1 := []string{
     "gagc|gctc",

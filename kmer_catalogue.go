@@ -31,21 +31,25 @@ type KmerCatalogue struct {
 /* -------------------------------------------------------------------------- */
 
 func NewKmerCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmerCatalogue, error) {
-  r := KmerCatalogue{}
-  if f, err := NewKmerEquivalenceRelation(n, m, comp, rev, rc, maxAmbiguous, al); err != nil {
+  if rel, err := NewKmerEquivalenceRelation(n, m, comp, rev, rc, maxAmbiguous, al); err != nil {
     return nil, err
   } else {
-    r.KmerEquivalenceRelation = f
+    return newKmerCatalogue(rel), nil
   }
-  idmap    := make([]map[string]int  , m-n+1)
-  elements := make([]map[int][]string, m-n+1)
-  for k := n; k <= m; k++ {
-    idmap   [k-n] = make(map[string]int)
-    elements[k-n] = make(map[int][]string)
+}
+
+func newKmerCatalogue(rel KmerEquivalenceRelation) *KmerCatalogue {
+  idmap    := make([]map[string]int  , rel.m-rel.n+1)
+  elements := make([]map[int][]string, rel.m-rel.n+1)
+  for k := rel.n; k <= rel.m; k++ {
+    idmap   [k-rel.n] = make(map[string]int)
+    elements[k-rel.n] = make(map[int][]string)
   }
+  r := KmerCatalogue{}
+  r.KmerEquivalenceRelation = rel
   r.elements = elements
   r.idmap    = idmap
-  return &r, nil
+  return &r
 }
 
 /* -------------------------------------------------------------------------- */
@@ -84,6 +88,13 @@ func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
   }
 }
 
+func (obj *KmerCatalogue) AddKmerClass(kmer KmerClass) {
+  for _, s := range kmer.Elements {
+    obj.idmap[kmer.K-obj.n][s] = kmer.I
+  }
+  obj.elements[kmer.K-obj.n][kmer.I] = kmer.Elements
+}
+
 func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
   k := len(kmer)
   if k < obj.n || k > obj.m {
@@ -93,10 +104,7 @@ func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {
     return NewKmerClass(k, i, obj.elements[k-obj.n][i])
   } else {
     r := obj.EquivalenceClass(kmer)
-    for _, kmer := range r.Elements {
-      obj.idmap[k-obj.n][kmer] = r.I
-    }
-    obj.elements[k-obj.n][r.I] = r.Elements
+    obj.AddKmerClass(r)
     return r
   }
 }

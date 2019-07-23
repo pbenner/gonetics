@@ -19,7 +19,6 @@ package gonetics
 /* -------------------------------------------------------------------------- */
 
 //import "fmt"
-import "sort"
 
 /* -------------------------------------------------------------------------- */
 
@@ -93,92 +92,4 @@ func (obj *KmerCatalogue) CatalogueSize() int {
     r += len(obj.elements[i])
   }
   return r
-}
-
-/* TODO: extend code below to k-mer equivalence graph
- * -------------------------------------------------------------------------- */
-
-func (obj *KmerCatalogue) scanSubKmers_(kmer []byte, k int) []int {
-  idMap := make(map[int]struct{})
-  // loop over sequence
-  for i := 0; i < len(kmer); i++ {
-    if i+k-1 >= len(kmer) {
-      break
-    }
-    it := NewKmerInstantiationIterator(obj.al, string(kmer[i:i+k]), true)
-    for ; it.Ok(); it.Next() {
-      if id, ok := obj.idmap[k-obj.n][it.Get()]; ok {
-        idMap[id] = struct{}{}
-      }
-    }
-  }
-  ids := []int{}
-  for id, _ := range idMap {
-    ids = append(ids, id)
-  }
-  sort.Ints(ids)
-  return ids
-}
-
-func (obj *KmerCatalogue) scanSubKmers(kmer []byte) []string {
-  names := []string{}
-  for k := obj.n; k <= obj.m; k++ {
-    ids := obj.scanSubKmers_(kmer, k)
-    for _, id := range ids {
-      r := obj.GetKmerClassFromId(k, id)
-      names = append(names , r.String())
-    }
-  }
-  return names
-}
-
-/* -------------------------------------------------------------------------- */
-
-func (obj *KmerCatalogue) relatedKmers(s []byte, m, k int) []int {
-  idMap := make(map[int]struct{})
-  // loop over positions where the k-mer can be fixed
-  for j := 0; j <= k - len(s); j++ {
-    for it := NewKmerCylinderIterator(k, obj.ma[k-obj.n] - m, obj.al, j, string(s)); it.Ok(); it.Next() {
-      if id, ok := obj.idmap[k-obj.n][it.Get()]; ok {
-        idMap[id] = struct{}{}
-      }
-    }
-  }
-  ids := []int{}
-  for id, _ := range idMap {
-    ids = append(ids, id)
-  }
-  sort.Ints(ids)
-  return ids
-}
-
-func (obj *KmerCatalogue) RelatedKmers(kmer string) []string {
-  s := []byte(obj.GetKmerClass(kmer).Elements[0])
-  m := obj.countAmbiguous(kmer)
-  // scan k-mer for sub-k-mers
-  names := obj.scanSubKmers(s)
-  // loop over k-mer sizes
-  for k := len(s)+1; k <= obj.m; k++ {
-    ids := obj.relatedKmers(s, m, k)
-    for _, id := range ids {
-      r := obj.GetKmerClassFromId(k, id)
-      names = append(names , r.String())
-    }
-  }
-  return names
-}
-
-func (obj *KmerCatalogue) countAmbiguous(kmer string) int {
-  m := 0
-  s := []byte(kmer)
-  for i := 0; i < len(s); i++ {
-    if ok, err := obj.al.IsAmbiguous(s[i]); err != nil {
-      panic("internal error")
-    } else {
-      if ok {
-        m++
-      }
-    }
-  }
-  return m
 }

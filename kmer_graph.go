@@ -43,7 +43,15 @@ type KmerGraphNode struct {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerGraph) GetNode(kmer string) *KmerGraphNode {
+func NewKmerGraphNode(catalogue KmerCatalogue) KmerGraph {
+  r := KmerGraph{catalogue: catalogue}
+  r.constructGraph()
+  return r
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj KmerGraph) GetNode(kmer string) *KmerGraphNode {
   cl, ok := obj.catalogue.GetKmerClassIfPresent(kmer)
   if !ok {
     return nil
@@ -55,7 +63,7 @@ func (obj *KmerGraph) GetNode(kmer string) *KmerGraphNode {
   }
 }
 
-func (obj *KmerGraph) RelatedKmers(kmer string) KmerClassList {
+func (obj KmerGraph) RelatedKmers(kmer string) KmerClassList {
   if node := obj.GetNode(kmer); node == nil {
     return nil
   } else {

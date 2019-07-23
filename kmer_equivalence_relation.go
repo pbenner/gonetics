@@ -22,19 +22,19 @@ import "fmt"
 
 /* -------------------------------------------------------------------------- */
 
-type KmerEquivalenceRelation struct {
-  n, m        int              // min and max kmer size
-  complement  bool
-  reverse     bool
-  revcomp     bool
-  ma        []int              // maximum number of ambiguous letters
-  al          ComplementableAlphabet
-  p         []int              // pre-evaluated powers
+type KmerEquivalence struct {
+  n, m           int              // min and max kmer size
+  complement     bool
+  reverse        bool
+  revcomp        bool
+  maxAmbiguous []int              // maximum number of ambiguous letters
+  alphabet       ComplementableAlphabet
 }
+
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmerEquivalenceRelation(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (KmerEquivalenceRelation, error) {
+func NewKmerEquivalence(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (KmerEquivalence, error) {
   if len(maxAmbiguous) == 0 {
     maxAmbiguous = make([]int, m-n+1)
     for i := 0; i < m-n+1; i++ {
@@ -49,52 +49,103 @@ func NewKmerEquivalenceRelation(n, m int, comp, rev, rc bool, maxAmbiguous []int
     }
   } else
   if len(maxAmbiguous) != m-n+1 {
-    return KmerEquivalenceRelation{}, fmt.Errorf("parameter `maxAmbiguous' has invalid length")
+    return KmerEquivalence{}, fmt.Errorf("parameter `maxAmbiguous' has invalid length")
   }
-  p := make([]int, m+1)
-  for k := 0; k <= m; k++ {
-    p[k] = iPow(al.Length(), k)
-  }
-  r := KmerEquivalenceRelation{
-    n         : n,
-    m         : m,
-    p         : p,
-    complement: comp,
-    reverse   : rev,
-    revcomp   : rc,
-    ma        : maxAmbiguous,
-    al        : al }
+  r := KmerEquivalence{}
+  r.n            = n
+  r.m            = m
+  r.complement   = comp
+  r.reverse      = rev
+  r.revcomp      = rc
+  r.maxAmbiguous = maxAmbiguous
+  r.alphabet     = al
   return r, nil
 }
 
 /* -------------------------------------------------------------------------- */
 
-func (obj KmerEquivalenceRelation) MinKmerSize() int {
+func (obj KmerEquivalence) MinKmerSize() int {
   return obj.n
 }
 
-func (obj KmerEquivalenceRelation) MaxKmerSize() int {
+func (obj KmerEquivalence) MaxKmerSize() int {
   return obj.m
 }
 
-func (obj KmerEquivalenceRelation) MaxAmbiguous() []int {
-  return obj.ma
+func (obj KmerEquivalence) MaxAmbiguous() []int {
+  return obj.maxAmbiguous
 }
 
-func (obj KmerEquivalenceRelation) Complement() bool {
+func (obj KmerEquivalence) Complement() bool {
   return obj.complement
 }
 
-func (obj KmerEquivalenceRelation) Reverse() bool {
+func (obj KmerEquivalence) Reverse() bool {
   return obj.reverse
 }
 
-func (obj KmerEquivalenceRelation) Revcomp() bool {
+func (obj KmerEquivalence) Revcomp() bool {
   return obj.revcomp
 }
 
-func (obj KmerEquivalenceRelation) Alphabet() ComplementableAlphabet {
-  return obj.al
+func (obj KmerEquivalence) Alphabet() ComplementableAlphabet {
+  return obj.alphabet
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (a KmerEquivalence) Equals(b KmerEquivalence) bool {
+  if a.m != b.m {
+    return false
+  }
+  if a.n != b.n {
+    return false
+  }
+  if a.complement != b.complement {
+    return false
+  }
+  if a.reverse != b.reverse {
+    return false
+  }
+  if a.revcomp != b.revcomp {
+    return false
+  }
+  if a.alphabet.String() != b.alphabet.String() {
+    return false
+  }
+  if len(a.maxAmbiguous) != len(b.maxAmbiguous) {
+    return false
+  }
+  for i := 0; i < len(a.maxAmbiguous); i++ {
+    if a.maxAmbiguous[i] != b.maxAmbiguous[i] {
+      return false
+    }
+  }
+  return true
+}
+
+/* -------------------------------------------------------------------------- */
+
+type KmerEquivalenceRelation struct {
+  KmerEquivalence
+  p []int // pre-evaluated powers
+}
+
+/* -------------------------------------------------------------------------- */
+
+func NewKmerEquivalenceRelation(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (KmerEquivalenceRelation, error) {
+  r := KmerEquivalenceRelation{}
+  p := make([]int, m+1)
+  for k := 0; k <= m; k++ {
+    p[k] = iPow(al.Length(), k)
+  }
+  t, err := NewKmerEquivalence(n, m, comp, rev, rc, maxAmbiguous, al)
+  if err != nil {
+    return r, err
+  }
+  r.KmerEquivalence = t
+  r.p               = p
+  return r, nil
 }
 
 /* -------------------------------------------------------------------------- */
@@ -111,10 +162,10 @@ func (obj KmerEquivalenceRelation) EquivalenceClass(kmer string) KmerClass {
   i_r   := 0 // id of reverse
   i_rc  := 0 // id of reverse complement
   for j := 0; j < k; j++ {
-    x1, _ := obj.al.Code(c1[    j])
-    x2, _ := obj.al.Code(c1[k-j-1])
-    y1, _ := obj.al.ComplementCoded(x1)
-    y2, _ := obj.al.ComplementCoded(x2)
+    x1, _ := obj.alphabet.Code(c1[    j])
+    x2, _ := obj.alphabet.Code(c1[k-j-1])
+    y1, _ := obj.alphabet.ComplementCoded(x1)
+    y2, _ := obj.alphabet.ComplementCoded(x2)
     i    += int(x2) * obj.p[j]
     i_c  += int(y2) * obj.p[j]
     i_r  += int(x1) * obj.p[j]
@@ -182,7 +233,7 @@ func (obj KmerEquivalenceRelation) EquivalenceClass(kmer string) KmerClass {
 
 func (obj KmerEquivalenceRelation) comp(dest, src []byte) error {
   for j := 0; j < len(src); j++ {
-    if x, err := obj.al.Complement(src[j]); err != nil {
+    if x, err := obj.alphabet.Complement(src[j]); err != nil {
       return err
     } else {
       dest[j] = x

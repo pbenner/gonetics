@@ -69,9 +69,9 @@ func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]str
     r := obj.KmerCatalogue.GetKmerClass(string(dest))
     m[r.I] = struct{}{}
   } else {
-    x, _ := obj.al.Matching(src[i])
+    x, _ := obj.alphabet.Matching(src[i])
     for _, k := range x {
-      if ok, _ := obj.al.IsWildcard(k); ok && (i == 0 || i == len(src)-1) {
+      if ok, _ := obj.alphabet.IsWildcard(k); ok && (i == 0 || i == len(src)-1) {
         continue
       }
       dest[i] = k

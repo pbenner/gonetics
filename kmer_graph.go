@@ -43,8 +43,10 @@ type KmerGraphNode struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmerGraphNode(catalogue KmerCatalogue) KmerGraph {
-  r := KmerGraph{catalogue: catalogue}
+func NewKmerGraph(catalogue *KmerCatalogue) KmerGraph {
+  r := KmerGraph{}
+  r.catalogue = *catalogue
+  r.nodes     = make(map[KmerClassId]*KmerGraphNode)
   r.constructGraph()
   return r
 }

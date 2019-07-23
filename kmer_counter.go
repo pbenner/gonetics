@@ -49,6 +49,20 @@ func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complem
 
 /* -------------------------------------------------------------------------- */
 
+func (obj *KmerCounter) Clone() *KmerCounter {
+  r := KmerCounter{}
+  r.KmerCatalogue = *obj.KmerCatalogue.Clone()
+  r.kmap = make([]map[int][]int, len(obj.kmap))
+  for i := 0; i < len(obj.kmap); i++ {
+    for k, v := range obj.kmap[i] {
+      r.kmap[i][k] = v
+    }
+  }
+  return &r
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]struct{}, i int) {
   if i == len(src) {
     r := obj.KmerCatalogue.GetKmerClass(string(dest))

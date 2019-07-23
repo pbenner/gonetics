@@ -50,6 +50,26 @@ func NewKmerCatalogue(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Compl
 
 /* -------------------------------------------------------------------------- */
 
+func (obj *KmerCatalogue) Clone() *KmerCatalogue {
+  r := KmerCatalogue{}
+  r.KmerEquivalenceRelation = obj.KmerEquivalenceRelation
+  r.idmap    = make([]map[string]int  , len(obj.idmap))
+  r.elements = make([]map[int][]string, len(obj.elements))
+  for i := 0; i < len(obj.idmap); i++ {
+    for k, v := range obj.idmap[i] {
+      r.idmap[i][k] = v
+    }
+  }
+  for i := 0; i < len(obj.elements); i++ {
+    for k, v := range obj.elements[i] {
+      r.elements[i][k] = v
+    }
+  }
+  return &r
+}
+
+/* -------------------------------------------------------------------------- */
+
 func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
   k := len(kmer)
   if k < obj.n || k > obj.m {

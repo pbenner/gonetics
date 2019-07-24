@@ -59,3 +59,26 @@ func TestKmerGraph1(test *testing.T) {
     test.Error("test failed")
   }
 }
+
+func TestKmerGraph2(test *testing.T) {
+  kmers, _ := NewKmerCatalogue(4, 6, false, false, true, nil, GappedNucleotideAlphabet{})
+  kmers.GetKmerClass("gctc")
+  kmers.GetKmerClass("gcta")
+  kmers.GetKmerClass("annnc")
+  kmers.GetKmerClass("anntc")
+  kmers.GetKmerClass("agctc")
+  kmers.GetKmerClass("aagctc")
+  kmers.GetKmerClass("agctca")
+
+  graph := NewKmerGraphFromCatalogue(kmers)
+
+  r := []string{
+    "agctc|gagct",
+    "annnc|gnnnt" }
+
+  for i, kmer := range graph.RelatedKmers("anntc") {
+    if r[i] != kmer.String() {
+      test.Error("test failed")
+    }
+  }
+}

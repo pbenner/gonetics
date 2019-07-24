@@ -116,20 +116,28 @@ func (obj KmerGraph) relatedKmersSupra(node *KmerGraphNode) KmerClassList {
 
 func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
   kmers := make(  [] KmerClassList, k)
-  nodes := make([][]*KmerGraphNode, k)
   // sort k-mers by number of ambiguous characters
   for i, elements := range obj.catalogue.elements[k-n] {
     kmer := NewKmerClass(k, i, elements)
     j    := kmer.CountAmbiguous(obj.catalogue.Alphabet)
     kmers[j] = append(kmers[j], kmer)
   }
+  // remove k-mer lists without any entries
+  for j := 0; j < len(kmers); j++ {
+    if len(kmers[j]) == 0 {
+      kmers = append(kmers[0:j], kmers[j+1:]...)
+    }
+  }
+  nodes := make([][]*KmerGraphNode, len(kmers))
   // first add observed k-mers (i.e. those without any
   // ambiguous characters)
-  for _, kmer := range kmers[0] {
-    nodes[0] = append(nodes[0], obj.newNode1(kmer))
+  if len(kmers) > 0 {
+    for _, kmer := range kmers[0] {
+      nodes[0] = append(nodes[0], obj.newNode1(kmer))
+    }
   }
   // add k-mers with ambiguous characters to the graph
-  for j := 1; j < k; j++ {
+  for j := 1; j < len(kmers); j++ {
     // loop over k-mers with j ambiguous characters
     for _, kmer := range kmers[j] {
       nodes[j] = append(nodes[j], obj.newNode2(kmer, nodes[j-1]))

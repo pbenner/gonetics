@@ -115,7 +115,7 @@ func (obj KmerGraph) relatedKmersSupra(node *KmerGraphNode) KmerClassList {
 /* -------------------------------------------------------------------------- */
 
 func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
-  kmers := make(  [] KmerClassList, k)
+  kmers := make([]KmerClassList, k)
   // sort k-mers by number of ambiguous characters
   for i, elements := range obj.catalogue.elements[k-n] {
     kmer := NewKmerClass(k, i, elements)

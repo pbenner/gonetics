@@ -172,8 +172,8 @@ func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
 
 func (obj *KmerGraph) relatedClusters(clusterId1, clusterId2 uint64) bool {
   for k := uint(0); k < uint(obj.catalogue.M+1); k++ {
-    a := clusterId1 & (1<<k) != 0
-    b := clusterId2 & (1<<k) != 0
+    a := clusterId1 & 1<<k != 0
+    b := clusterId2 & 1<<k != 0
     if !(a && b || !b) {
       return false
     }

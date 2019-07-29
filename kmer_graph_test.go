@@ -41,6 +41,13 @@ func TestKmerGraph1(test *testing.T) {
   graph := NewKmerGraphFromCatalogue(kmers)
 
   r := make(map[string][]string)
+  // rank 1
+  r["at"] = []string{
+    "atnnc|gnnat" }
+  r["annnc"] = []string{
+    "atnnc|gnnat",
+    "anntc|gannt" }
+  // rank 2
   r["atnnc"] = []string{
     "at|at",
     "annnc|gnnnt" }
@@ -48,16 +55,28 @@ func TestKmerGraph1(test *testing.T) {
     "anctc|gagnt",
     "angtc|gacnt",
     "annnc|gnnnt" }
+  // rank 3
+  r["gctc"] = []string{
+    "agctc|gagct" }
   r["angtc"] = []string{
     "anntc|gannt" }
+  r["anctc"] = []string{
+    "agctc|gagct",
+    "anntc|gannt" }
+  // rank 4
   r["agctc"] = []string{
     "gagc|gctc",
     "anctc|gagnt",
     "aagctc|gagctt",
     "agctca|tgagct" }
-  r["anctc"] = []string{
+  r["aagntc"] = []string{
+    "aagctc|gagctt" }
+  // rank 5
+  r["aagctc"] = []string{
     "agctc|gagct",
-    "anntc|gannt" }
+    "aagntc|ganctt" }
+  r["agctca"] = []string{
+    "agctc|gagct" }
 
   for query, result := range r {
     if s := graph.RelatedKmers(query); len(s) != len(result) {

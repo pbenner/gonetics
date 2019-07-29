@@ -41,6 +41,13 @@ func TestKmerGraph1(test *testing.T) {
   graph := NewKmerGraphFromCatalogue(kmers)
 
   r := make(map[string][]string)
+  r["atnnc"] = []string{
+    "at|at",
+    "annnc|gnnnt"}
+  r["anntc"] = []string{
+    "anctc|gagnt",
+    "angtc|gacnt",
+    "annnc|gnnnt"}
   r["agctc"] = []string{
     "gagc|gctc",
     "anctc|gagnt",
@@ -51,12 +58,12 @@ func TestKmerGraph1(test *testing.T) {
     "anntc|gannt" }
 
   for query, result := range r {
-    if len(graph.RelatedKmers(query)) != len(result) {
-      test.Error("test failed for", query)
+    if s := graph.RelatedKmers(query); len(s) != len(result) {
+      test.Errorf("test failed for %v -> %v", query, s)
     } else {
-      for i, kmer := range graph.RelatedKmers(query) {
+      for i, kmer := range s {
         if result[i] != kmer.String() {
-          test.Error("test failed for", query)
+          test.Errorf("test failed for %v -> %v", query, result[i])
         }
       }
     }

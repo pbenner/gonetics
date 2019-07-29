@@ -43,11 +43,13 @@ func TestKmerGraph1(test *testing.T) {
   r := make(map[string][]string)
   r["atnnc"] = []string{
     "at|at",
-    "annnc|gnnnt"}
+    "annnc|gnnnt" }
   r["anntc"] = []string{
     "anctc|gagnt",
     "angtc|gacnt",
-    "annnc|gnnnt"}
+    "annnc|gnnnt" }
+  r["angtc"] = []string{
+    "anntc|gannt" }
   r["agctc"] = []string{
     "gagc|gctc",
     "anctc|gagnt",

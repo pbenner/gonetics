@@ -26,9 +26,7 @@ type Kmer string
 
 /* -------------------------------------------------------------------------- */
 
-func (obj Kmer) Matches(b Kmer, alphabet ComplementableAlphabet) bool {
-  kmer1 := []byte(obj)
-  kmer2 := []byte(b)
+func (obj Kmer) matches(kmer1, kmer2 []byte, alphabet ComplementableAlphabet) bool {
   if len(kmer1) != len(kmer2) {
     return false
   }
@@ -50,4 +48,18 @@ func (obj Kmer) Matches(b Kmer, alphabet ComplementableAlphabet) bool {
     }
   }
   return true
+}
+
+func (obj Kmer) Matches(b Kmer, alphabet ComplementableAlphabet) bool {
+  kmer1 := []byte(obj)
+  kmer2 := []byte(b)
+  if len(kmer1) > len(kmer2) {
+    panic("kmer1 must be smaller or equal in length than kmer2")
+  }
+  for i := 0; i < len(kmer2)-len(kmer1)+1; i++ {
+    if obj.matches(kmer1, kmer2[0:i+len(kmer1)], alphabet) {
+      return true
+    }
+  }
+  return false
 }

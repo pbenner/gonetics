@@ -25,20 +25,21 @@ package gonetics
 type KmerGraph struct {
   catalogue KmerCatalogue
   nodes     map[KmerClassId]*KmerGraphNode
+  clusters  map[int][]KmerGraphNode
 }
 
 /* -------------------------------------------------------------------------- */
 
 type KmerGraphNode struct {
-  Kmer KmerClass
-  // shorter kmers
-  Intra []*KmerGraphNode
-  // longer kmers
-  Extra []*KmerGraphNode
-  // matching kmers (those with more uncertain entries)
+  Kmer      KmerClass
+  ClusterId uint64
+  Rank       int
+  // less specific k-mers 
   Infra []*KmerGraphNode
-  // instances of kmers (those with less uncertain entries)
+  // more specific k-mers 
   Supra []*KmerGraphNode
+  // k-mers of same length with wildcards at equivalent positions
+  Intra []*KmerGraphNode
 }
 
 /* -------------------------------------------------------------------------- */
@@ -79,14 +80,10 @@ func (obj KmerGraph) RelatedKmers(kmer string) KmerClassList {
     return nil
   } else {
     r := KmerClassList(nil)
-    for _, n := range node.Intra {
+    for _, n := range node.Infra {
       r = append(r, n.Kmer)
     }
-    {
-      r = append(r, obj.relatedKmersSupra(node)...)
-      r = append(r, obj.relatedKmersInfra(node)...)
-    }
-    for _, n := range node.Extra {
+    for _, n := range node.Supra {
       r = append(r, n.Kmer)
     }
     r.Sort()
@@ -94,53 +91,67 @@ func (obj KmerGraph) RelatedKmers(kmer string) KmerClassList {
   }
 }
 
-func (obj KmerGraph) relatedKmersInfra(node *KmerGraphNode) KmerClassList {
-  r := KmerClassList(nil)
-  for _, n := range node.Infra {
-    r = append(r, n.Kmer)
-    r = append(r, obj.relatedKmersInfra(n)...)
-  }
-  return r
-}
-
-func (obj KmerGraph) relatedKmersSupra(node *KmerGraphNode) KmerClassList {
-  r := KmerClassList(nil)
-  for _, n := range node.Supra {
-    r = append(r, n.Kmer)
-    r = append(r, obj.relatedKmersSupra(n)...)
-  }
-  return r
-}
-
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
-  kmers := make([]KmerClassList, k)
-  // sort k-mers by number of ambiguous characters
-  for i, elements := range obj.catalogue.elements[k-n] {
-    kmer := NewKmerClass(k, i, elements)
-    j    := kmer.CountAmbiguous(obj.catalogue.Alphabet)
-    kmers[j] = append(kmers[j], kmer)
+// number of non-ambiguous characters
+func (obj *KmerGraph) rank(kmer KmerClass) int {
+  j := 0
+  s := []byte(kmer.Elements[0])
+  for i := 0; i < len(s); i++ {
+    if ok, err := obj.catalogue.Alphabet.IsWildcard(s[i]); err != nil {
+      panic(err)
+    } else {
+      if !ok {
+        j += 1
+      }
+    }
+  }
+  return j-1
+}
+
+func (obj *KmerGraph) clusterId(kmer KmerClass) uint64 {
+  j := uint64(0)
+  s := []byte(kmer.Elements[0])
+  for i := uint(0); i < uint(len(s)); i++ {
+    if ok, err := obj.catalogue.Alphabet.IsWildcard(s[i]); err != nil {
+      panic(err)
+    } else {
+      if !ok {
+        j += (1<<i)
+      }
+    }
+  }
+  return j
+}
+
+func (obj *KmerGraph) constructGraphLoop(n, m int) {
+  nodes := make([]map[uint64][]*KmerGraphNode, m+1)
+  for i := 0; i < len(nodes); i++ {
+    nodes[i] = make(map[uint64][]*KmerGraphNode)
+  }
+  // sort k-mers by rank
+  for k := n; k <= m; k++ {
+    for i, elements := range obj.catalogue.elements[k-n] {
+      kmer := NewKmerClass(k, i, elements)
+      node := obj.newNode(kmer)
+      nodes[node.Rank][node.ClusterId] = append(nodes[node.Rank][node.ClusterId], node)
+    }
   }
   // remove k-mer lists without any entries
-  for j := 0; j < len(kmers); j++ {
-    if len(kmers[j]) == 0 {
-      kmers = append(kmers[0:j], kmers[j+1:]...)
+  for j := 0; j < len(nodes); j++ {
+    if len(nodes[j]) == 0 {
+      nodes = append(nodes[0:j], nodes[j+1:]...)
     }
   }
-  nodes := make([][]*KmerGraphNode, len(kmers))
-  // first add observed k-mers (i.e. those without any
-  // ambiguous characters)
-  if len(kmers) > 0 {
-    for _, kmer := range kmers[0] {
-      nodes[0] = append(nodes[0], obj.newNode1(kmer))
-    }
-  }
-  // add k-mers with ambiguous characters to the graph
-  for j := 1; j < len(kmers); j++ {
-    // loop over k-mers with j ambiguous characters
-    for _, kmer := range kmers[j] {
-      nodes[j] = append(nodes[j], obj.newNode2(kmer, nodes[j-1]))
+  // connect nodes
+  for j := 1; j < len(nodes); j++ {
+    // loop over k-mers with rank j
+    for clusterId1, cluster1 := range nodes[j] {
+      for clusterId2, cluster2 := range nodes[j-1] {
+        if obj.relatedClusters(clusterId1, clusterId2) {
+          obj.connectClusters(cluster1, cluster2)
+        }
+      }
     }
   }
 }
@@ -148,50 +159,41 @@ func (obj *KmerGraph) constructGraphLoop(k, n, m int) {
 func (obj *KmerGraph) constructGraph() {
   n := obj.catalogue.N
   m := obj.catalogue.M
-  // loop over k-mer sizes, smaller k-mers must be added first
-  for k := n; k <= m; k++ {
-    obj.constructGraphLoop(k, n, m)
-  }
+  obj.constructGraphLoop(n, m)
 }
 
-func (obj *KmerGraph) newNode1(kmer KmerClass) *KmerGraphNode {
+func (obj *KmerGraph) newNode(kmer KmerClass) *KmerGraphNode {
   r := KmerGraphNode{Kmer: kmer}
-  obj.computeIntraAndExtra(&r)
+  r.ClusterId = obj.clusterId(kmer)
+  r.Rank      = obj.rank     (kmer)
   obj.nodes[kmer.KmerClassId] = &r
   return &r
 }
 
-func (obj *KmerGraph) newNode2(kmer KmerClass, nodes []*KmerGraphNode) *KmerGraphNode {
-  r := KmerGraphNode{Kmer: kmer}
-  obj.computeInfraAndSupra(&r, nodes)
-  obj.nodes[kmer.KmerClassId] = &r
-  return &r
+func (obj *KmerGraph) relatedClusters(clusterId1, clusterId2 uint64) bool {
+  for k := uint(0); k < uint(obj.catalogue.M+1); k++ {
+    a := clusterId1 & (1<<k) != 0
+    b := clusterId2 & (1<<k) != 0
+    if !(a && b || !b) {
+      return false
+    }
+  }
+  return true
 }
 
-/* -------------------------------------------------------------------------- */
-
-func (obj *KmerGraph) computeIntraAndExtra(node1 *KmerGraphNode) {
-  if obj.catalogue.N > node1.Kmer.K-1 {
-    return
-  }
-  // two possible intra-k-mers
-  s1 := node1.Kmer.Elements[0][0:node1.Kmer.K-1]
-  s2 := node1.Kmer.Elements[0][1:node1.Kmer.K]
-  if node2 := obj.GetNode(s1); node2 != nil {
-    node2.Extra = append(node2.Extra, node1)
-    node1.Intra = append(node1.Intra, node2)
-  }
-  if node2 := obj.GetNode(s2); node2 != nil {
-    node2.Extra = append(node2.Extra, node1)
-    node1.Intra = append(node1.Intra, node2)
-  }
-}
-
-func (obj *KmerGraph) computeInfraAndSupra(node1 *KmerGraphNode, nodes []*KmerGraphNode) {
-  for _, node2 := range nodes {
-    if node1.Kmer.Matches(node2.Kmer, obj.catalogue.Alphabet) {
+func (obj *KmerGraph) connectNodes(node1, node2 *KmerGraphNode) {
+  if len(node2.Kmer.Elements[0]) <= len(node1.Kmer.Elements[0]) {
+    if node2.Kmer.Matches(node1.Kmer, obj.catalogue.Alphabet) {
       node1.Supra = append(node1.Supra, node2)
       node2.Infra = append(node2.Infra, node1)
+    }
+  }
+}
+
+func (obj *KmerGraph) connectClusters(cluster1, cluster2 []*KmerGraphNode) {
+  for i := 0; i < len(cluster1); i++ {
+    for j := 0; j < len(cluster2); j++ {
+      obj.connectNodes(cluster1[i], cluster2[j])
     }
   }
 }

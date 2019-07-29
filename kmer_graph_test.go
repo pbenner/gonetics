@@ -24,61 +24,41 @@ import "testing"
 /* -------------------------------------------------------------------------- */
 
 func TestKmerGraph1(test *testing.T) {
-  kmers, _ := NewKmerCatalogue(4, 6, false, false, true, nil, GappedNucleotideAlphabet{})
-  kmers.GetKmerClass("gctc")
-  kmers.GetKmerClass("gcta")
-  kmers.GetKmerClass("anntc")
-  kmers.GetKmerClass("anctc")
-  kmers.GetKmerClass("agctc")
-  kmers.GetKmerClass("aagctc")
-  kmers.GetKmerClass("agctca")
-
-  graph := NewKmerGraphFromCatalogue(kmers)
-
-  r1 := []string{
-    "gagc|gctc",
-    "anctc|gagnt",
-    "anntc|gannt",
-    "aagctc|gagctt",
-    "agctca|tgagct" }
-  r2 := []string{
-    "agctc|gagct",
-    "anntc|gannt" }
-
-  for i, kmer := range graph.RelatedKmers("agctc") {
-    if r1[i] != kmer.String() {
-      test.Error("test failed")
-    }
-  }
-  for i, kmer := range graph.RelatedKmers("anctc") {
-    if r2[i] != kmer.String() {
-      test.Error("test failed")
-    }
-  }
-  if r := graph.RelatedKmers("agatc"); len(r) != 0 {
-    test.Error("test failed")
-  }
-}
-
-func TestKmerGraph2(test *testing.T) {
-  kmers, _ := NewKmerCatalogue(4, 6, false, false, true, nil, GappedNucleotideAlphabet{})
+  kmers, _ := NewKmerCatalogue(2, 6, false, false, true, nil, GappedNucleotideAlphabet{})
+  kmers.GetKmerClass("at")
   kmers.GetKmerClass("gctc")
   kmers.GetKmerClass("gcta")
   kmers.GetKmerClass("annnc")
+  kmers.GetKmerClass("atnnc")
   kmers.GetKmerClass("anntc")
+  kmers.GetKmerClass("anctc")
+  kmers.GetKmerClass("angtc")
   kmers.GetKmerClass("agctc")
+  kmers.GetKmerClass("aagntc")
   kmers.GetKmerClass("aagctc")
   kmers.GetKmerClass("agctca")
 
   graph := NewKmerGraphFromCatalogue(kmers)
 
-  r := []string{
+  r := make(map[string][]string)
+  r["agctc"] = []string{
+    "gagc|gctc",
+    "anctc|gagnt",
+    "aagctc|gagctt",
+    "agctca|tgagct" }
+  r["anctc"] = []string{
     "agctc|gagct",
-    "annnc|gnnnt" }
+    "anntc|gannt" }
 
-  for i, kmer := range graph.RelatedKmers("anntc") {
-    if r[i] != kmer.String() {
-      test.Error("test failed")
+  for query, result := range r {
+    if len(graph.RelatedKmers(query)) != len(result) {
+      test.Error("test failed for", query)
+    } else {
+      for i, kmer := range graph.RelatedKmers(query) {
+        if result[i] != kmer.String() {
+          test.Error("test failed for", query)
+        }
+      }
     }
   }
 }

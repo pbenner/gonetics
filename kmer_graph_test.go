@@ -26,6 +26,7 @@ import "testing"
 func TestKmerGraph1(test *testing.T) {
   kmers, _ := NewKmerCatalogue(2, 6, false, false, true, nil, GappedNucleotideAlphabet{})
   kmers.GetKmerClass("at")
+  kmers.GetKmerClass("tc")
   kmers.GetKmerClass("gctc")
   kmers.GetKmerClass("gcta")
   kmers.GetKmerClass("annnc")
@@ -42,6 +43,8 @@ func TestKmerGraph1(test *testing.T) {
 
   r := make(map[string][]string)
   // rank 1
+  r["tc"] = []string{
+    "anntc|gannt" }
   r["at"] = []string{
     "atnnc|gnnat" }
   r["annnc"] = []string{
@@ -52,6 +55,7 @@ func TestKmerGraph1(test *testing.T) {
     "at|at",
     "annnc|gnnnt" }
   r["anntc"] = []string{
+    "ga|tc",
     "anctc|gagnt",
     "angtc|gacnt",
     "annnc|gnnnt" }

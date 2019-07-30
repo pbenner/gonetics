@@ -113,4 +113,25 @@ func TestKmerGraph1(test *testing.T) {
       }
     }
   }
+
+  related := [][3]int{
+    [3]int{19,  3, 1},
+    [3]int{19, 17, 1},
+    [3]int{25,  3, 1},
+    [3]int{25, 17, 1},
+    [3]int{15, 19, 0},
+    [3]int{15, 25, 0},
+    [3]int{31, 15, 1},
+    [3]int{31, 29, 1},
+    [3]int{55, 15, 0},
+    [3]int{55, 29, 0},
+    [3]int{63, 31, 1},
+    [3]int{63, 55, 1} }
+  for _, entry := range related {
+    r1 := graph.relatedClusters(uint64(entry[0]), uint64(entry[1]))
+    r2 := entry[2]
+    if r1 && r2 == 0 || !r1 && r2 == 1 {
+      test.Errorf("test failed for %v", entry)
+    }
+  }
 }

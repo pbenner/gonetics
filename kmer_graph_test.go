@@ -93,4 +93,24 @@ func TestKmerGraph1(test *testing.T) {
       }
     }
   }
+
+  id := make(map[string]uint64)
+  id["at"    ] = 3
+  id["annnc" ] = 17
+  id["atnnc" ] = 19
+  id["anntc" ] = 25
+  id["gctc"  ] = 15
+  id["gcta"  ] = 15
+  id["anctc" ] = 29
+  id["aagntc"] = 55
+  for query, result := range id {
+    node := graph.GetNode(query)
+    if node == nil {
+      test.Errorf("test failed for %v", query)
+    } else {
+      if node.ClusterId != result {
+        test.Errorf("test failed for %v -> %v", query, node.ClusterId)
+      }
+    }
+  }
 }

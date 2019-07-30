@@ -57,7 +57,7 @@ func (obj Kmer) Matches(b Kmer, alphabet ComplementableAlphabet) bool {
     panic("kmer1 must be smaller or equal in length than kmer2")
   }
   for i := 0; i < len(kmer2)-len(kmer1)+1; i++ {
-    if obj.matches(kmer1, kmer2[0:i+len(kmer1)], alphabet) {
+    if obj.matches(kmer1, kmer2[i:i+len(kmer1)], alphabet) {
       return true
     }
   }

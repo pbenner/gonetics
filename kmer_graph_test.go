@@ -131,7 +131,7 @@ func TestKmerGraph1(test *testing.T) {
     r1 := graph.relatedClusters(uint64(entry[0]), uint64(entry[1]))
     r2 := entry[2]
     if r1 && r2 == 0 || !r1 && r2 == 1 {
-      test.Errorf("test failed for %v", entry)
+      test.Errorf("test failed for %v -> %v", entry, r1)
     }
   }
 }

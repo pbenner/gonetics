@@ -174,8 +174,8 @@ func (obj *KmerGraph) relatedClusters(clusterId1, clusterId2 uint64) bool {
   r1 := uint(0)
   r2 := uint(0)
   for k := uint(0); k < uint(obj.catalogue.M+1); k++ {
-    if clusterId1 & (1<<k) != 0 { r1 = k }
-    if clusterId2 & (1<<k) != 0 { r2 = k }
+    if clusterId1 & (1<<k) != 0 { r1 = k+1 }
+    if clusterId2 & (1<<k) != 0 { r2 = k+1 }
   }
   if r2 > r1 {
     return false
@@ -183,8 +183,8 @@ func (obj *KmerGraph) relatedClusters(clusterId1, clusterId2 uint64) bool {
 outer:
   for offset := uint(0); offset < r1 - r2 + 1; offset++ {
     for k := uint(0); k < r1; k++ {
-      a := clusterId1 & (1<<(k       )) != 0
-      b := clusterId2 & (1<<(k+offset)) != 0
+      a := clusterId1 & (1<<(k+offset)) != 0
+      b := clusterId2 & (1<<(k       )) != 0
       if !(a && b || !b) {
         continue outer
       }

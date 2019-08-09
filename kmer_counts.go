@@ -118,6 +118,10 @@ func (obj KmerCountsIterator) GetCount() int {
   return obj.At(obj.i)
 }
 
+func (obj KmerCountsIterator) GetIndex() int {
+  return obj.i
+}
+
 func (obj *KmerCountsIterator) Next() {
   obj.i++
 }

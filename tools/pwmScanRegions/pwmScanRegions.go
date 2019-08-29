@@ -67,11 +67,12 @@ func importPWMList(config SessionConfig, filenames []string) []PWM {
 
 func importBed(config SessionConfig, filename string) GRanges {
   granges := GRanges{}
-  if filename == "" {
+  if filename == "-" {
     if err := granges.ReadBed(os.Stdin, config.Columns); err != nil {
       log.Fatal(err)
     }
-  } else {
+  } else
+  if filename != "" {
     PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
     if err := granges.ImportBed(filename, config.Columns); err != nil {
       PrintStderr(config, 1, "failed\n")
@@ -82,8 +83,8 @@ func importBed(config SessionConfig, filename string) GRanges {
   return granges
 }
 
-func importFasta(config SessionConfig, filename string) StringSet {
-  s := StringSet{}
+func importFasta(config SessionConfig, filename string) OrderedStringSet {
+  s := OrderedStringSet{}
   PrintStderr(config, 1, "Reading fasta file `%s'... ", filename)
   if err := s.ImportFasta(filename); err != nil {
     PrintStderr(config, 1, "failed\n")
@@ -108,12 +109,27 @@ func exportTable(config SessionConfig, granges GRanges, filename string, header,
   }
 }
 
+func generateGRanges(config SessionConfig, granges GRanges, genomicSequences OrderedStringSet) GRanges {
+  if granges.Length() > 0 {
+    return granges
+  }
+  seqnames := []string{}
+  from     := []int{}
+  to       := []int{}
+  for _, seqname := range genomicSequences.Seqnames {
+    seqnames = append(seqnames, seqname)
+    from     = append(from    , 0)
+    to       = append(to      , len(genomicSequences.Sequences[seqname]))
+  }
+  return NewGRanges(seqnames, from, to, nil)
+}
+
 /* -------------------------------------------------------------------------- */
 
-func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, r GRangesRow) []float64 {
+func scanRegion(config SessionConfig, pwmList []PWM, genomicSequences OrderedStringSet, r GRangesRow) []float64 {
   counts := make([]float64, len(pwmList))
 
-  sequence, err := genomicSequence.GetSlice(r.Seqname, r.Range)
+  sequence, err := genomicSequences.GetSlice(r.Seqname, r.Range)
   // if sequence is nil, it means the fasta file is missing a chromosome
   if sequence == nil {
     log.Fatalf("sequence `%s' not found in fasta file", r.Seqname)
@@ -146,7 +162,7 @@ func scanRegion(config SessionConfig, pwmList []PWM, genomicSequence StringSet, 
   return counts
 }
 
-func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSequence StringSet) GRanges {
+func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSequences OrderedStringSet) GRanges {
 
   pool   := threadpool.New(config.Threads, 100*config.Threads)
   counts := make([][]float64, granges.Length())
@@ -161,7 +177,7 @@ func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSe
     j := i
     // add task to the thread pool
     pool.AddJob(g, func(pool threadpool.ThreadPool, erf func() error) error {
-      counts[j] = scanRegion(config, pwmList, genomicSequence, granges.Row(j))
+      counts[j] = scanRegion(config, pwmList, genomicSequences, granges.Row(j))
       return nil
     })
     if config.Status {
@@ -182,9 +198,9 @@ func scanRegions(config SessionConfig, granges GRanges, pwmList []PWM, genomicSe
 func tfbsScan(config SessionConfig, filenameGRanges, filenameOut, filenameFasta string, filenamesPWM []string) {
   pwmList := importPWMList(config, filenamesPWM)
   granges := importBed(config, filenameGRanges)
-  genomicSequence := importFasta(config, filenameFasta)
-
-  granges = scanRegions(config, granges, pwmList, genomicSequence)
+  genomicSequences := importFasta(config, filenameFasta)
+  granges  = generateGRanges(config, granges, genomicSequences)
+  granges  = scanRegions(config, granges, pwmList, genomicSequences)
   exportTable(config, granges, filenameOut, true, true, false)
 }
 

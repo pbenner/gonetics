@@ -46,6 +46,9 @@ func PrintStderr(config SessionConfig, level int, format string, args ...interfa
 func importBed(config SessionConfig, filename string) GRanges {
   granges := GRanges{}
   if filename == "" {
+    return granges
+  }
+  if filename == "-" {
     if err := granges.ReadBed3(os.Stdin); err != nil {
       log.Fatal(err)
     }
@@ -60,8 +63,8 @@ func importBed(config SessionConfig, filename string) GRanges {
   return granges
 }
 
-func importFasta(config SessionConfig, filename string) StringSet {
-  s := StringSet{}
+func importFasta(config SessionConfig, filename string) OrderedStringSet {
+  s := OrderedStringSet{}
   PrintStderr(config, 1, "Reading fasta file `%s'... ", filename)
   if err := s.ImportFasta(filename); err != nil {
     PrintStderr(config, 1, "failed\n")
@@ -77,10 +80,19 @@ func observedOverExpectedCpG(config SessionConfig, filenameFasta, filenameRegion
   granges := importBed(config, filenameRegions)
   genomicSequences := importFasta(config, filenameFasta)
 
+  if granges.Length() == 0 {
+    from := []int{}
+    to   := []int{}
+    for _, s := range genomicSequences.Seqnames {
+      from = append(from, 0)
+      to   = append(to  , len(genomicSequences.Sequences[s]))
+    }
+    granges = NewGRanges(genomicSequences.Seqnames, from, to, nil)
+  }
   r := make([]float64, granges.Length())
-  
+
   PrintStderr(config, 1, "Scanning regions... ")
-  r, err := granges.ObservedOverExpectedCpG(genomicSequences)
+  r, err := granges.ObservedOverExpectedCpG(genomicSequences.Sequences)
   if err != nil {
     PrintStderr(config, 1, "failed\n")
     log.Fatal(err)

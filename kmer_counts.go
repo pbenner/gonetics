@@ -61,6 +61,17 @@ func (obj KmerCounts) Iterate() KmerCountsIterator {
   return KmerCountsIterator{obj, 0}
 }
 
+func (obj *KmerCounts) SetKmers(kmers KmerClassList) {
+  counts := make(map[KmerClassId]int)
+  for _, kmer := range kmers {
+    if c, ok := obj.Counts[kmer.KmerClassId]; ok {
+      counts[kmer.KmerClassId] = c
+    }
+  }
+  obj.Kmers  = kmers
+  obj.Counts = counts
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerCountsList struct {
@@ -97,6 +108,19 @@ func (obj KmerCountsList) At(i int) KmerCounts {
 
 func (obj *KmerCountsList) Slice(i, j int) KmerCountsList {
   return KmerCountsList{Kmers: obj.Kmers, Counts: obj.Counts[i:j]}
+}
+
+func (obj *KmerCountsList) SetKmers(kmers KmerClassList) {
+  counts := make(map[KmerClassId]int)
+  for i := 0; i < obj.Len(); i++ {
+    for _, kmer := range kmers {
+      if c, ok := obj.Counts[i][kmer.KmerClassId]; ok {
+        counts[kmer.KmerClassId] = c
+      }
+    }
+    obj.Counts[i] = counts
+  }
+  obj.Kmers  = kmers
 }
 
 /* -------------------------------------------------------------------------- */

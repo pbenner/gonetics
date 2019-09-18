@@ -111,8 +111,8 @@ func (obj *KmerCountsList) Slice(i, j int) KmerCountsList {
 }
 
 func (obj *KmerCountsList) SetKmers(kmers KmerClassList) {
-  counts := make(map[KmerClassId]int)
   for i := 0; i < obj.Len(); i++ {
+    counts := make(map[KmerClassId]int)
     for _, kmer := range kmers {
       if c, ok := obj.Counts[i][kmer.KmerClassId]; ok {
         counts[kmer.KmerClassId] = c

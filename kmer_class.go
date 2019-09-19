@@ -74,6 +74,10 @@ func (obj KmerClass) String() string {
   return str
 }
 
+func (obj KmerClass) Less(b KmerClass) bool {
+  return obj.KmerClassId.Less(b.KmerClassId)
+}
+
 func (obj KmerClass) Equals(b KmerClass) bool {
   return obj.KmerClassId.Equals(b.KmerClassId)
 }

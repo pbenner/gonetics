@@ -29,6 +29,24 @@ type KmerClassId struct {
   I int
 }
 
+func (a KmerClassId) Less(b KmerClassId) bool {
+  if a.K != b.K {
+    return a.K < b.K
+  } else {
+    return a.I < b.I
+  }
+}
+
+func (a KmerClassId) Equals(b KmerClassId) bool {
+  if a.K != b.K {
+    return false
+  }
+  if a.I != b.I {
+    return false
+  }
+  return true
+}
+
 /* -------------------------------------------------------------------------- */
 
 type KmerClass struct {
@@ -57,13 +75,7 @@ func (obj KmerClass) String() string {
 }
 
 func (obj KmerClass) Equals(b KmerClass) bool {
-  if obj.K != b.K {
-    return false
-  }
-  if obj.I != b.I {
-    return false
-  }
-  return true
+  return obj.KmerClassId.Equals(b.KmerClassId)
 }
 
 func (obj KmerClass) Matches(b KmerClass, alphabet ComplementableAlphabet) bool {
@@ -134,11 +146,7 @@ func (obj KmerClassList) Len() int {
 }
 
 func (obj KmerClassList) Less(i, j int) bool {
-  if obj[i].K != obj[j].K {
-    return obj[i].K < obj[j].K
-  } else {
-    return obj[i].I < obj[j].I
-  }
+  return obj[i].KmerClassId.Less(obj[j].KmerClassId)
 }
 
 func (obj KmerClassList) Swap(i, j int) {

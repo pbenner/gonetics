@@ -107,18 +107,17 @@ func (obj *KmerCounter) instantiateKmer(dest, src []byte, m map[int]struct{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerCounter) addObservedKmer(c []byte, id int) []int {
-  k := len(c)
-  d := make([]byte, k)
+func (obj *KmerCounter) addObservedKmer(kmer KmerClass) []int {
+  d := make([]byte, kmer.K)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range obj.KmerCatalogue.GetKmerClass(string(c)).Elements {
+  for _, kmer := range kmer.Elements {
     obj.generalizeKmer(d, []byte(kmer), m)
   }
   for id, _ := range m {
     i = append(i, id)
   }
-  obj.kmap[k-obj.N][id] = i
+  obj.kmap[kmer.K-obj.N][kmer.I] = i
   return i
 }
 
@@ -130,7 +129,7 @@ func (obj *KmerCounter) matchingKmers(c []byte) []int {
     if obj.frozen {
       return []int(nil)
     } else {
-      return obj.addObservedKmer(c, r.I)
+      return obj.addObservedKmer(r)
     }
   }
 }

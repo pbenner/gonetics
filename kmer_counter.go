@@ -33,7 +33,7 @@ type KmerCounter struct {
 
 /* -------------------------------------------------------------------------- */
 
-func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet) (*KmerCounter, error) {
+func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al ComplementableAlphabet, kmers ...KmerClass) (*KmerCounter, error) {
   r := KmerCounter{}
   if s, err := NewKmerCatalogue(n, m, comp, rev, rc, maxAmbiguous, al); err != nil {
     return nil, err
@@ -43,6 +43,8 @@ func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complem
   r.kmap = make([]map[int][]int, m-n+1)
   for k := n; k <= m; k++ {
     r.kmap[k-n] = make(map[int][]int)
+  }
+  if len(kmers) > 0 {
   }
   return &r, nil
 }
@@ -105,7 +107,7 @@ func (obj *KmerCounter) instantiateKmer(dest, src []byte, m map[int]struct{}) {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerCounter) addKmer(c []byte, id int) []int {
+func (obj *KmerCounter) addObservedKmer(c []byte, id int) []int {
   k := len(c)
   d := make([]byte, k)
   m := make(map[int]struct{})
@@ -128,7 +130,7 @@ func (obj *KmerCounter) matchingKmers(c []byte) []int {
     if obj.frozen {
       return []int(nil)
     } else {
-      return obj.addKmer(c, r.I)
+      return obj.addObservedKmer(c, r.I)
     }
   }
 }

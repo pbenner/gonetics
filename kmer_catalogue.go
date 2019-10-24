@@ -76,6 +76,13 @@ func (obj *KmerCatalogue) Clone() *KmerCatalogue {
 
 /* -------------------------------------------------------------------------- */
 
+func (obj *KmerCatalogue) AddKmerClass(kmer KmerClass) {
+  for _, s := range kmer.Elements {
+    obj.idmap[kmer.K-obj.N][s] = kmer.I
+  }
+  obj.elements[kmer.K-obj.N][kmer.I] = kmer.Elements
+}
+
 func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
   k := len(kmer)
   if k < obj.N || k > obj.M {
@@ -86,13 +93,6 @@ func (obj *KmerCatalogue) GetKmerClassIfPresent(kmer string) (KmerClass, bool) {
   } else {
     return KmerClass{}, false
   }
-}
-
-func (obj *KmerCatalogue) AddKmerClass(kmer KmerClass) {
-  for _, s := range kmer.Elements {
-    obj.idmap[kmer.K-obj.N][s] = kmer.I
-  }
-  obj.elements[kmer.K-obj.N][kmer.I] = kmer.Elements
 }
 
 func (obj *KmerCatalogue) GetKmerClass(kmer string) KmerClass {

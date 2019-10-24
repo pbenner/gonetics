@@ -64,7 +64,7 @@ func (obj *KmerCounter) Clone() *KmerCounter {
 
 /* -------------------------------------------------------------------------- */
 
-func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]struct{}, i int) {
+func (obj *KmerCounter) generalizeKmerRec(dest, src []byte, m map[int]struct{}, i int) {
   if i == len(src) {
     r := obj.KmerCatalogue.GetKmerClass(string(dest))
     m[r.I] = struct{}{}
@@ -75,13 +75,32 @@ func (obj *KmerCounter) generateMatchingKmersRec(dest, src []byte, m map[int]str
         continue
       }
       dest[i] = k
-      obj.generateMatchingKmersRec(dest, src, m, i+1)
+      obj.generalizeKmerRec(dest, src, m, i+1)
     }
   }
 }
 
-func (obj *KmerCounter) generateMatchingKmers(dest, src []byte, m map[int]struct{}) {
-  obj.generateMatchingKmersRec(dest, src, m, 0)
+func (obj *KmerCounter) generalizeKmer(dest, src []byte, m map[int]struct{}) {
+  obj.generalizeKmerRec(dest, src, m, 0)
+}
+
+/* -------------------------------------------------------------------------- */
+
+func (obj *KmerCounter) instantiateKmerRec(dest, src []byte, m map[int]struct{}, i int) {
+  if i == len(src) {
+    r := obj.KmerCatalogue.GetKmerClass(string(dest))
+    m[r.I] = struct{}{}
+  } else {
+    x, _ := obj.Alphabet.Bases(src[i])
+    for _, k := range x {
+      dest[i] = k
+      obj.instantiateKmerRec(dest, src, m, i+1)
+    }
+  }
+}
+
+func (obj *KmerCounter) instantiateKmer(dest, src []byte, m map[int]struct{}) {
+  obj.instantiateKmerRec(dest, src, m, 0)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -92,7 +111,7 @@ func (obj *KmerCounter) addKmer(c []byte, id int) []int {
   m := make(map[int]struct{})
   i := []int{}
   for _, kmer := range obj.KmerCatalogue.GetKmerClass(string(c)).Elements {
-    obj.generateMatchingKmers(d, []byte(kmer), m)
+    obj.generalizeKmer(d, []byte(kmer), m)
   }
   for id, _ := range m {
     i = append(i, id)

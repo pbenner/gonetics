@@ -45,6 +45,10 @@ func NewKmerCounter(n, m int, comp, rev, rc bool, maxAmbiguous []int, al Complem
     r.kmap[k-n] = make(map[int][]int)
   }
   if len(kmers) > 0 {
+    for _, kmer := range kmers {
+      r.addKmer(kmer)
+    }
+    r.Freeze()
   }
   return &r, nil
 }
@@ -113,9 +117,7 @@ func (obj *KmerCounter) addObservedKmer(kmer KmerClass) []int {
   d := make([]byte, kmer.K)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range kmer.Elements {
-    obj.generalizeKmer(d, []byte(kmer), m)
-  }
+  obj.generalizeKmer(d, []byte(kmer.Elements[0]), m)
   for id, _ := range m {
     i = append(i, id)
   }
@@ -127,9 +129,7 @@ func (obj *KmerCounter) addKmer(kmer KmerClass) []int {
   d := make([]byte, kmer.K)
   m := make(map[int]struct{})
   i := []int{}
-  for _, kmer := range kmer.Elements {
-    obj.instantiateKmer(d, []byte(kmer), m)
-  }
+  obj.instantiateKmer(d, []byte(kmer.Elements[0]), m)
   for id, _ := range m {
     obj.kmap[kmer.K-obj.N][kmer.I] = append(obj.kmap[kmer.K-obj.N][kmer.I], id)
   }

@@ -126,12 +126,13 @@ func (obj *KmerCounter) addObservedKmer(kmer KmerClass) []int {
 }
 
 func (obj *KmerCounter) addKmer(kmer KmerClass) []int {
+  obj.AddKmerClass(kmer)
   d := make([]byte, kmer.K)
   m := make(map[int]struct{})
   i := []int{}
   obj.instantiateKmer(d, []byte(kmer.Elements[0]), m)
   for id, _ := range m {
-    obj.kmap[kmer.K-obj.N][kmer.I] = append(obj.kmap[kmer.K-obj.N][kmer.I], id)
+    obj.kmap[kmer.K-obj.N][id] = append(obj.kmap[kmer.K-obj.N][id], kmer.I)
   }
   return i
 }

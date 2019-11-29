@@ -647,7 +647,7 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       treatmentFraglenEstimates[i] = estimate
       // exit on error
       if estimate.Error != nil {
-        return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)
+        return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, fmt.Errorf("%s: %w", filename, estimate.Error)
       } else {
         fraglenTreatment[i] = estimate.Fraglen
       }
@@ -662,7 +662,7 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       controlFraglenEstimates[i] = estimate
       // exit on error
       if estimate.Error != nil {
-        return SimpleTrack{}, controlFraglenEstimates, controlFraglenEstimates, fmt.Errorf("Estimating fragment length for `%s' failed: %v", filename, estimate.Error)
+        return SimpleTrack{}, controlFraglenEstimates, controlFraglenEstimates, fmt.Errorf("%s: %w", filename, estimate.Error)
       } else {
         fraglenControl[i] = estimate.Fraglen
       }

@@ -220,6 +220,8 @@ func CrosscorrelateReads(reads ReadChannel, genome Genome, maxDelay, binSize int
 /* estimate mean fragment length
  * -------------------------------------------------------------------------- */
 
+var ErrFraglenEstimate = fmt.Errorf("estimating fragment length failed")
+
 func EstimateFragmentLength(reads ReadChannel, genome Genome, maxDelay, binSize int, fraglenRange [2]int) (int, []int, []float64, uint64, error) {
 
   x, y, readLength, n, err := CrosscorrelateReads(reads, genome, maxDelay, binSize)
@@ -258,10 +260,10 @@ func EstimateFragmentLength(reads ReadChannel, genome Genome, maxDelay, binSize 
     }
   }
   if i_max == -1 {
-    return -1, x, y, n, fmt.Errorf("no crosscorrelation peak found")
+    return -1, x, y, n, fmt.Errorf("%w: %s", ErrFraglenEstimate, "no crosscorrelation peak found")
   }
   if v_max < y[len(y)-1] {
-    return -1, x, y, n, fmt.Errorf("it seems that maxDelay is too small")
+    return -1, x, y, n, fmt.Errorf("%w: %s", ErrFraglenEstimate, "it seems that maxDelay is too small")
   }
   return x[i_max], x, y, n, nil
 }

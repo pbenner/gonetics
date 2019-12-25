@@ -49,9 +49,12 @@ func importBed(config SessionConfig, filename string) GRanges {
     return granges
   }
   if filename == "-" {
+    PrintStderr(config, 1, "Reading bed file from stdin... ")
     if err := granges.ReadBed3(os.Stdin); err != nil {
+      PrintStderr(config, 1, "failed\n")
       log.Fatal(err)
     }
+    PrintStderr(config, 1, "done\n")
   } else {
     PrintStderr(config, 1, "Reading bed file `%s'... ", filename)
     if err := granges.ImportBed3(filename); err != nil {
@@ -126,7 +129,7 @@ func main() {
   optVerbose      := options.CounterLong("verbose",       'v',          "verbose level [-v or -vv]")
   optHelp         := options.   BoolLong("help",          'h',          "print help")
 
-  options.SetParameters("<GENOME.fa> [REGIONS.bed]")
+  options.SetParameters("<GENOME.fa> [REGIONS.bed|-]")
   options.Parse(os.Args)
 
   if *optHelp {

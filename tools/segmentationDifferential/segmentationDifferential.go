@@ -20,7 +20,9 @@ package main
 
 import   "fmt"
 import   "log"
+import   "math"
 import   "os"
+import   "strconv"
 import   "strings"
 
 import   "github.com/pborman/getopt"
@@ -32,6 +34,7 @@ import . "github.com/pbenner/gonetics"
 type Config struct {
   FilterMaxSize int
   RegionSize    int
+  Summary       BinSummaryStatistics
   Verbose       int
 }
 
@@ -60,6 +63,42 @@ func importBed6(config Config, filename string) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
+func filterBw(config Config, filename string, thr float64, s GRanges) GRanges {
+  printStderr(config, 1, "Filtering regions with data from `%s'... ", filename)
+  f, err := os.Open(filename)
+  if err != nil {
+    printStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  }
+  defer f.Close()
+
+  bwr, err := NewBigWigReader(f)
+  if err != nil {
+    printStderr(config, 1, "failed\n")
+    log.Fatal(err)
+  }
+  del := []int{}
+
+  for i := 0; i < s.Length(); i++ {
+    seqname := s.Seqnames[i]
+    from    := s.Ranges[i].From
+    to      := s.Ranges[i].To
+    if s, _, err := bwr.QuerySlice(seqname, from, to, config.Summary, to-from, 0, math.NaN()); err != nil {
+      printStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      if len(s) != 1 {
+        panic("internal error")
+      }
+      if s[0] != math.NaN() && s[0] < thr {
+        del = append(del, i)
+      }
+    }
+  }
+  printStderr(config, 1, "done\n")
+  return s.Remove(del)
+}
+
 func filterRegions(states []string, s GRanges) GRanges {
   idx  := []int{}
   name := s.GetMetaStr("name")
@@ -76,11 +115,12 @@ func filterRegions(states []string, s GRanges) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func callDifferentialRegions(config Config, states string, segmentationFilenames []string) {
+func callDifferentialRegions(config Config, states string, segmentationFilenames, bwFiles []string, bwThr []float64) {
   regions := make([]GRanges, len(segmentationFilenames))
   for i, filename := range segmentationFilenames {
     regions[i] = importBed6(config, filename)
     regions[i] = filterRegions(strings.Split(states, ","), regions[i])
+    regions[i] = filterBw(config, bwFiles[i], bwThr[i], regions[i])
   }
   r := GRanges{}
   r  = r.Merge(regions...)
@@ -130,8 +170,10 @@ func main() {
   config  := Config{}
   options := getopt.New()
 
-  optFilterMaxSize := options.    IntLong("filter-max-size",  0 , 0,  "filter out regions that are longer than the given threshold")
-  optRegionSize    := options.    IntLong("region-size",      0 , 0,  "if not zero, all regions are resized to the given length")
+  optFilterBw      := options. StringLong("filter-bigwig",    0 , "", "filter out regions that have a value smaller than the given " +
+                                                                      "threshold [format: file1.bw:threshold1,file2.bw:threshold2,...]")
+  optFilterMaxSize := options.    IntLong("filter-max-size",  0 ,  0, "filter out regions that are longer than the given threshold")
+  optRegionSize    := options.    IntLong("region-size",      0 ,  0, "if not zero, all regions are resized to the given length")
   optVerbose       := options.CounterLong("verbose",         'v',     "verbose level [-v or -vv]")
   optHelp          := options.   BoolLong("help",            'h',     "print help")
 
@@ -151,8 +193,28 @@ func main() {
     options.PrintUsage(os.Stderr)
     os.Exit(1)
   }
+  bwFiles := []string {}
+  bwThr   := []float64{}
+
+  for _, str := range strings.Split(*optFilterBw, ",") {
+    s := strings.Split(str, ":")
+    if len(s) != 2 {
+      log.Fatal("invalid optional argument `%s'", str)
+    }
+    v, err := strconv.ParseFloat(s[1], 64)
+    if err != nil {
+      log.Fatal(err)
+    }
+    bwFiles = append(bwFiles, s[0])
+    bwThr   = append(bwThr  , v)
+  }
+  if len(bwFiles) != 0 && len(bwFiles) != len(options.Args())-1 {
+    log.Fatal("optional argument `--filter-biwgwig' has invalid number of fields")
+  }
+
   config.FilterMaxSize = *optFilterMaxSize
   config.RegionSize    = *optRegionSize
+  config.Summary       = BinSummaryStatisticsFromString("mean")
 
-  callDifferentialRegions(config, options.Args()[0], options.Args()[1:])
+  callDifferentialRegions(config, options.Args()[0], options.Args()[1:], bwFiles, bwThr)
 }

@@ -120,7 +120,9 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   for i, filename := range segmentationFilenames {
     regions[i] = importBed6(config, filename)
     regions[i] = filterRegions(strings.Split(states, ","), regions[i])
-    regions[i] = filterBw(config, bwFiles[i], bwThr[i], regions[i])
+    if len(bwFiles) > 0 {
+      regions[i] = filterBw(config, bwFiles[i], bwThr[i], regions[i])
+    }
   }
   r := GRanges{}
   r  = r.Merge(regions...)
@@ -196,20 +198,22 @@ func main() {
   bwFiles := []string {}
   bwThr   := []float64{}
 
-  for _, str := range strings.Split(*optFilterBw, ",") {
-    s := strings.Split(str, ":")
-    if len(s) != 2 {
-      log.Fatal("invalid optional argument `%s'", str)
+  if len(*optFilterBw) > 0 {
+    for _, str := range strings.Split(*optFilterBw, ",") {
+      s := strings.Split(str, ":")
+      if len(s) != 2 {
+        log.Fatalf("invalid optional argument `%s'", str)
+      }
+      v, err := strconv.ParseFloat(s[1], 64)
+      if err != nil {
+        log.Fatal(err)
+      }
+      bwFiles = append(bwFiles, s[0])
+      bwThr   = append(bwThr  , v)
     }
-    v, err := strconv.ParseFloat(s[1], 64)
-    if err != nil {
-      log.Fatal(err)
-    }
-    bwFiles = append(bwFiles, s[0])
-    bwThr   = append(bwThr  , v)
   }
   if len(bwFiles) != 0 && len(bwFiles) != len(options.Args())-1 {
-    log.Fatal("optional argument `--filter-biwgwig' has invalid number of fields")
+      log.Fatal("optional argument `--filter-biwgwig' has invalid number of fields")
   }
 
   config.FilterMaxSize = *optFilterMaxSize

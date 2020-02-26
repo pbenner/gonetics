@@ -209,8 +209,10 @@ func exportOutput(config Config, filename string, granges GRanges) {
 
 func removeOverlaps(config Config, filenameRm, filenameIn, filenameOut string) {
   regionsRm := importBed3 (config, filenameRm)
-  regionsIn := importInput(config, filenameIn)
-  regionsIn  = regionsIn.RemoveOverlapsWith(regionsRm)
+  regionsIn := importInput(config, filenameIn)        ; len1 := regionsIn.Length()
+  regionsIn  = regionsIn.RemoveOverlapsWith(regionsRm); len2 := regionsIn.Length()
+
+  PrintStderr(config, 1, "Removed %d regions\n", len1-len2)
 
   exportOutput(config, filenameOut, regionsIn)
 }

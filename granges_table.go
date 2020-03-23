@@ -320,3 +320,141 @@ func (granges *GRanges) ImportTable(filename string, names, types []string) erro
     return nil
   }
 }
+
+/* -------------------------------------------------------------------------- */
+
+func (granges *GRanges) ReadTableAll(s io.ReadSeeker) error {
+  var r io.Reader
+
+  // check if file is compressed
+  if g, err := gzip.NewReader(s); err != nil {
+    if _, err := s.Seek(0, io.SeekStart); err != nil {
+      return err
+    }
+    r = s
+  } else {
+    r = g
+    defer g.Close()
+  }
+
+  reader := bufio.NewReader(r)
+  names  := []string{}
+  types  := []string{}
+
+  colSeqname := -1
+  colFrom    := -1
+  colTo      := -1
+  colStrand  := -1
+
+  // scan header
+  if l, err := bufioReadLine(reader); err != nil && err != io.EOF {
+    return err
+  } else {
+    fields := strings.Fields(l)
+    for i := 0; i < len(fields); i++ {
+      switch fields[i] {
+      case "seqnames":
+        colSeqname = i
+      case "from":
+        colFrom = i
+      case "to":
+        colTo = i
+      case "strand":
+        colStrand = i
+      case "start":
+        // alternative name for `from' column
+        if colFrom == -1 {
+          colFrom = i
+        }
+      case "end":
+        // alternative name for `to' column
+        if colTo == -1 {
+          colTo = i
+        }
+      default:
+        names = append(names, fields[i])
+        types = append(types, "[]string")
+      }
+    }
+  }
+  if colSeqname == -1 {
+    return fmt.Errorf("is missing a seqnames column")
+  }
+  if colFrom == -1 {
+    return fmt.Errorf("is missing a from column")
+  }
+  if colTo == -1 {
+    return fmt.Errorf("is missing a to column")
+  }
+  // scan data
+  for i:= 2;; i++ {
+    l, err := bufioReadLine(reader)
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      return err
+    }
+    if len(l) == 0 {
+      continue
+    }
+    fields := strings.Fields(l)
+    // parse seqname
+    if len(fields) < colSeqname {
+      return fmt.Errorf("invalid table")
+    }
+    // parse from
+    if len(fields) < colFrom {
+      return fmt.Errorf("invalid table")
+    }
+    v1, err := strconv.ParseInt(fields[colFrom], 10, 64)
+    if err != nil {
+      return fmt.Errorf("parsing `from' column `%d' failed at line `%d': %v", colFrom+1, i, err)
+    }
+    // parse to
+    if len(fields) < colTo {
+      return fmt.Errorf("invalid table")
+    }
+    v2, err := strconv.ParseInt(fields[colTo], 10, 64)
+    if err != nil {
+      return fmt.Errorf("parsing `to' column `%d' failed at line `%d': %v", colTo+1, i, err)
+    }
+    granges.Seqnames = append(granges.Seqnames, fields[colSeqname])
+    granges.Ranges   = append(granges.Ranges,   NewRange(int(v1), int(v2)))
+    if colStrand != -1 {
+      if len(fields) < colStrand {
+        return fmt.Errorf("invalid table")
+      }
+      granges.Strand = append(granges.Strand,   fields[colStrand][0])
+    } else {
+      granges.Strand = append(granges.Strand,   '*')
+    }
+  }
+  // rewind file
+  s.Seek(0, io.SeekStart)
+  // check if file is compressed
+  if g, err := gzip.NewReader(s); err != nil {
+    if _, err := s.Seek(0, io.SeekStart); err != nil {
+      return err
+    }
+    r = s
+  } else {
+    r = g
+    defer g.Close()
+  }
+  return granges.Meta.ReadTable(r, names, types)
+}
+
+func (granges *GRanges) ImportTableAll(filename string) error {
+  // open file
+  f, err := os.Open(filename)
+  if err != nil {
+    return err
+  }
+  defer f.Close()
+  if err := granges.ReadTableAll(f); err != nil {
+    return fmt.Errorf("`%s' %s", filename, err)
+  } else {
+    return nil
+  }
+}

@@ -150,6 +150,7 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     }
   }
   r.AddMeta("name",       name)
+  r.AddMeta("score",      score)
   r.AddMeta("thickStart", thickStart)
   r.AddMeta("thickEnd",   thickEnd)
   r.AddMeta("itemRgb",    itemRgb)

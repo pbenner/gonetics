@@ -100,7 +100,7 @@ func importTable(r io.Reader, track SimpleTrack, columnName string) error {
   for i := 0; scanner.Scan(); i++ {
     fields := strings.Fields(scanner.Text())
     if colIdx >= len(fields) {
-      return fmt.Errorf("table has invalid number of columns at line", i+3)
+      return fmt.Errorf("table has invalid number of columns at line %d", i+3)
     }
     if i >= seq.NBins() {
       return fmt.Errorf("table has more entries than expected (is the binsize correct?)")

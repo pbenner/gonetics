@@ -132,7 +132,7 @@ func findNearestRegions(config Config, r GRanges) GRanges {
 
   subjectNames := regions.GetMetaStr("name")
   if len(subjectNames) == 0 {
-    log.Fatal("regions file `%s' has no name column")
+    log.Fatal("regions file has no name column")
   }
   queryHits, subjectHits, distances := FindNearest(r, regions, config.KNearest)
 

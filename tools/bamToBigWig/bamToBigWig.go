@@ -65,7 +65,7 @@ func parseFilename(filename string) (string, int) {
     return tmp[0], int(t)
   } else
   if len(tmp) >= 2 {
-    log.Fatal("invalid input file description `%s'", filename)
+    log.Fatalf("invalid input file description `%s'", filename)
   }
   return filename, -1
 }
@@ -256,7 +256,7 @@ func main() {
     case "overlap":
     case "mean overlap":
     default:
-      log.Fatal("invalid binning method `%s'", *optBinningMethod)
+      log.Fatalf("invalid binning method `%s'", *optBinningMethod)
     }
     optionsList = append(optionsList, OptionBinningMethod{*optBinningMethod})
   }
@@ -368,7 +368,7 @@ func main() {
     case "rpkm":
     case "cpm":
     default:
-      log.Fatal("invalid normalization method `%s'", *optNormalizeTrack)
+      log.Fatalf("invalid normalization method `%s'", *optNormalizeTrack)
     }
     optionsList = append(optionsList, OptionNormalizeTrack{strings.ToLower(*optNormalizeTrack)})
   }

@@ -83,7 +83,7 @@ func (track GenericTrack) exportSegmentation(granges GRanges, bedFilename, name,
   return ioutil.WriteFile(bedFilename, buffer.Bytes(), 0666)
 }
 
-func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames, rgbChart []string) error {
+func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames, rgbChart []string, scores []GenericTrack) error {
   r, err := track.GRanges("state"); if err != nil {
     return err
   }
@@ -136,6 +136,18 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     thickStart[i] = r.Ranges[i].From
     thickEnd  [i] = r.Ranges[i].To
     itemRgb   [i] = rgbMap[stateNames[s]]
+    if len(scores) > 0 {
+      if slice, err := scores[s].GetSlice(r.Row(i)); err != nil {
+        return err
+      } else {
+        for _, value := range slice {
+          v := int(value*100)
+          if score[i] < v {
+            score[i] = v
+          }
+        }
+      }
+    }
   }
   r.AddMeta("name",       name)
   r.AddMeta("thickStart", thickStart)

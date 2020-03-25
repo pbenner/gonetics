@@ -83,7 +83,7 @@ func (track GenericTrack) exportSegmentation(granges GRanges, bedFilename, name,
   return ioutil.WriteFile(bedFilename, buffer.Bytes(), 0666)
 }
 
-func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames, rgbChart []string, scores []GenericTrack) error {
+func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames, rgbChart []string, scores []Track) error {
   r, err := track.GRanges("state"); if err != nil {
     return err
   }

@@ -65,7 +65,7 @@ func importBed6(config Config, filename string) GRanges {
 
 func filterBw(config Config, filename string, thr float64, s GRanges) GRanges {
   printStderr(config, 1, "Filtering regions with data from `%s'... ", filename)
-  f, err := os.Open(filename)
+  f, err := OpenBigWigFile(filename)
   if err != nil {
     printStderr(config, 1, "failed\n")
     log.Fatal(err)
@@ -77,6 +77,7 @@ func filterBw(config Config, filename string, thr float64, s GRanges) GRanges {
     printStderr(config, 1, "failed\n")
     log.Fatal(err)
   }
+
   del := []int{}
 
   for i := 0; i < s.Length(); i++ {
@@ -101,7 +102,7 @@ func filterBw(config Config, filename string, thr float64, s GRanges) GRanges {
 
 func filterOutBw(config Config, filename string, thr float64, s GRanges) GRanges {
   printStderr(config, 1, "Filtering regions with data from `%s'... ", filename)
-  f, err := os.Open(filename)
+  f, err := OpenBigWigFile(filename)
   if err != nil {
     printStderr(config, 1, "failed\n")
     log.Fatal(err)
@@ -151,7 +152,62 @@ func filterRegions(states []string, s GRanges) GRanges {
 
 /* -------------------------------------------------------------------------- */
 
-func callDifferentialRegions(config Config, states string, segmentationFilenames, bwFiles1, bwFiles2 []string, bwThr1, bwThr2 []float64) {
+func computeScores(config Config, r GRanges, labels [][]int, bwFiles []string) []float64 {
+  readers := make([]*BigWigReader, len(bwFiles))
+  // open all bigWig files
+  for i, _ := range bwFiles {
+    printStderr(config, 1, "Importing scores from `%s'... ", bwFiles[i])
+    f, err := OpenBigWigFile(bwFiles[i])
+    if err != nil {
+      printStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    }
+    defer f.Close()
+
+    bwr, err := NewBigWigReader(f)
+    if err != nil {
+      printStderr(config, 1, "failed\n")
+      log.Fatal(err)
+    } else {
+      printStderr(config, 1, "done\n")
+    }
+    readers[i] = bwr
+  }
+  scores_pos := make([]float64, r.Length())
+  scores_neg := make([]float64, r.Length())
+  for i := 0; i < r.Length(); i++ {
+    overlaps := make([]bool, len(bwFiles))
+    n        := 0
+    for _, j := range labels[i] {
+      overlaps[j] = true
+      n          += 1
+    }
+    for j := 0; j < len(bwFiles); j++ {
+      if s, _, err := readers[j].QuerySlice(r.Seqnames[i], r.Ranges[i].From, r.Ranges[i].To, BinMax, r.Ranges[i].To-r.Ranges[i].From, 0, 0.0); err != nil {
+        log.Fatal(err)
+      } else {
+        if overlaps[j] {
+          scores_pos[i] += s[0]
+        } else {
+          scores_neg[i] += s[0]
+        }
+      }
+    }
+    switch n {
+    case 0:
+      scores_pos[i] = math.Inf(-1)
+    case len(bwFiles):
+      scores_pos[i] = math.Inf(-1)
+    default:
+      scores_pos[i] = math.Log(scores_pos[i]/float64(n)) - math.Log(scores_neg[i]/float64(len(bwFiles)-n))
+    }
+  }
+  return scores_pos
+}
+
+/* -------------------------------------------------------------------------- */
+
+func callDifferentialRegions(config Config, states string, segmentationFilenames, bwFiles1, bwFiles2, bwFiles3 []string, bwThr1, bwThr2 []float64) {
   regions := make([]GRanges, len(segmentationFilenames))
   for i, filename := range segmentationFilenames {
     regions[i] = importBed6(config, filename)
@@ -183,6 +239,10 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
   // add meta information
   r.AddMeta("name"  , names)
   r.AddMeta("labels", labels)
+  if len(bwFiles3) > 0 {
+    r.AddMeta("score", computeScores(config, r, labels, bwFiles3))
+    r, _ = r.Sort("score", true)
+  }
   // filter regions
   if config.FilterMaxSize != 0 {
     idx := []int{}
@@ -216,6 +276,7 @@ func main() {
   optFilterOutBw   := options. StringLong("filter-out-bigwig", 0 , "", "remove regions that have a value larger than the given " +
                                                                        "threshold [format: file1.bw:threshold1,file2.bw:threshold2,...]")
   optFilterMaxSize := options.    IntLong("filter-max-size",   0 ,  0, "filter out regions that are longer than the given threshold")
+  optScores        := options. StringLong("scores",            0 , "", "bigWig files with scores")
   optRegionSize    := options.    IntLong("region-size",       0 ,  0, "if not zero, all regions are resized to the given length")
   optVerbose       := options.CounterLong("verbose",          'v',     "verbose level [-v or -vv]")
   optHelp          := options.   BoolLong("help",             'h',     "print help")
@@ -238,6 +299,7 @@ func main() {
   }
   bwFiles1 := []string {}
   bwFiles2 := []string {}
+  bwFiles3 := []string {}
   bwThr1   := []float64{}
   bwThr2   := []float64{}
 
@@ -269,16 +331,24 @@ func main() {
       bwThr2   = append(bwThr2  , v)
     }
   }
+  if len(*optScores) > 0 {
+    for _, str := range strings.Split(*optScores, ",") {
+      bwFiles3 = append(bwFiles3, str)
+    }
+  }
   if len(bwFiles1) != 0 && len(bwFiles1) != len(options.Args())-1 {
-      log.Fatal("optional argument `--filter-biwgwig' has invalid number of fields")
+    log.Fatal("optional argument `--filter-biwgwig' has invalid number of fields")
   }
   if len(bwFiles2) != 0 && len(bwFiles2) != len(options.Args())-1 {
-      log.Fatal("optional argument `--filter-out-biwgwig' has invalid number of fields")
+    log.Fatal("optional argument `--filter-out-biwgwig' has invalid number of fields")
+  }
+  if len(bwFiles3) != 0 && len(bwFiles3) != len(options.Args())-1 {
+    log.Fatal("optional argument `--scores' has invalid number of fields")
   }
 
   config.FilterMaxSize = *optFilterMaxSize
   config.RegionSize    = *optRegionSize
   config.Summary       = BinSummaryStatisticsFromString("mean")
 
-  callDifferentialRegions(config, options.Args()[0], options.Args()[1:], bwFiles1, bwFiles2, bwThr1, bwThr2)
+  callDifferentialRegions(config, options.Args()[0], options.Args()[1:], bwFiles1, bwFiles2, bwFiles3, bwThr1, bwThr2)
 }

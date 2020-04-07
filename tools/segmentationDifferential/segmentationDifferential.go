@@ -34,6 +34,7 @@ import . "github.com/pbenner/gonetics"
 type Config struct {
   FilterMaxSize int
   RegionSize    int
+  PrintStats    bool
   Summary       BinSummaryStatistics
   Verbose       int
 }
@@ -262,6 +263,18 @@ func callDifferentialRegions(config Config, states string, segmentationFilenames
     }
   }
   r.WriteTable(os.Stdout, true, false)
+  if config.PrintStats {
+    printStderr(config, 0, "Total number of regions: %d\n", r.Length())
+    for i := 0; i < len(segmentationFilenames); i++ {
+      n := 0
+      for j := 0; j < r.Length(); j++ {
+        if len(labels[j]) == i+1 {
+          n++
+        }
+      }
+      printStderr(config, 0, "Fraction of regions present in %d tissues: %7.3f%%\n", i+1, 100.0*float64(n)/float64(r.Length()))
+    }
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -278,6 +291,7 @@ func main() {
   optFilterMaxSize := options.    IntLong("filter-max-size",   0 ,  0, "filter out regions that are longer than the given threshold")
   optScores        := options. StringLong("scores",            0 , "", "bigWig files with scores")
   optRegionSize    := options.    IntLong("region-size",       0 ,  0, "if not zero, all regions are resized to the given length")
+  optPrintStats    := options.   BoolLong("print-statistics",  0 ,     "print summary statistics")
   optVerbose       := options.CounterLong("verbose",          'v',     "verbose level [-v or -vv]")
   optHelp          := options.   BoolLong("help",             'h',     "print help")
 
@@ -348,6 +362,7 @@ func main() {
 
   config.FilterMaxSize = *optFilterMaxSize
   config.RegionSize    = *optRegionSize
+  config.PrintStats    = *optPrintStats
   config.Summary       = BinSummaryStatisticsFromString("mean")
 
   callDifferentialRegions(config, options.Args()[0], options.Args()[1:], bwFiles1, bwFiles2, bwFiles3, bwThr1, bwThr2)

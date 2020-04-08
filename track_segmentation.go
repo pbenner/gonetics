@@ -83,7 +83,7 @@ func (track GenericTrack) exportSegmentation(granges GRanges, bedFilename, name,
   return ioutil.WriteFile(bedFilename, buffer.Bytes(), 0666)
 }
 
-func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames, rgbChart []string, scores []Track) error {
+func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescription string, compress bool, stateNames []string, rgbMap map[string]string, scores []Track) error {
   r, err := track.GRanges("state"); if err != nil {
     return err
   }
@@ -93,7 +93,6 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
   thickStart := make([]int,    len(state))
   thickEnd   := make([]int,    len(state))
   itemRgb    := make([]string, len(state))
-  rgbMap     := make(map[string]string)
 
   if len(stateNames) == 0 {
     // determine number of states
@@ -109,20 +108,15 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
       stateNames[i] = fmt.Sprintf("s%d", i)
     }
   }
-  stateNamesUnique := uniqueStrings(stateNames)
-  if len(rgbChart) == 0 {
+  if len(rgbMap) == 0 {
+    stateNamesUnique := uniqueStrings(stateNames)
     // get a color for each distinct state name
-    rgbChart = getNColors(len(stateNamesUnique))
-  }
-  if len(stateNamesUnique) > len(rgbChart) {
-    return fmt.Errorf("insufficient number of RGB colors")
-  }
-  { // fill rgbMap (stateName -> rgb color)
+    rgbChart := getNColors(len(stateNamesUnique))
+    // fill rgbMap (stateName -> rgb color)
     for i, state := range stateNamesUnique {
       rgbMap[state] = rgbChart[i]
     }
   }
-
   for i := 0; i < r.Length(); i++ {
     s := int(state[i])
     if s < 0 || math.Floor(state[i]) != state[i] {
@@ -135,7 +129,11 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     score     [i] = 0
     thickStart[i] = r.Ranges[i].From
     thickEnd  [i] = r.Ranges[i].To
-    itemRgb   [i] = rgbMap[stateNames[s]]
+    if color, ok := rgbMap[stateNames[s]]; !ok {
+      return fmt.Errorf("RGB Map is missing a color for state `%s'", stateNames[s])
+    } else {
+      itemRgb [i] = color
+    }
     if len(scores) > 0 {
       if slice, err := scores[s].GetSlice(r.Row(i)); err != nil {
         return err

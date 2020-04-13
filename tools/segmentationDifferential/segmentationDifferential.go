@@ -196,11 +196,11 @@ func computeScores(config Config, r GRanges, labels [][]int, bwFiles []string) [
     }
     switch n {
     case 0:
-      scores_pos[i] = math.Inf(-1)
+      panic("internal error")
     case len(bwFiles):
       scores_pos[i] = math.Inf(-1)
     default:
-      scores_pos[i] = math.Log(scores_pos[i]/float64(n)) - math.Log(scores_neg[i]/float64(len(bwFiles)-n))
+      scores_pos[i] = math.Log((scores_pos[i]+1.0)/float64(n)) - math.Log((scores_neg[i]+1.0)/float64(len(bwFiles)-n))
     }
   }
   return scores_pos

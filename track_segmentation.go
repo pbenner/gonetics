@@ -125,14 +125,14 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
     if s >= len(stateNames) {
       return fmt.Errorf("insufficient number of state names")
     }
-    name      [i] = stateNames[s]
-    score     [i] = 0
-    thickStart[i] = r.Ranges[i].From
-    thickEnd  [i] = r.Ranges[i].To
     if color, ok := rgbMap[stateNames[s]]; !ok {
       return fmt.Errorf("RGB Map is missing a color for state `%s'", stateNames[s])
     } else {
-      itemRgb [i] = color
+      name      [i] = stateNames[s]
+      score     [i] = 0
+      thickStart[i] = r.Ranges[i].From
+      thickEnd  [i] = r.Ranges[i].To
+      itemRgb   [i] = color
     }
     if len(scores) > 0 {
       if slice, err := scores[s].GetSlice(r.Row(i)); err != nil {
@@ -152,6 +152,16 @@ func (track GenericTrack) ExportSegmentation(bedFilename, bedName, bedDescriptio
   r.AddMeta("thickStart", thickStart)
   r.AddMeta("thickEnd",   thickEnd)
   r.AddMeta("itemRgb",    itemRgb)
+  // remove all rows with no color
+  {
+    idx := []int{}
+    for i := 0; i < r.Length(); i++ {
+      if itemRgb[i] == "" {
+        idx = append(idx, i)
+      }
+    }
+    r = r.Remove(idx)
+  }
   // write result to file
   return track.exportSegmentation(r, bedFilename, bedName, bedDescription, compress)
 }
@@ -189,7 +199,7 @@ func importSegmentation(filename string) (GRanges, error) {
   }
 }
 
-func (track GenericMutableTrack) ImportSegmentation(bedFilename string) ([]string, error) {
+func (track GenericMutableTrack) ImportSegmentation(bedFilename string, defState string) ([]string, error) {
   var s TrackMutableSequence
   if r, err := importSegmentation(bedFilename); err != nil {
     return nil, err
@@ -198,6 +208,12 @@ func (track GenericMutableTrack) ImportSegmentation(bedFilename string) ([]strin
     states   := r.GetMetaStr("name")
     stateMap := make(map[string]int)
 
+    if defState != "" {
+      stateMap[defState] = 0
+      track.Map(track, func(seqname string, i int, value float64) float64 {
+        return 0.0
+      })
+    }
     if len(states) != r.Length() {
       return nil, fmt.Errorf("invalid segmentation bed file: name column is missing")
     }

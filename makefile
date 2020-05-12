@@ -5,6 +5,7 @@ SUBDIRS = \
 	tools/bamGenome \
 	tools/bamView \
 	tools/bamToBigWig \
+	tools/bigWigCountsToQuantiles \
 	tools/bigWigEditChromNames \
 	tools/bigWigExtract \
 	tools/bigWigExtractChroms \

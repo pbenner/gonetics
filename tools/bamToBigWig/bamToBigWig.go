@@ -205,7 +205,7 @@ func main() {
   optNormalizeTrack    := options. StringLong("normalize-track",            0 , "", "normalize track with the specified method [i.e. rpkm (reads per kilobase " +
                                                                                     "per million mapped reads, i.e. {bin read count}/({total number of reads in millions}*{bin size})), " +
                                                                                     "or cpm (counts per million mapped reads, i.e. {bin read count}/{total number of reads in millions})]")
-  optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal [default: `0,0']")
+  optPseudocounts      := options. StringLong("pseudocounts",               0 , "", "pseudocounts added to treatment and control signal [default: `0.0,0.0']")
   optSmoothenControl   := options.   BoolLong("smoothen-control",           0 ,     "smoothen control with an adaptive window method")
   optSmoothenSizes     := options. StringLong("smoothen-window-sizes",      0 , "", "feasible window sizes for the smoothening method [format: s1,s2,...]")
   optSmoothenMin       := options. StringLong("smoothen-min-counts",        0 , "", "minimum number of counts for the smoothening method")

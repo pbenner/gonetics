@@ -69,13 +69,18 @@ func (obj GRanges) Merge(granges ...GRanges) GRanges {
       rmap[g.Seqnames[i]] = entry
     }
   }
+  seqnames := []string{}
+  for key, _ := range rmap {
+    seqnames = append(seqnames, key)
+  }
+  sort.Strings(seqnames)
   // sort map entries
   for _, entry := range rmap {
     sort.Sort(entry)
   }
   // find overlaps
-  for seqname, entry := range rmap {
-    r = r.merge(seqname, entry)
+  for _, seqname := range seqnames {
+    r = r.merge(seqname, rmap[seqname])
   }
   return r
 }

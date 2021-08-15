@@ -97,7 +97,9 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
       return nil, r.Error
     }
     for i := r.From; i < r.To; i += track.BinSize {
-      seq[i/track.BinSize] = r.Sum/r.Valid
+      if j := (i-r.From)/track.BinSize; j < len(seq) {
+        seq[j] = r.Sum/r.Valid
+      }
     }
   }
   return seq, nil

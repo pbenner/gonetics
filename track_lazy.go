@@ -92,13 +92,13 @@ func (track LazyTrack) GetSlice(r GRangesRow) ([]float64, error) {
   binFrom := r.Range.From/track.BinSize
   binTo   := r.Range.To  /track.BinSize
   seq     := make([]float64, binTo-binFrom)
-  for r := range track.Bwr.Query(r.Seqname, r.Range.From, r.Range.To, track.BinSize) {
-    if r.Error != nil {
-      return nil, r.Error
+  for s := range track.Bwr.Query(r.Seqname, r.Range.From, r.Range.To, track.BinSize) {
+    if s.Error != nil {
+      return nil, s.Error
     }
-    for i := r.From; i < r.To; i += track.BinSize {
-      if j := (i-r.From)/track.BinSize; j < len(seq) {
-        seq[j] = r.Sum/r.Valid
+    for i := s.From; i < s.To; i += track.BinSize {
+      if j := (i-r.Range.From)/track.BinSize; j < len(seq) {
+        seq[j] = s.Sum/s.Valid
       }
     }
   }

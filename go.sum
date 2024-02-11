@@ -1,2 +1,6 @@
 github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gGcHOs=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
+github.com/pbenner/threadpool v0.0.0-20200729220145-19cbae573817 h1:GTf/+iXi+znoqtWojs6RAQTPRcm0CKh//x3LgX0yRqE=
+github.com/pbenner/threadpool v0.0.0-20200729220145-19cbae573817/go.mod h1:H4NgKp8XTldi4/j1MACNzRS+WuUy4fBkykBEggUVrm4=
+github.com/pborman/getopt v1.1.0 h1:eJ3aFZroQqq0bWmraivjQNt6Dmm5M0h2JcDW38/Azb0=
+github.com/pborman/getopt v1.1.0/go.mod h1:FxXoW1Re00sQG/+KIkuSqRL/LwQgSkv7uyac+STFsbk=

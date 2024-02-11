@@ -292,6 +292,7 @@ func (GappedNucleotideAlphabet) IsWildcard(i byte) (bool, error) {
   case 'g': return false, nil
   case 'T': fallthrough
   case 't': return false, nil
+  case 'N': fallthrough
   case 'n': return true, nil
   default:  return false, fmt.Errorf("IsAmbiguous(): `%c' is not part of the alphabet", i)
   }

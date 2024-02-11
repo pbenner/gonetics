@@ -217,11 +217,21 @@ func (r GRanges) Intersection(s GRanges) GRanges {
 }
 
 func (r GRanges) Sort(name string, reverse bool) (GRanges, error) {
-  j, err := r.sortedIndices(name, reverse)
-  if err != nil {
-    return GRanges{}, err
+  if name == "" {
+    l := newGRangesSort(r)
+    if reverse {
+      sort.Sort(sort.Reverse(l))
+    } else {
+      sort.Sort(l)
+    }
+    return r.Subset(l.indices), nil
+  } else {
+    j, err := r.sortedIndices(name, reverse)
+    if err != nil {
+      return GRanges{}, err
+    }
+    return r.Subset(j), nil
   }
-  return r.Subset(j), nil
 }
 
 // Remove all entries that are not in the given genome.

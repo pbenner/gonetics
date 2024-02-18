@@ -178,7 +178,7 @@ func (granges GRanges) WriteBed9(w io.Writer) error {
         return err
       }
     } else {
-      if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].From); err != nil {
+      if _, err := fmt.Fprintf(w, "\t%d", granges.Ranges[i].To); err != nil {
         return err
       }
     }

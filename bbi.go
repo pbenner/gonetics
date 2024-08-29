@@ -474,7 +474,6 @@ type BbiBlockEncoderIterator interface {
 
 type BbiZoomBlockEncoder struct {
   ItemsPerSlot   int
-  tmp          []byte
   reductionLevel int
   order          binary.ByteOrder
 }

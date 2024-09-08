@@ -245,7 +245,7 @@ func (granges GRanges) WriteGTF(w_ io.Writer) error {
 
   sources  := granges.GetMetaStr("sources")
   features := granges.GetMetaStr("features")
-  scores   := granges.GetMetaInt("scores")
+  scores   := granges.GetMetaFloat("scores")
   frames   := granges.GetMetaInt("frames")
 
   for i := 0; i < granges.Length(); i++ {
@@ -263,7 +263,7 @@ func (granges GRanges) WriteGTF(w_ io.Writer) error {
     fmt.Fprintf(w, "\t%d", granges.Ranges[i].From)
     fmt.Fprintf(w, "\t%d", granges.Ranges[i].To)
     if len(scores) > 0 {
-      fmt.Fprintf(w, "\t%d", scores[i])
+      fmt.Fprintf(w, "\t%f", scores[i])
     } else {
       fmt.Fprintf(w, "\t%s", ".")
     }

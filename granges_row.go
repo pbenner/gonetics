@@ -30,6 +30,8 @@ type GRange struct {
   Strand    byte
 }
 
+/* -------------------------------------------------------------------------- */
+
 type GRangesRow struct {
   GRange
   MetaRow

@@ -92,7 +92,7 @@ func (granges *GRanges) ReadBamSingleEnd(r io.Reader, args... interface{}) error
       cigar    = append(cigar,    block.Cigar.String())
     }
     if options.ReadQual {
-      qual     = append(qual,     string(block.Qual))
+      qual     = append(qual,     block.Qual.String())
     }
   }
   *granges = NewGRanges(seqnames, from, to, strand)

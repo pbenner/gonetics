@@ -81,6 +81,10 @@ type OptionFilterChroms struct {
   Value []string
 }
 
+type OptionRemoveFilteredChroms struct {
+  Value bool
+}
+
 type OptionFilterMapQ struct {
   Value int
 }
@@ -140,6 +144,7 @@ type BamCoverageConfig struct {
   FilterStrand            byte
   FilterPairedEnd         bool
   FilterSingleEnd         bool
+  RemoveFilteredChroms    bool
   SmoothenControl         bool
   SmoothenSizes         []int
   SmoothenMin             float64
@@ -163,6 +168,7 @@ func BamCoverageDefaultConfig() BamCoverageConfig {
   config.FilterStrand            = '*'
   config.FilterPairedEnd         = false
   config.FilterSingleEnd         = false
+  config.RemoveFilteredChroms    = false
   config.LogScale                = false
   config.Pseudocounts            = [2]float64{0.0, 0.0}
   config.SmoothenControl         = false
@@ -517,12 +523,27 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
       GenericMutableTrack{track1}.Map(track1, func(name string, i int, x float64) float64 { return math.Log(x) })
     }
   }
-  if len(config.FilterChroms) != 0 {
-    config.Logger.Printf("Removing all reads from `%v'", config.FilterChroms)
-    for _, chr := range config.FilterChroms {
-      if s, err := track1.GetMutableSequence(chr); err == nil {
-        for i := 0; i < s.NBins(); i++ {
-          s.SetBin(i, 0.0)
+  if config.RemoveFilteredChroms {
+    if len(config.FilterChroms) != 0 {
+      config.Logger.Printf("Removing chromosomes `%v'", config.FilterChroms)
+      track1.FilterGenome(
+        func(name string, length int) bool {
+          for _, n := range config.FilterChroms {
+            if n == name {
+              return false
+            }
+          }
+          return true
+        })
+    }
+  } else {
+    if len(config.FilterChroms) != 0 {
+      config.Logger.Printf("Removing all reads from `%v'", config.FilterChroms)
+      for _, chr := range config.FilterChroms {
+        if s, err := track1.GetMutableSequence(chr); err == nil {
+          for i := 0; i < s.NBins(); i++ {
+            s.SetBin(i, 0.0)
+          }
         }
       }
     }
@@ -569,6 +590,8 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
       config.FraglenBinSize = opt.Value
     case OptionFilterChroms:
       config.FilterChroms = opt.Value
+    case OptionRemoveFilteredChroms:
+      config.RemoveFilteredChroms = opt.Value
     case OptionFilterMapQ:
       config.FilterMapQ = opt.Value
     case OptionFilterReadLengths:

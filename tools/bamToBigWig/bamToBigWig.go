@@ -193,6 +193,7 @@ func main() {
   optFilterPairedEnd   := options.   BoolLong("filter-paired-end",          0 ,     "remove all single end reads")
   optFilterSingleEnd   := options.   BoolLong("filter-single-end",          0 ,     "remove all paired end reads")
   optFilterChroms      := options. StringLong("filter-chromosomes",         0 , "", "remove all reads on the given chromosomes [comma separated list]")
+  optRmFilteredChroms  := options.   BoolLong("remove-filtered-chromosomes",0 ,     "remove all chromosomes that have been filtered out")
   // track options
   optBinningMethod     := options. StringLong("binning-method",             0 , "", "binning method [`default' (increment the value of each bin by one " +
                                                                                     "that overlaps a read), `overlap' (increment the value of each bin that " +
@@ -396,6 +397,9 @@ func main() {
   }
   if *optFilterChroms != "" {
     optionsList = append(optionsList, OptionFilterChroms{strings.Split(*optFilterChroms, ",")})
+  }
+  if *optRmFilteredChroms {
+    optionsList = append(optionsList, OptionRemoveFilteredChroms{true})
   }
   optionsList = append(optionsList, OptionEstimateFraglen{*optEstimateFraglen})
   optionsList = append(optionsList, OptionLogScale{*optLogScale})

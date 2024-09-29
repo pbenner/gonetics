@@ -77,12 +77,20 @@ func bamView(config Config, filenameIn string) {
   fmt.Println()
 
   for block := range reader.ReadSingleEnd() {
+    seqname  := "*"
+    position := "*"
+    if block.RefID >= 0 {
+      seqname = reader.Genome.Seqnames[block.RefID]
+    }
+    if block.Position >= 0 {
+      position = strconv.FormatInt(int64(block.Position), 10)
+    }
     if block.Error != nil {
       log.Fatal(block.Error)
     }
-    fmt.Printf("%10s %15d %5d:%011s %4d",
-      reader.Genome.Seqnames[block.RefID],
-      block.Position,
+    fmt.Printf("%10s %15s %5d:%011s %4d",
+      seqname,
+      position,
       block.Flag,
       strconv.FormatInt(int64(block.Flag), 2),
       block.MapQ)

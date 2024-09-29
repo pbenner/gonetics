@@ -115,15 +115,12 @@ func saveCrossCorrPlot(config Config, filename string, fraglen int, x []int, y [
     xy[i].X = float64(x[i])+1
     xy[i].Y = y[i]
   }
-  p, err := plot.New()
-  if err != nil {
-    log.Fatal(err)
-  }
+  p := plot.New()
   p.Title.Text = ""
   p.X.Label.Text = "shift"
   p.Y.Label.Text = "cross-correlation"
 
-  err = plotutil.AddLines(p, xy)
+  err := plotutil.AddLines(p, xy)
   if err != nil {
     log.Fatal(err)
   }

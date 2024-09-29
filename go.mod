@@ -6,4 +6,5 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/pbenner/threadpool v0.0.0-20200729220145-19cbae573817 // indirect
 	github.com/pborman/getopt v1.1.0 // indirect
+	gonum.org/v1/plot v0.14.0 // indirect
 )

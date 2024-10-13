@@ -405,7 +405,7 @@ func estimateFraglen(config BamCoverageConfig, filename string, genome Genome) f
 
 /* -------------------------------------------------------------------------- */
 
-func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, genome Genome) (SimpleTrack, error) {
+func bamCoverage(config BamCoverageConfig, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, genome Genome) (SimpleTrack, error) {
 
   // treatment data
   track1 := AllocSimpleTrack("treatment", genome, config.BinSize)
@@ -553,7 +553,7 @@ func bamCoverage(config BamCoverageConfig, filenameTrack string, filenamesTreatm
 
 /* -------------------------------------------------------------------------- */
 
-func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, options ...interface{}) (SimpleTrack, []fraglenEstimate, []fraglenEstimate, error) {
+func BamCoverage(filenamesTreatment, filenamesControl []string, fraglenTreatment, fraglenControl []int, options ...interface{}) (SimpleTrack, []fraglenEstimate, []fraglenEstimate, error) {
 
   config := BamCoverageDefaultConfig()
 
@@ -692,7 +692,7 @@ func BamCoverage(filenameTrack string, filenamesTreatment, filenamesControl []st
     }
   }
   //////////////////////////////////////////////////////////////////////////////
-  if result, err := bamCoverage(config, filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, genome); err != nil {
+  if result, err := bamCoverage(config, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, genome); err != nil {
     return SimpleTrack{}, treatmentFraglenEstimates, controlFraglenEstimates, err
   } else {
     return result, treatmentFraglenEstimates, controlFraglenEstimates, err

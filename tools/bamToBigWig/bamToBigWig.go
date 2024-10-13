@@ -456,7 +456,7 @@ func main() {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  result, fraglenTreatmentEstimate, fraglenControlEstimate, err := BamCoverage(filenameTrack, filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, optionsList...)
+  result, fraglenTreatmentEstimate, fraglenControlEstimate, err := BamCoverage(filenamesTreatment, filenamesControl, fraglenTreatment, fraglenControl, optionsList...)
 
   // save fraglen estimates
   //////////////////////////////////////////////////////////////////////////////
